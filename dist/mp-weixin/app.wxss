@@ -1,0 +1,16 @@
+/* 玄玖灵犀 NT-Xhex · 小程序全局样式
+ * 视觉规范（色阶/圆角/阴影/间距/字号/通用组件/线性图标）统一来自
+ * modules/UIModule/theme.css —— 由 tools/sync-mp.js 生成为 theme.wxss，
+ * 与 PWA / uni-app 引用同一份，三端视觉完全一致，切勿在此另写一套。 */
+@import "theme.wxss";
+
+page {
+  margin: 0;
+  padding: 0;
+  background: var(--nt-bg);
+  color: var(--nt-ink);
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  font-size: var(--fs-body);
+  line-height: 1.6;
+}

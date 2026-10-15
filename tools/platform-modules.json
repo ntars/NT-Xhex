@@ -1,0 +1,69 @@
+{
+  "singleSource": "modules/",
+  "_说明": "modules/ 是全部引擎/数据/存储/设置的唯一真源。各运行方式/平台「只加载自己用到的模块，忽略其余目录」（睁一只眼闭一只眼），目录结构保持不变、不搬动文件。本清单是各平台加载选择的单一事实源。",
+  "_版本": "3.0.1 —— 单轮问答三视图（首页/结果页/关于页）；全界面三方向安全区（状态栏/胶囊/手势条）由 UIModule/safe-area.js 单一真源计算；已删除未调用的 ui.js / dom-chat.js。",
+  "platforms": {
+    "mp-weixin": {
+      "形态": "微信小程序（dist/mp-weixin，原生打包）",
+      "加载方式": "require（相对路径）",
+      "files": [
+        "AnalyzerModule/db.js",
+        "AnalyzerModule/lunar.js",
+        "AnalyzerModule/ganzhi.js",
+        "AnalyzerModule/name-study.js",
+        "AnalyzerModule/bazi.js",
+        "AnalyzerModule/ganzhi-analysis.js",
+        "AnalyzerModule/analyzer.js",
+        "AnalyzerModule/intent.js",
+        "StorageModule/storage.js",
+        "SettingsModule/settings.js",
+        "HomeModule/conversation.js",
+        "HomeModule/result-format.js",
+        "UIModule/safe-area.js",
+        "UIModule/theme.js",
+        "UIModule/transition.js"
+      ],
+      "statics": [
+        "static/icons/logo.png",
+        "static/icons/logo-white.png",
+        "static/icons/icon-192.png"
+      ],
+      "忽略": [
+        "EnvModule（小程序无 PWA/Service Worker/安装引导概念）",
+        "*.vue（HomeModule/index.vue、HomeModule/result.vue、SettingsModule/settings.vue 是 uni-app 视图，原生小程序不用）"
+      ]
+    },
+    "pwa": {
+      "形态": "浏览器 PWA（public/pwa，无需构建）",
+      "加载方式": "<script src 全局挂载 NT.*",
+      "files": [
+        "AnalyzerModule/db.js",
+        "AnalyzerModule/lunar.js",
+        "AnalyzerModule/ganzhi.js",
+        "AnalyzerModule/name-study.js",
+        "AnalyzerModule/bazi.js",
+        "AnalyzerModule/ganzhi-analysis.js",
+        "AnalyzerModule/analyzer.js",
+        "AnalyzerModule/intent.js",
+        "EnvModule/env.js",
+        "StorageModule/storage.js",
+        "SettingsModule/settings.js",
+        "HomeModule/conversation.js",
+        "HomeModule/result-format.js",
+        "UIModule/safe-area.js",
+        "UIModule/theme.js",
+        "UIModule/transition.js"
+      ],
+      "忽略": [
+        "*.vue（uni-app 视图，PWA 是原生 DOM 壳不用）"
+      ]
+    },
+    "uni-app": {
+      "形态": "uni-app Vue3 构建（H5 / 多端原生）",
+      "加载方式": "uni build（全量编译，条件编译 #ifdef 区分形态）",
+      "files": "ALL",
+      "忽略": "全功能形态：引擎 + 存储 + 设置 + 会话 + 结果排版 + 视觉规范全部使用，不忽略。",
+      "备注": "theme.css 由三个 Vue 视图分别 import（构建期内联）；EnvModule 仅 H5 条件编译启用。"
+    }
+  }
+}

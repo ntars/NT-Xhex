@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+  <!-- 清除数据行尾红色「›」：形状同 icon-forward，色值取设计稿危险红 #FF5733（非 #FF5730） -->
+  <path d="M8.96 4.75 L15.04 12 L8.96 19.25" fill="none" stroke="#FF5733" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

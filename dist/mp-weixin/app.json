@@ -1,0 +1,10 @@
+{
+  "pages": ["pages/index/index"],
+  "lazyCodeLoading": "requiredComponents",
+  "window": {
+    "navigationStyle": "custom",
+    "backgroundColor": "#ffffff",
+    "navigationBarTitleText": "玄玖灵犀"
+  },
+  "sitemapLocation": "sitemap.json"
+}

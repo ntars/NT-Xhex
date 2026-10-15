@@ -1,0 +1,9 @@
+{
+  "desc": "玄玖灵犀 NT-Xhex · 算法演乾坤，一问知天命（无后端、无网络、无登录、无权限申请）",
+  "rules": [
+    {
+      "action": "allow",
+      "page": "pages/index/index"
+    }
+  ]
+}

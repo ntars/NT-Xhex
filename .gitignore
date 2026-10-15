@@ -1,0 +1,31 @@
+# ===== 玄玖灵犀 NT-Xhex · Git 忽略清单 =====
+
+# —— 系统 / 编辑器垃圾 ——
+.DS_Store
+**/.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# —— 依赖 ——
+node_modules/
+
+# —— WorkBuddy 工作区数据（本地记忆/会话，不属于代码仓库）——
+.workbuddy/
+.codebuddy/
+
+# —— 微信开发者工具「自己」生成的文件（不是我们的产物，绝不入库）——
+# 这些文件会让 IDE 把项目误判为「多平台 / 小应用（MiniApp）」架构：
+# 一旦入库，别处 clone 下来打开也会踩同一个坑（渲染层空白）。
+dist/mp-weixin/app.miniapp.json
+dist/mp-weixin/project.miniapp.json
+dist/mp-weixin/project.private.config.json
+dist/mp-weixin/i18n/
+dist/mp-weixin/miniapp/
+
+# —— uni-app 构建输出 ——
+unpackage/
+
+# —— 备份 ——
+*.bak

@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+  <!-- 后退「‹」：设计稿「左箭头」轮廓 7.58×16（含描边 1.5）→ 中心线 6.08×14.5，居中于 24×24 -->
+  <path d="M15.04 4.75 L8.96 12 L15.04 19.25" fill="none" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

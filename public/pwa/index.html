@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#000000" />
+  <meta name="description" content="算法演乾坤，一问知天命，以数据重现千年术数。无后端、无网络。© 星玖工作室 Ntarstudio" />
+  <title>玄玖灵犀 NT-Xhex</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" type="image/png" href="../../static/icons/icon-192.png" />
+  <!-- 视觉规范单一真源（与 uni-app / 微信小程序同一份） -->
+  <link rel="stylesheet" href="../../modules/UIModule/theme.css" />
+  <style>
+    /* 本文件只写「PWA 壳布局结构」；色阶/圆角/阴影/组件/图标/动效全部走 theme.css 的
+       --nt-* 变量与 .nt-* 类，确保与小程序/uni-app 视觉完全一致。
+       三视图：首页（输入）→ 结果页（展示分析）→ 关于页；右上「关于」，结果页左上「返回」。 */
+    #app { display: flex; flex-direction: column; height: 100vh; margin: 0 auto; position: relative; overflow: hidden; }
+
+    /* 全局隐藏滚动条（极简视觉：保留滚动能力，仅隐藏滚动条本身；浏览器端 `*` 合法） */
+    * { scrollbar-width: none; -ms-overflow-style: none; }
+    *::-webkit-scrollbar { width: 0; height: 0; display: none; }
+
+    /* 视图切换：JS 加 .on 显示；进入即微信式右滑入（.nt-slide-in 由 theme.css 单一真源定义），布局不动 */
+    .view { display: none; flex: 1; flex-direction: column; min-height: 0; }
+    .view.on { display: flex; animation: nt-slide-in var(--d-page) var(--ease-standard) both; }
+
+    /* 页面容器：底部避让 iPhone 手势条 / 安卓虚拟按键 */
+    #app { padding-bottom: env(safe-area-inset-bottom, 0px); }
+
+    /* 统一固定上导航栏（三视图共用 .nt-nav，规格走 theme.css：绝对定位 about/返回/标题；只约束导航栏本身，不裁内容区） */
+    /* PWA 端导航按钮是 <button>：清掉浏览器默认边框/背景，交互态走统一按压 */
+    .nt-nav-about, .nt-nav-back { background: none; border: none; cursor: pointer; font-family: inherit; color: var(--nt-ink); }
+    .nt-nav-about { transition: opacity var(--d-press) var(--ease-standard); }
+    .nt-nav-about:active, .nt-nav-back:active { opacity: .6; }
+
+    /* 首页空态（定稿v3 §2） */
+    #hero { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 32px; }
+    #hero img { width: 72px; height: 80.4px; }
+    .hero-title { margin-top: 16px; font-size: var(--fs-xl); font-weight: var(--fw-mid); letter-spacing: 1.6px; line-height: 1.15; }
+    /* 搜索胶囊（§2：1.3pt 描边 / 内文 15.6pt / 放大镜 14.7pt，走 theme.css） */
+    .hero-pill { margin-top: 16px; width: 272px; max-width: 100%; }
+    .hero-disclaimer { margin-top: 16px; font-size: var(--fs-note); font-weight: var(--fw-mid); color: var(--nt-foot); text-align: center; }
+
+    /* 结果页 / 关于页 / 二级页 头部：统一用 .nt-nav（theme.css 单一真源，含 env 顶部避让）；
+       标题 17.7pt/600 居中，左槽返回「‹」（源 后退.svg 放大 13×26）。下方 .pg-body 滚动。 */
+    .pg-body { flex: 1; overflow-y: auto; padding: 0 24px; }
+
+    /* 结果页（定稿v3 §4：二级页一稿两用，视觉走 theme.css .nt-dl-*） */
+    .pg-body .nt-dl-card + .nt-dl-card { margin-top: 8px; }
+    .res-block { margin-bottom: 12px; }
+    .res-block + .res-block { padding-top: 12px; border-top: 0.8px solid var(--nt-line); }
+    .res-block-label { display: block; font-size: var(--fs-note); font-weight: var(--fw-mid); color: var(--nt-text-2); letter-spacing: 0.4px; margin-bottom: 4px; }
+    .res-bar { display: flex; justify-content: center; padding: 12px 16px; flex-shrink: 0; }
+    .res-again { width: 100%; max-width: 320px; }
+
+    /* 关于页（定稿v3 §3：品牌区居中普通区非卡片；设置区/二级页走 theme.css） */
+    .ab-brand { display: flex; flex-direction: column; align-items: center; padding: 32px 0 20px; }
+    .ab-brand img { width: 72px; height: 80.4px; }
+    .ab-brand-name { margin-top: 12px; font-size: var(--fs-xl); font-weight: var(--fw-mid); letter-spacing: 1.6px; }
+    .ab-brand-sub { margin-top: 8px; font-size: var(--fs-note); font-weight: var(--fw-mid); color: var(--nt-foot); letter-spacing: 0.8px; }
+    #v-about .nt-setlist { margin-bottom: 8px; }
+    #v-us .nt-setlist { margin-bottom: 8px; }
+    /* 二级页（定稿v3 §4：正文卡） */
+    #v-detail .nt-dl-card { margin-top: 24px; }
+
+    /* 底部信息条（.nt-foot，theme.css 单一真源；固定底条 flex-shrink:0，距底与首页页脚一致，上方留白） */
+    .view .nt-foot { flex-shrink: 0; }
+
+    /* PWA 安装引导 */
+    #installbar { display: none; align-items: center; justify-content: space-between; margin: 0 16px 12px; padding: 12px 16px; background: var(--nt-ink); color: var(--nt-paper); border-radius: var(--r-md); }
+    #installbar .t { font-size: var(--fs-sub); font-weight: var(--fw-mid); }
+    #installbar .d { font-size: var(--fs-cap); opacity: .8; }
+    #installbar button { border: 1px solid var(--nt-paper); background: transparent; color: var(--nt-paper); padding: 6px 16px; border-radius: var(--r-pill); font-size: var(--fs-cap); cursor: pointer; font-family: inherit; }
+
+    /* 页脚（定稿v3 §2：12.5pt·600、纯黑 30%（--nt-foot，随主题反白 30%）） */
+    footer { padding: 16px 24px 46px; text-align: center; flex-shrink: 0; }
+    footer .icp { display: block; font-size: var(--fs-note); font-weight: var(--fw-mid); color: var(--nt-foot); line-height: 15px; }
+    footer .copy { display: block; font-size: var(--fs-note); font-weight: var(--fw-mid); color: var(--nt-foot); line-height: 15px; }
+
+    /* 响应式容器（规范 §6.2） */
+    #app { width: 100%; }
+    @media screen and (min-width: 768px) { #app { max-width: 640px; } }
+    @media screen and (min-width: 1024px) { #app { max-width: 720px; } }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <!-- ========== 首页（输入）========== -->
+    <div class="view on" id="v-home">
+      <div class="nt-nav">
+        <button id="aboutbtn" class="nt-nav-about">关于</button>
+      </div>
+      <div id="hero">
+        <img id="heroLogo" src="../../static/icons/logo.png" alt="玄玖灵犀" />
+        <div class="hero-title">玄玖灵犀</div>
+        <div class="hero-pill nt-pill">
+          <input class="nt-pill-input" id="heroinput" placeholder="滚动搜索建议..." />
+          <span class="nt-pill-search" id="heroSend"><span class="nt-icon nt-i-search"></span></span>
+        </div>
+        <div class="hero-disclaimer" id="heroDisclaimer"></div>
+      </div>
+      <!-- 备案号 + 版权：仅首页显示（随布局置底；下方无导航栏） -->
+      <footer class="nt-foot-safe">
+        <div class="icp" id="icp"></div>
+        <div class="copy" id="copy"></div>
+      </footer>
+    </div>
+
+    <!-- ========== 结果页（定稿v3 §4：二级页一稿两用，视觉走 theme.css .nt-dl-*）========== -->
+    <div class="view" id="v-result">
+      <div class="nt-nav">
+        <button class="nt-nav-back" id="resultback"><span class="nt-icon nt-i-back"></span></button>
+        <span class="nt-nav-title" id="restitle">分析结果</span>
+      </div>
+      <div class="pg-body">
+        <!-- 提问回显（§4.3/§4.4：正文范围卡 发丝线0.6pt + 顶格排版） -->
+        <div class="nt-dl-card">
+          <span class="nt-dl-h1">你的提问</span>
+          <span class="nt-dl-text" id="resquestion"></span>
+        </div>
+        <!-- 分析结果（§4.5：15pt 苹方黑·顶格；左侧 2px 黑竖线标记保留） -->
+        <div class="nt-dl-card">
+          <span class="nt-dl-h1" id="reslead"></span>
+          <div id="resblocks"></div>
+        </div>
+      </div>
+      <div class="res-bar">
+        <button class="nt-pill-btn res-again" id="againbtn">再问一个</button>
+      </div>
+      <!-- 底部信息条（固定底条：与首页页脚同规格同位置，免责+版本，不随内容滚动漂移） -->
+      <footer class="nt-foot" id="res-foot"></footer>
+    </div>
+
+    <!-- ========== 关于页（定稿v3 §3：品牌区 + 5 项设置区 + 4 展开说明 + 底部两行）========== -->
+    <div class="view" id="v-about">
+      <div class="nt-nav">
+        <button class="nt-nav-back" id="aboutback"><span class="nt-icon nt-i-back"></span></button>
+        <span class="nt-nav-title">关于</span>
+      </div>
+      <div class="pg-body">
+        <!-- 品牌区（§3.2：居中普通区，非卡片） -->
+        <div class="ab-brand">
+          <img id="aboutLogo" src="../../static/icons/logo.png" alt="玄玖灵犀" />
+          <span class="ab-brand-name">玄玖灵犀</span>
+          <span class="ab-brand-sub" id="ab-slogan"></span>
+        </div>
+
+        <!-- 设置区（原型：4 张独立卡 354×84、16pt 间距；清除项全红态；3 项点进二级页，清除只弹窗；走 theme.css） -->
+        <div class="nt-setlist" id="ab-setlist"></div>
+      </div>
+      <!-- 底部信息条（固定底条：与首页页脚同规格同位置，免责+版本） -->
+      <footer class="nt-foot" id="ab-foot"></footer>
+    </div>
+
+    <!-- ========== 关于我们页（设计稿 关于我们：品牌区 + 3 张卡 星玖工作室/协议条款/开源声明）========== -->
+    <div class="view" id="v-us">
+      <div class="nt-nav">
+        <button class="nt-nav-back" id="usback"><span class="nt-icon nt-i-back"></span></button>
+        <span class="nt-nav-title" id="us-title"></span>
+      </div>
+      <div class="pg-body">
+        <!-- 品牌区（与关于页同规格：居中普通区非卡片） -->
+        <div class="ab-brand">
+          <img id="usLogo" src="../../static/icons/logo.png" alt="玄玖灵犀" />
+          <span class="ab-brand-name">玄玖灵犀</span>
+          <span class="ab-brand-sub" id="us-slogan"></span>
+        </div>
+        <!-- 3 张卡（星玖工作室 / 协议条款 / 开源声明），点击进各自内容详情页 -->
+        <div class="nt-setlist" id="us-setlist"></div>
+      </div>
+      <footer class="nt-foot" id="us-foot"></footer>
+    </div>
+
+    <!-- ========== 内容详情页（一稿两用 5 个子页：refs/intro 回「关于」，studio/terms/open 回「关于我们」）========== -->
+    <div class="view" id="v-detail">
+      <div class="nt-nav">
+        <button class="nt-nav-back" id="detailback"><span class="nt-icon nt-i-back"></span></button>
+        <span class="nt-nav-title" id="detailtitle"></span>
+      </div>
+      <div class="pg-body">
+        <!-- 正文范围卡（§4.3/§4.4：发丝线 0.6pt、卡内边 24pt）+ 正文（§4.5：15pt 苹方黑·顶格） -->
+        <div class="nt-dl-card">
+          <div id="detail-items"></div>
+        </div>
+      </div>
+      <!-- 底部信息条（固定底条：与首页页脚同规格同位置，免责+版本） -->
+      <footer class="nt-foot" id="detail-foot"></footer>
+    </div>
+
+    <!-- PWA 安装引导 -->
+    <div id="installbar">
+      <div>
+        <div class="t">安装「玄玖灵犀」到桌面</div>
+        <div class="d">可离线运行，安装为 APP</div>
+      </div>
+      <button id="installbtn">安装</button>
+    </div>
+  </div>
+
+  <!-- 浏览器 PWA 形态：只引入本形态用到的模块（全局挂载 NT.*），忽略不相关文件
+       · 需要：analyzer(引擎) + 其子模块(db/lunar/ganzhi/name-study/bazi/ganzhi-analysis/intent)
+               env(离线/安装引导) storage(本地缓存)
+               settings(关于/页脚数据：版权/简介/版本/备案——单一真源，不另写一份)
+               conversation(共享问答行为，单轮) result-format(共享结果排版)
+               safe-area(安全区) theme(黑白双主题)
+       · 不需要（忽略）：*.vue（uni-app 视图，PWA 是原生 DOM 壳不用）
+       · 顺序：引擎子模块先于 analyzer（analyzer 浏览器分支依赖 NT.intent 等全局） -->
+  <script src="../../modules/AnalyzerModule/db.js"></script>
+  <script src="../../modules/AnalyzerModule/lunar.js"></script>
+  <script src="../../modules/AnalyzerModule/ganzhi.js"></script>
+  <script src="../../modules/AnalyzerModule/name-study.js"></script>
+  <script src="../../modules/AnalyzerModule/bazi.js"></script>
+  <script src="../../modules/AnalyzerModule/ganzhi-analysis.js"></script>
+  <script src="../../modules/AnalyzerModule/intent.js"></script>
+  <script src="../../modules/AnalyzerModule/analyzer.js"></script>
+  <script src="../../modules/EnvModule/env.js"></script>
+  <script src="../../modules/StorageModule/storage.js"></script>
+  <script src="../../modules/SettingsModule/settings.js"></script>
+  <script src="../../modules/HomeModule/conversation.js"></script>
+  <script src="../../modules/HomeModule/result-format.js"></script>
+  <script src="../../modules/UIModule/safe-area.js"></script>
+  <script src="../../modules/UIModule/theme.js"></script>
+  <script src="../../modules/UIModule/transition.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,78 @@
+# 玄玖灵犀 NT-Xhex · 把「网页版（PWA）」发布到 GitHub Pages
+#
+# 为什么只发布这三个目录：
+#   · public/  —— PWA 运行壳（index.html / app.js / sw.js / manifest.json）
+#   · modules/ —— 业务引擎与视觉规范【单一真源】，PWA 用 <link>/<script> 直接引用
+#   · static/  —— logo / 图标
+# 三者必须保持「同级的相对位置」，因为 PWA 里写的是 ../../modules/...、../../static/...
+# 一旦换目录层级就会 404 —— 这也是本工作流坚持整目录搬运、不改结构的原因。
+#
+# 小程序（dist/mp-weixin）不在这里发布：它靠微信开发者工具上传，GitHub Pages 无法运行。
+
+name: 发布网页版
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  # 第一关：产物一致性 + 小程序壳体检。不通过就不发布，避免把坏状态推上线。
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: 校验小程序产物与模块源一致（含 <template is> 必须传 data）
+        run: node tools/sync-mp.js --check
+      - name: 校验 PWA 引用的模块与图标都在
+        run: |
+          set -e
+          for f in modules/UIModule/theme.css modules/UIModule/theme.js \
+                   modules/SettingsModule/settings.js static/icons/logo.png \
+                   static/icons/logo-white.png public/pwa/index.html; do
+            test -f "$f" || { echo "缺少 $f"; exit 1; }
+          done
+          echo "PWA 依赖齐全"
+
+  deploy:
+    needs: verify
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: 组装站点（保持相对层级不变）
+        run: |
+          set -e
+          mkdir -p _site
+          cp -R public _site/public
+          cp -R modules _site/modules
+          cp -R static _site/static
+          # 访问根路径时直接跳到网页版
+          printf '%s\n' \
+            '<!DOCTYPE html><meta charset="utf-8">' \
+            '<meta http-equiv="refresh" content="0;url=./public/pwa/index.html">' \
+            '<title>玄玖灵犀 NT-Xhex</title>' \
+            '<a href="./public/pwa/index.html">进入玄玖灵犀网页版</a>' \
+            > _site/index.html
+          # GitHub Pages 默认不跑 Jekyll（本项目无 _ 开头目录，关掉更快）
+          touch _site/.nojekyll
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,572 @@
+/**
+ * modules/UIModule/theme.css —— 玄玖灵犀 NT-Xhex 视觉与动效规范【单一真源】
+ * 依据：《玄玖灵犀 NT-Xhex UI 交互设计规范》
+ *
+ * 风格：黑白极简冷淡风（Normcore）× 东方术数内核 + 轻微新拟物质感
+ *   · 纯黑白灰单色调（色相恒为 0），任何状态变化只用「明度 + 透明度 + 位移」表达
+ *   · 大圆角卡片、发丝线框、极弱单层柔和阴影、内凹输入槽
+ *   · 线性图标（内联 SVG，stroke 1.5px，无外部依赖）
+ *   · 胶囊控件 / 黑色圆形按钮 / Toggle
+ *   · 动效三原则：少、快、统一 —— 统一缓动曲线 + 统一时长阶梯，无弹簧/弹跳/抖动
+ *   · 无 Tab Bar、无聊天气泡、无历史列表；输入 → 结果（新页展示，可返回）
+ *
+ * 三端共用方式（同一份文件，绝不复制）：
+ *   · 浏览器 PWA（public/pwa/index.html）  → <link rel="stylesheet" href="../../modules/UIModule/theme.css">
+ *   · uni-app（HomeModule/index.vue 等）    → import 本文件（构建期内联）
+ *   · 微信小程序（dist/mp-weixin）          → tools/sync-mp.js 生成 theme.wxss，app.wxss @import 引入
+ *
+ * ⚠️ 兼容约束（三端必须同时满足，故此处刻意规避）：
+ *   · 微信小程序 WXSS 不支持 ::before / ::after 伪元素 → 装饰一律用真实元素 + 类名
+ *   · 不支持 :hover / @media (hover:hover) / prefers-reduced-motion → 这些块 WXSS 会忽略，无害
+ *   · 不使用 filter / backdrop-filter / 渐变 / 外部字体 / rpx
+ */
+
+/* ============ 设计 Token（:root 供 PWA/Vue；page 供小程序）============ */
+:root,
+page {
+  /* —— 背景层 —— */
+  --nt-bg: #ffffff;          /* 页面底色（纯白，规范 2026-10-12） */
+  --nt-paper: #ffffff;      /* 卡片 / 纸面 */
+  --nt-sunken: #f2f2f2;    /* 内凹容器（输入框、进度槽） */
+
+  /* —— 文字层 —— */
+  --nt-ink: #000000;         /* 主标题、用户提问 */
+  --nt-text: #333333;        /* 分析结果正文 */
+  --nt-text-2: #666666;      /* 辅助说明、标签 */
+  --nt-text-3: #999999;      /* 禁用态 */
+  --nt-placeholder: #8E8E93;             /* 搜索占位（原型：iOS 灰 #8E8E93） */
+  --nt-text-50: rgba(0, 0, 0, 0.5);      /* 设置项描述（原型：#000@50%） */
+  --nt-text-20: rgba(0, 0, 0, 0.2);      /* 结果页正文（原型：#000@20%，比内容页正文更浅） */
+  --nt-text-footer: #bbbbbb; /* 底部备案号、版权 */
+  --nt-foot: rgba(0, 0, 0, 0.3);        /* 页脚/底部说明（原型：#000@30%） */
+  --nt-danger: #FF5733;      /* 危险红（设计稿 #FF5733；仅「清除数据」红态，语义色不随主题翻转） */
+  --nt-danger-desc: rgba(255, 87, 51, 0.5);  /* 危险红 50%（清除项描述） */
+
+  /* —— 描边档位（一律以设计稿实测值为准；设计稿只用 #000000 一种描边色）—— */
+  --b-pill: 1.5px;     /* 搜索胶囊描边（设计稿「搜索框」1.5） */
+  --b-btn: 1px;        /* 弹窗「取消」次要按钮描边（设计稿 1） */
+  --b-chevron: 1.5px;  /* 后退 / 前进 chevron 线宽（设计稿 1.5；实际落在 SVG 内） */
+  --b-ring: 1.5px;     /* 搜索放大镜圆环/斜柄线宽（设计稿 1.5；实际落在 SVG 内） */
+  --b-card: 1px;       /* 设置卡 / 正文范围卡描边（设计稿 1） */
+  --b-panel: 0px;      /* 弹窗面板：设计稿无描边（仅白底 + 阴影分离） */
+  --ic-chevron: 24px;  /* chevron/箭头/放大镜容器（原型 24×24，iOS 26 V 形箭头）：导航返回「‹」、设置行尾「›」、搜索放大镜共用 */
+
+  /* —— 描边层（设计稿全稿只用 #000000 一种描边色）—— */
+  --nt-line: #ececec;        /* 发丝分割线（列表行分隔；设计稿未使用，保留兼容） */
+  --nt-line-strong: #000000; /* 主描边：搜索胶囊 / 设置卡 / 正文卡 / 次要按钮（设计稿 #000000） */
+
+  /* —— 圆角 —— */
+  --r-card: 25px;              /* 大圆角卡片：设置卡 / 正文范围卡（设计稿 25） */
+  --r-panel: 24px;             /* 弹窗面板（设计稿 24） */
+  --r-md: 12px;                /* 中圆角 */
+  --r-sm: 6px;                 /* 小圆角（骨架条） */
+  --r-pill: 999px;             /* 胶囊 / 圆形 */
+
+  /* —— 质感（极弱、单层、柔和）—— */
+  --sh-card: 0 2px 12px rgba(0, 0, 0, 0.05);
+  --sh-float: 0 4px 16px rgba(0, 0, 0, 0.10);
+  --sh-sunken: inset 0 1px 3px rgba(0, 0, 0, 0.06);
+
+  /* —— 间距（8 的倍数，严格对齐）—— */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px; --sp-6: 32px; --sp-7: 48px; --sp-8: 64px;
+
+  /* —— 字号阶梯（23:32 原型精确值：17/22/15/12）—— */
+  --fs-h: 17px;        /* 顶栏标题 / 设置项标题 / 正文区标题 / 弹窗按钮（原型 17） */
+  --fs-xl: 22px;       /* 品牌名「玄玖灵犀」 / 弹窗大标题（原型 22） */
+  --fs-brand: 40px;    /* 品牌主标（保留兼容） */
+  --fs-title: 28px;    /* 页面标题（开屏页 28） */
+  --fs-brand-sub: 20px;/* 品牌文案（保留兼容） */
+  --fs-result: 20px;   /* 结果标题（保留兼容） */
+  --fs-body: 16px;     /* 正文 */
+  --fs-body-15: 15px;  /* 二级页正文 / 设置描述 / 弹窗描述（原型 15） */
+  --fs-note: 12px;     /* 免责·副标题·设置描述·底部说明（原型 12） */
+  --fs-pill: 17px;     /* 搜索胶囊内文字 / 占位（原型 17） */
+  --fs-sub: 13px;      /* 辅助 */
+  --fs-cap: 11px;      /* 底部 */
+  --fw-black: 800; --fw-bold: 700; --fw-mid: 600; --fw-med: 500; --fw-reg: 400;
+
+  /* —— 动效：统一缓动曲线（全局唯一，入场/转场/状态切换共用）—— */
+  --ease-standard: cubic-bezier(0.4, 0.0, 0.2, 1);
+
+  /* —— 动效：统一时长阶梯 —— */
+  --d-press: 120ms;    /* 按钮按下 / 状态切换 */
+  --d-refresh: 240ms;  /* 页面内局部刷新（结果覆盖） */
+  --d-drawer: 280ms;   /* 浮层 / 抽屉 / 模态框 */
+  --d-page: 320ms;     /* 页面跳转 / 模态框 */
+  --d-splash: 400ms;   /* 启动页淡出 */
+
+  /* —— 布局容器宽度（规范 §6.2 响应式断点）—— */
+  --w-tablet: 640px;   /* 平板 768–1024 */
+  --w-desktop: 720px;  /* 电脑 ≥1024 */
+
+  /* —— 安全区（H5/PWA 用 env()；小程序 WXSS 不支持 env()，由 JS 行内覆盖）—— */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ============ 页面基底 ============ */
+html,
+body,
+page,
+.nt-root {
+  height: 100%;                /* 根节点满高：让壳里 .page{height:100%}+flex 的垂直居中/留白真正成立
+                                   （WeChat/uni-app 的 page 根默认 height:auto，不设则塌成内容高度，
+                                    首页/正文全堆顶部、下方留白；PWA #app 已有 100vh，此处加 100% 无害） */
+  margin: 0;
+  padding: 0;
+  background: var(--nt-bg);
+  color: var(--nt-ink);
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "PingFang SC",
+    "Helvetica Neue", "Microsoft YaHei", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-size: var(--fs-body);
+  line-height: 1.7;
+}
+
+/* ============ 滚动条（共享层，WXSS 安全：只用 `page`，不用 `*`）============
+ * 铁律：全站一律不显示滚动条。
+ *   · 浏览器（PWA/uni-H5）：各壳 <style> 里 `*{scrollbar-width:none}` + `*::-webkit-scrollbar{display:none}`（`*` 合法）。
+ *   · 小程序/uni-app 原生：scroll-view 加 `enhanced` + `show-scrollbar="{{false}}"`（原生渲染，CSS 无效，见各壳 wxml/vue）。
+ * 本层 `page{scrollbar-width:none}` 仅作 WXSS 安全兜底（Firefox/旧 Edge 生效，WXSS 忽略无害）。 */
+page { scrollbar-width: none; -ms-overflow-style: none; }
+
+/* ============ 通用组件（三端共用，壳里不另写）============ */
+
+/* 大圆角卡片：白底 + 1pt 主描边 + 极弱柔和阴影 */
+.nt-card {
+  background: var(--nt-paper);
+  border-radius: var(--r-card);
+  border: var(--b-card) solid var(--nt-line-strong);
+  box-shadow: var(--sh-card);
+  padding: var(--sp-4);
+}
+
+/* 弱填充卡（分组容器） */
+.nt-card-soft {
+  background: var(--nt-paper);
+  border-radius: var(--r-card);
+  padding: var(--sp-4);
+}
+
+/* ============ 固定上导航栏（三视图共用；"只约束导航栏本身"，不隔开正常区域）============
+ * 容器"通透"：relative + 固定 48pt 高，顶部避让（H5/PWA 走 margin-top:env(safe-area-inset-top)；
+ * 小程序 WXSS 不支持 env，由 JS 行内 margin-top 覆盖 nav.top）。
+ * 内部元素【绝对定位】各自落位：标题真居中于整页 / 关于·返回 顶格在 24pt 留白边。
+ * **不用左右"槽"切分导航栏**——留白由各内容区自身 padding 表达，导航栏不隔开正常阅读区域。 */
+.nt-nav {
+  position: relative;
+  height: 48px;
+  margin-top: var(--safe-top);
+  flex-shrink: 0;
+}
+/* 标题：绝对定位，真居中于整条导航（=整页宽），不受左右任何区域影响 */
+.nt-nav-title {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  font-size: var(--fs-h); font-weight: var(--fw-mid); letter-spacing: 0.5px; line-height: 1.2;
+}
+/* 首页「关于」：设计稿距左 48.4pt → left 48px；垂直居中，≥44pt 点击区（顶格，与内容区留白不冲突） */
+.nt-nav-about {
+  position: absolute; left: 24px; top: 50%; transform: translateY(-50%);
+  font-size: var(--fs-h); font-weight: var(--fw-mid); color: var(--nt-ink);
+  padding: 0 4px;
+}
+/* 子页返回「‹」：设计稿距左 24pt、图标 9×18pt（源 后退.svg 原始比例），≥44pt 点击区 */
+.nt-nav-back {
+  position: absolute; left: 24px; top: 50%; transform: translateY(-50%);
+  width: 44px; height: 44px;
+  display: flex; align-items: center; justify-content: flex-start;
+  background: none; border: none;
+}
+.nt-nav-back .nt-icon { width: var(--ic-chevron); height: var(--ic-chevron); }
+
+/* 胶囊搜索框（设计稿「搜索框」65,464 272×48 圆角 100 描边 1.5 #000000）：白底 + 1.5pt 黑描边 + 内凹；
+   48pt 高、内文字/占位 17pt；右端 48pt 辅助圆内放放大镜（作发送键） */
+.nt-pill {
+  display: flex;
+  align-items: center;
+  height: 48px;
+  padding: 0 0 0 var(--sp-5);   /* 仅左侧内边距；右端让给 48pt「辅助圆」放放大镜，不额外右推 */
+  background: var(--nt-paper);
+  border: var(--b-pill) solid var(--nt-line-strong);
+  border-radius: var(--r-pill);
+  box-shadow: var(--sh-sunken);
+  box-sizing: border-box;
+  transition: background var(--d-press) var(--ease-standard);
+}
+.nt-pill input,
+.nt-pill .nt-pill-input {
+  flex: 1;
+  height: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: var(--fs-h);
+  font-weight: var(--fw-mid);
+  color: var(--nt-ink);
+  font-family: inherit;
+  min-width: 0;
+}
+.nt-pill .nt-ph,
+.nt-pill input::placeholder { color: var(--nt-placeholder); font-weight: var(--fw-mid); }
+
+/* 胶囊右端「辅助圆」放大镜（= 胶囊右端 48pt 直径的正圆区域；放大镜作发送键，须精确落在该圆正中心）
+ * 按钮占满胶囊右端 48×48（= 胶囊高，即辅助圆直径），图标 flex 正中 → 与辅助圆圆心重合；去掉非对称 margin/padding 不再偏移。 */
+.nt-pill-search {
+  flex: 0 0 48px;
+  width: 48px; height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: opacity var(--d-press) var(--ease-standard);
+}
+.nt-pill-search .nt-icon { width: var(--ic-chevron); height: var(--ic-chevron); }
+
+/* 黑色胶囊按钮：高反差填充 */
+.nt-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 52px;
+  padding: 0 var(--sp-5);
+  background: var(--nt-ink);
+  color: var(--nt-paper);
+  border: none;
+  border-radius: var(--r-pill);
+  font-size: var(--fs-body);
+  font-weight: var(--fw-mid);
+  font-family: inherit;
+  cursor: pointer;
+  transition: opacity var(--d-press) var(--ease-standard);
+}
+
+/* 通用按下态：透明度 1 → 0.6（规范 §7.1） */
+.nt-pill-btn:active,
+.nt-press:active { opacity: 0.6; }
+
+/* Toggle 开关（真实元素结构，规避小程序无伪元素限制） */
+.nt-switch {
+  position: relative;
+  width: 52px;
+  height: 32px;
+  flex-shrink: 0;
+  background: var(--nt-sunken);
+  border: none;
+  border-radius: var(--r-pill);
+  box-shadow: var(--sh-sunken);
+  transition: background var(--d-press) var(--ease-standard);
+  cursor: pointer;
+}
+.nt-switch .nt-knob {
+  position: absolute;
+  left: 3px;
+  top: 3px;
+  width: 26px;
+  height: 26px;
+  background: var(--nt-paper);
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+  transition: transform var(--d-press) var(--ease-standard);
+}
+.nt-switch.on { background: var(--nt-ink); }
+.nt-switch.on .nt-knob { transform: translateX(20px); }
+
+/* 分段选择 */
+.nt-seg {
+  display: flex;
+  background: var(--nt-sunken);
+  border-radius: var(--r-pill);
+  padding: 3px;
+  gap: 2px;
+}
+.nt-seg .nt-seg-i {
+  padding: 7px 16px;
+  border-radius: var(--r-pill);
+  font-size: var(--fs-sub);
+  color: var(--nt-text-2);
+  text-align: center;
+  transition: background var(--d-press) var(--ease-standard);
+}
+.nt-seg .nt-seg-i.on {
+  background: var(--nt-ink);
+  color: var(--nt-paper);
+  font-weight: var(--fw-mid);
+}
+
+/* 发丝线分隔 */
+.nt-hr { height: 1px; background: var(--nt-line); border: none; margin: 0; }
+
+/* 列表行（关于页菜单：48px 高、右侧箭头、发丝线分割） */
+.nt-list { background: var(--nt-paper); border-radius: var(--r-card); border: var(--b-card) solid var(--nt-line-strong); box-shadow: var(--sh-card); overflow: hidden; }
+.nt-list-row {
+  display: flex; align-items: center; justify-content: space-between;
+  min-height: 52px; padding: 0 var(--sp-4);
+  font-size: var(--fs-body); color: var(--nt-ink);
+  cursor: pointer;
+  transition: background var(--d-press) var(--ease-standard);
+}
+.nt-list-row + .nt-list-row { border-top: 1px solid var(--nt-line); }
+.nt-list-row .nt-chev { width: 18px; height: 18px; flex-shrink: 0; }
+
+/* ============ 关于页 · 设置区（设计稿「关于页」：4 张独立卡 354×84、卡距 16pt、圆角 25、描边 1pt #000000；
+   卡内：标题 17pt/600 @24,18；描述 15pt @24,48（正常项黑、清除项危险红 50%）；危险红全态）============ */
+.nt-setlist { display: flex; flex-direction: column; gap: 16px; }
+.nt-setrow {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3);
+  height: 84px; padding: 0 24px;
+  background: var(--nt-paper);
+  border: var(--b-card) solid var(--nt-line-strong);
+  border-radius: var(--r-card);
+  box-shadow: var(--sh-card);
+  box-sizing: border-box;
+  cursor: pointer;
+  transition: background var(--d-press) var(--ease-standard);
+}
+.nt-setl { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.nt-setl-title { font-size: var(--fs-h); font-weight: var(--fw-mid); color: var(--nt-ink); }
+.nt-setl-desc { font-size: var(--fs-body-15); font-weight: var(--fw-reg); color: var(--nt-text-50); }
+.nt-setrow .nt-i-chev { width: var(--ic-chevron); height: var(--ic-chevron); flex-shrink: 0; }
+/* 全红态（清除数据）：卡片描边/标题/描述/箭头均危险红 */
+.nt-setrow.danger { border-color: var(--nt-danger); }
+.nt-setrow.danger .nt-setl-title { color: var(--nt-danger); }
+.nt-setrow.danger .nt-setl-desc { color: var(--nt-danger-desc); }
+.nt-setrow.danger .nt-i-chev { background-image: url("../../static/icons/icon-forward-danger.svg"); }
+/* 底部说明（定稿v3 §3.4：黑30% / 12.5pt·600，两行居中） */
+/* 底部信息条（原型 23:32：@24,798 354×30，两行 12pt 行高 15px 居中，距底 46pt；各内容页固定底条） */
+.nt-foot { padding: 16px 24px 46px; text-align: center; flex-shrink: 0; }
+.nt-foot .nt-setfoot-line { display: block; font-size: var(--fs-note); font-weight: var(--fw-mid); color: var(--nt-foot); line-height: 15px; }
+.nt-foot .nt-setfoot-line + .nt-setfoot-line { margin-top: 0; }
+
+/* ============ 二级页面 · 通用内容页（定稿v3 §4：一稿两用 = 搜索结果页 / 关于页 4 板块详情页；清除缓存不走此页）============ */
+/* 正文区标题（§4.2：17.7pt/600；卡片内顶格，多条之间留距） */
+.nt-dl-h1 { display: block; font-size: var(--fs-h); font-weight: var(--fw-mid); margin: 0 0 8px; }
+.nt-dl-card > .nt-dl-item:first-child .nt-dl-h1,
+.nt-dl-card > .nt-dl-h1:first-child { margin-top: 0; }
+/* 正文范围卡（设计稿内容页「矩形 5」24,174 354×600 圆角 25 描边 1 #000000；卡内边 24pt） */
+.nt-dl-card {
+  background: var(--nt-paper);
+  border: var(--b-card) solid var(--nt-line-strong);
+  border-radius: var(--r-card);
+  box-shadow: var(--sh-card);
+  padding: 24px;
+  box-sizing: border-box;
+}
+/* 正文（§4.5：苹方 15pt，顶格排版 = 顶部对齐 + 左对齐；设计稿内容页 = 黑50%） */
+.nt-dl-text { display: block; font-size: var(--fs-body-15); color: var(--nt-text-50); line-height: 1.8; text-align: left; white-space: pre-wrap; }
+.nt-dl-text + .nt-dl-text { margin-top: 12px; }
+/* 结果页正文（设计稿 搜索结果页：15pt 黑20%，比内容页正文更浅） */
+.nt-dl-text-light { color: var(--nt-text-20); }
+/* 更新日志条目（§3.3 第3项展开：多组 h1+正文，条目间 12pt） */
+.nt-dl-item + .nt-dl-item { margin-top: 12px; }
+
+/* 结构化条目：左侧 2px 纯黑竖线标记（规范 §4.3，不做彩色圆点） */
+.nt-mark { border-left: 2px solid var(--nt-ink); padding-left: var(--sp-3); }
+
+/* ============ 安全区（规范：自定义导航栏必须避开状态栏/胶囊/手势条）============ */
+/* H5/PWA：由 env(safe-area-inset-*) 自动处理。
+   小程序：WXSS 不支持 env()，由 modules/UIModule/safe-area.js 计算后以行内 style 覆盖。 */
+
+/* 页面容器：底部避让手势条/虚拟按键（所有视图通用） */
+.nt-page-safe {
+  padding-bottom: var(--safe-bottom);
+}
+
+/* 结果页/关于页头部：顶部避让状态栏 */
+.nt-head-safe {
+  padding-top: calc(12px + var(--safe-top));
+}
+
+/* 首页顶栏：「关于」入口置于微信胶囊按钮下方（小程序端由 JS 给 aboutTop） */
+.nt-topbar-safe {
+  padding-top: calc(14px + var(--safe-top));
+}
+
+/* 页脚：底部避让手势条 */
+.nt-foot-safe {
+  padding-bottom: calc(24px + var(--safe-bottom));
+}
+
+/* ============ 全局动效（规范：所有页面/组件入场统一「由下向上淡入」，少·快·统一）============ */
+/* 唯一入场 keyframe：translateY(16px)→0 + 透明度 0→1，统一缓动 --ease-standard。
+   页面（.nt-page-in）/ 局部刷新（.nt-fade-up）/ 模态 / Toast 全部共用，视觉零差异。 */
+@keyframes nt-rise {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes nt-skeleton {
+  0%, 100% { opacity: 0.45; }
+  50%      { opacity: 0.85; }
+}
+/* 页面转场：320ms */
+.nt-page-in { animation: nt-rise var(--d-page) var(--ease-standard) both; }
+/* 组件/局部刷新：240ms */
+.nt-fade-up { animation: nt-rise var(--d-refresh) var(--ease-standard) both; }
+
+/* ============ 页面转场（微信式「双层视差」，对齐"设置→子页"切页动画；动画独立于布局，类由 transition.js 驱动）============
+ * 结构：.nt-stage（相对·满高）含 .layer.back(底层=旧页) + .layer.front(顶层=新页) + .nt-dim(压暗遮罩)。
+ *   前进 stage-fwd：顶层新页 100%→0 右滑入；底层旧页 0→-33% 左移 + dim 0→.24 压暗（左缘露出窄条）。
+ *   返回 stage-back：顶层旧页 0→100% 右滑出；底层新页 -33%→0 滑回 + dim .24→0 消暗。
+ * 首帧显示「动画前当前页满屏」、新页在屏外/被顶开位 → 无跳变闪烁。与 --d-page(320ms) 同缓动；三端共用。
+ * ⚠️ 裁切原则：只裁「转场层」不裁内容 —— overflow-x hidden 仅兜住滑动过程中的层；overflow-y 保持可见，
+ *   按键按压特效/阴影不被切。左右不设 24px 内容区约束（各页自身留白即可），导航栏才需要精确约束。 */
+.nt-stage { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; overflow-x: hidden; overflow-y: visible; }
+.nt-layer { position: absolute; inset: 0; display: flex; flex-direction: column; min-height: 0; }
+.nt-layer.back  { z-index: 1; }
+.nt-layer.front { z-index: 3; }
+.nt-dim { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; z-index: 2; }
+
+@keyframes nt-tf-in    { from { transform: translateX(100%); }  to { transform: none; } }
+@keyframes nt-tf-out   { from { transform: none; }             to { transform: translateX(100%); } }
+@keyframes nt-px-fwd   { from { transform: none; }             to { transform: translateX(-33%); } }
+@keyframes nt-px-back  { from { transform: translateX(-33%); } to { transform: none; } }
+@keyframes nt-dim-in   { from { opacity: 0; } to { opacity: .24; } }
+@keyframes nt-dim-out  { from { opacity: .24; } to { opacity: 0; } }
+.nt-stage.stage-fwd  .nt-layer.front { animation: nt-tf-in   var(--d-page) var(--ease-standard) both; }
+.nt-stage.stage-fwd  .nt-layer.back  { animation: nt-px-fwd  var(--d-page) var(--ease-standard) both; }
+.nt-stage.stage-fwd  .nt-dim        { animation: nt-dim-in  var(--d-page) var(--ease-standard) both; }
+.nt-stage.stage-back .nt-layer.front { animation: nt-tf-out  var(--d-page) var(--ease-standard) both; }
+.nt-stage.stage-back .nt-layer.back  { animation: nt-px-back var(--d-page) var(--ease-standard) both; }
+.nt-stage.stage-back .nt-dim        { animation: nt-dim-out var(--d-page) var(--ease-standard) both; }
+
+/* 单层右滑入（PWA / uni-app 无"上一页"DOM，无法双层；CSS animation 从 100% 起，天然不闪，挂到进入视图容器） */
+.nt-slide-in { animation: nt-tf-in var(--d-page) var(--ease-standard) both; }
+
+/* 骨架屏（分析计算中：灰阶呼吸，800ms 循环） */
+.nt-skeleton { background: var(--nt-sunken); border-radius: var(--r-sm); animation: nt-skeleton 800ms var(--ease-standard) infinite; }
+.nt-skeleton-title { height: 22px; width: 40%; margin-bottom: var(--sp-4); }
+.nt-skeleton-line { height: 14px; margin-bottom: var(--sp-3); }
+
+/* ============ 模态框（设计稿「弹窗」：面板 24,344 354×184 圆角 24 无描边；大标题 22pt/600；双按钮 135×44 间距 36pt）============ */
+.nt-mask {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(0, 0, 0, 0.32);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+  animation: nt-rise var(--d-drawer) var(--ease-standard) both;
+}
+.nt-modal {
+  width: 100%; max-width: 354px;
+  height: 184px;               /* 原型：面板 354×184，固定高 */
+  background: var(--nt-paper);
+  border: none;                /* 设计稿：面板无描边，仅靠阴影与遮罩分离 */
+  border-radius: var(--r-panel);
+  box-shadow: var(--sh-card);
+  padding: 24px;
+  box-sizing: border-box;
+  display: flex; flex-direction: column;
+}
+/* 弹窗（原型 23:32：面板 354×184；标题 22pt/600 @24,24 高28；描述 15pt 黑50% @24,66 高36；双按钮 135×44 间距 36 @y116） */
+.nt-modal-title { display: block; font-size: var(--fs-xl); font-weight: var(--fw-mid); margin-bottom: 14px; }
+.nt-modal-desc { display: block; font-size: var(--fs-body-15); color: var(--nt-text-50); line-height: 1.2; margin-bottom: 14px; }
+.nt-modal-btns { display: flex; gap: 36px; margin-top: auto; }
+.nt-modal-btns .nt-pill-btn { flex: 1; height: 44px; }
+/* 次要按钮（取消）：白底 + 1pt 黑描边（设计稿 135×44 描边 1） */
+.nt-pill-btn.ghost {
+  background: var(--nt-paper);
+  color: var(--nt-ink);
+  border: var(--b-btn) solid var(--nt-line-strong);
+  box-shadow: none;
+}
+
+/* ============ Toast（规范 §3.3 清除缓存反馈）============ */
+/* 居中用 left/right:0 + margin:auto（不占 transform，与入场动画的 translateY 不冲突） */
+.nt-toast {
+  position: fixed; left: 0; right: 0; margin: 0 auto; width: fit-content; bottom: 96px;
+  z-index: 110;
+  background: var(--nt-ink); color: var(--nt-paper);
+  font-size: var(--fs-sub);
+  padding: 10px 20px; border-radius: var(--r-pill);
+  animation: nt-rise 200ms var(--ease-standard) both;
+}
+
+/* ============ 线性图标（设计稿实测：轮廓 7.58×16 / 圆环 15.9×15.9，线宽一律 1.5；容器 24×24，
+   源 SVG 收在 static/icons/，构建期由 sync-mp 内联 base64）============
+   · icon-back（‹）/ icon-forward（›）：V 形折线，轮廓 7.58×16（含描边）→ 中心线 6.08×14.5，线宽 1.5。
+   · icon-forward-danger（›红）：设置区「清除数据」行尾箭头，同形危险红 #FF5733。
+   · icon-search：圆环轮廓 15.9（中心线 r7.2）+ 45° 斜柄，线宽均 1.5，整体视觉体约 18.5。
+   路径约定：PWA <link> 相对 public/pwa/ 写 ../../static/icons/；小程序由 sync-mp.js 构建期替换为内联 base64。 */
+.nt-icon {
+  display: inline-block;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  width: var(--ic-chevron); height: var(--ic-chevron);  /* 24px 容器（chevron/箭头/放大镜共用） */
+  flex-shrink: 0;
+}
+/* 后退「‹」（icon-back.svg：24×24 V 形折线，线宽 1.5） */
+.nt-i-back { background-image: url("../../static/icons/icon-back.svg"); }
+/* 前进「›」（icon-forward.svg：设置区行尾箭头，同 24×24） */
+.nt-i-chev { background-image: url("../../static/icons/icon-forward.svg"); }
+/* 搜索放大镜（icon-search.svg：圆环 r7.2 + 斜柄，线宽 1.5，24×24） */
+.nt-i-search { width: var(--ic-chevron); height: var(--ic-chevron); background-image: url("../../static/icons/icon-search.svg"); }
+
+
+/* ============ 深色主题（整体反色，规范 2026-10-12）============ */
+/* 规则：只反色「界面色板」（背景/文字/描边/阴影/线性图标）。
+   宜忌、五行业务语义色不翻转 —— 它们走独立变量 --nt-yi / --nt-ji / --nt-wuxing-*，
+   在浅/深两态下保持同一套，保证业务含义（红=吉、绿=凶等）跨主题一致、可读。 */
+.nt-dark {
+  /* 背景层：纯黑底 */
+  --nt-bg: #000000;
+  --nt-paper: #0a0a0a;
+  --nt-sunken: #161616;
+
+  /* 文字层：反白 */
+  --nt-ink: #ffffff;
+  --nt-text: #e6e6e6;
+  --nt-text-2: #a1a1a1;
+  --nt-text-3: #5c5c5c;
+  --nt-placeholder: rgba(255, 255, 255, 0.3);  /* 占位：深=白 30% */
+  --nt-text-50: rgba(255, 255, 255, 0.5);   /* 设置项描述/内容页正文：深=白 50% */
+  --nt-text-20: rgba(255, 255, 255, 0.2);   /* 结果页正文：深=白 20% */
+  --nt-text-footer: #595959;
+  --nt-foot: rgba(255, 255, 255, 0.3);  /* 页脚：深=白 30% */
+  --nt-danger: #FF5733;               /* 危险红（设计稿 #FF5733；语义色不翻） */
+  --nt-danger-desc: rgba(255, 87, 51, 0.5);
+
+  /* 描边层 */
+  --nt-line: #1f1f1f;
+  --nt-line-strong: #ffffff;
+
+  /* 质感：阴影改「弱亮光」，内凹保持 */
+  --sh-card: 0 2px 12px rgba(255, 255, 255, 0.06);
+  --sh-float: 0 4px 16px rgba(255, 255, 255, 0.10);
+  --sh-sunken: inset 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+/* 深色下的线性图标：源 SVG 为黑线，invert 反白（放大镜 / 返回‹ / 前进›） */
+.nt-dark .nt-i-search,
+.nt-dark .nt-i-back,
+.nt-dark .nt-i-chev {
+  filter: invert(1);
+}
+/* 例外：危险红箭头（清除数据项）不反白——invert 会把红变青，深色下保持红色 #FF5733 */
+.nt-dark .nt-setrow.danger .nt-i-chev { filter: none; }
+/* 业务语义色：浅/深一致，不随主题翻转（宜忌吉凶 / 五行颜色将来接在这里） */
+.nt-dark,
+:root {
+  --nt-yi: #1a7f37;      /* 宜（吉）：绿 */
+  --nt-ji: #c62828;      /* 忌（凶）：红 */
+}
+
+/* ============ 桌面端专属（悬停态，规范 §3.3/§6.4；WXSS 会忽略 @media hover）============ */
+@media (hover: hover) and (min-width: 768px) {
+  .nt-card:hover,
+  .nt-list-row:hover { background: var(--nt-bg); }
+  .nt-pill-btn:hover { opacity: 0.85; }
+  .nt-pill-search:hover { opacity: 0.85; }
+  .nt-pill:focus-within { background: var(--nt-bg); }
+}
+
+/* ============ 无障碍降级（规范 §3.4；WXSS 会忽略，无害）============ */
+@media (prefers-reduced-motion: reduce) {
+  .nt-page-in,
+  .nt-fade-up,
+  .nt-skeleton,
+  .nt-mask,
+  .nt-toast { animation-duration: 0ms !important; }
+}

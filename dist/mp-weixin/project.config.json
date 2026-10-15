@@ -1,0 +1,42 @@
+{
+  "description": "玄玖灵犀 NT-Xhex v3.0.1 · 算法演乾坤，一问知天命（无后端/无网络）",
+  "packOptions": {
+    "ignore": [],
+    "include": []
+  },
+  "setting": {
+    "urlCheck": false,
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "minified": true,
+    "babelSetting": {
+      "ignore": [],
+      "disablePlugins": [],
+      "outputPath": "./dist/."
+    },
+    "compileWorklet": false,
+    "uglifyFileName": false,
+    "uploadWithSourceMap": true,
+    "packNpmManually": false,
+    "packNpmRelationList": [],
+    "minifyWXSS": true,
+    "minifyWXML": true,
+    "localPlugins": false,
+    "disableUseStrict": false,
+    "useCompilerPlugins": false,
+    "condition": true,
+    "swc": false,
+    "disableSWC": true,
+    "component2": true
+  },
+  "compileType": "miniprogram",
+  "libVersion": "3.17.3",
+  "appid": "wx7d40cfd5e4849d0d",
+  "projectname": "nt-xhex",
+  "condition": {},
+  "simulatorPluginLibVersion": {
+    "wxext14566970e7e9f62": "2.27.3"
+  },
+  "editorSetting": {}
+}
