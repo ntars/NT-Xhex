@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>玄玖灵犀 NT-Xhex</title>
+  <!--
+    根入口重定向：本仓库的可运行形态（PWA）在 public/pwa/（其 ../../modules、../../static
+    只有在「web 根 = 仓库根」时才解析正确）。EdgeOne 静态服务仓库根时，根 URL 原本没有
+    index.html 会 404；此页把根路径 302 到 PWA 入口，让 https://<站点>/ 直接可用，
+    同时不动 PWA 内部任何相对引用。
+  -->
+  <meta http-equiv="refresh" content="0; url=public/pwa/" />
+  <script>location.replace("public/pwa/")</script>
+</head>
+<body>
+  正在进入玄玖灵犀 · 若未自动跳转，请 <a href="public/pwa/">点此进入</a>。
+</body>
+</html>
