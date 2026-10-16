@@ -1,31 +1,39 @@
-<view class="page nt-page-safe {{isDark ? 'nt-dark' : ''}}" style="padding-bottom:{{nav.bottom}}px">
-  <!-- 双层视差转场（对齐微信"设置→子页"视频：底层=旧页 左移压暗 / 顶层=新页 右滑入；首帧旧页满屏不闪）
-       底层渲染 prevView、顶层渲染 view，方向类 navAnim 由 transition.js 判定、320ms 后静止 -->
+<view class="page nt-page-safe nt-theme-fade {{isDark ? 'nt-dark' : ''}} {{boot ? 'nt-cascade' : ''}}" style="padding-bottom:{{nav.bottom}}px">
+  <!-- ⚠️ nt-theme-fade 是「主题切换过渡」的门控类（theme.css），**必须常挂**：
+       它是"让界面色板在换主题时 320ms 交叉渐变"的开关，摘掉就等于关掉这个动效。
+       这里静态写死是安全的 —— 本页首帧的 isDark 就是正确主题，不存在冷启动闪烁。
+       详见 theme.css「主题切换过渡」整段注释。 -->
+  <!-- 双层视差转场（对齐微信"设置→子页"：前进 新页自右滑入 + 旧页左移压暗 / 返回 旧页右滑出 + 新页自左滑回）
+       底层渲染 layerBack、顶层渲染 layerFront，方向类 navAnim 由 transition.js 判定、320ms 后两层同步静止
+       注：两层都是不透明面（theme.css 给 .nt-layer 铺了 --nt-bg），所以静止态底层被顶层完全遮住，
+           330ms 后同步 layerBack 时底层重建重播的入场动画不会透出来（否则就是"重影"）。
+       boot：只在冷启动首屏挂 nt-cascade（内容错落入场）；首次切页即摘掉，之后切页只走整层滑入，两种动效不叠加。 -->
   <view class="nt-stage {{navAnim}}">
     <view class="nt-layer back">
-      <template wx:if="{{prevView === 'home'}}" is="tpl-home" data="{{about: about, themeLogo: themeLogo, input: input, result: result, nav: nav, detail: detail, isDark: isDark, clearOpen: clearOpen, toastOpen: toastOpen, toastText: toastText, navAnim: navAnim, detailBack: detailBack}}"></template>
-      <template wx:elif="{{prevView === 'result'}}" is="tpl-result" data="{{about: about, themeLogo: themeLogo, input: input, result: result, nav: nav, detail: detail, isDark: isDark, clearOpen: clearOpen, toastOpen: toastOpen, toastText: toastText, navAnim: navAnim, detailBack: detailBack}}"></template>
-      <template wx:elif="{{prevView === 'about'}}" is="tpl-about" data="{{about: about, themeLogo: themeLogo, input: input, result: result, nav: nav, detail: detail, isDark: isDark, clearOpen: clearOpen, toastOpen: toastOpen, toastText: toastText, navAnim: navAnim, detailBack: detailBack}}"></template>
-      <template wx:elif="{{prevView === 'us'}}" is="tpl-us" data="{{about: about, themeLogo: themeLogo, input: input, result: result, nav: nav, detail: detail, isDark: isDark, clearOpen: clearOpen, toastOpen: toastOpen, toastText: toastText, navAnim: navAnim, detailBack: detailBack}}"></template>
-      <template wx:elif="{{prevView === 'detail'}}" is="tpl-detail" data="{{about: about, themeLogo: themeLogo, input: input, result: result, nav: nav, detail: detail, isDark: isDark, clearOpen: clearOpen, toastOpen: toastOpen, toastText: toastText, navAnim: navAnim, detailBack: detailBack}}"></template>
+      <template wx:if="{{layerBack === 'home'}}" is="tpl-home" data="{{about: about, themeLogo: themeLogo, input: input, result: result, nav: nav, detail: detail, isDark: isDark, clearOpen: clearOpen, toastOpen: toastOpen, toastText: toastText, navAnim: navAnim, detailBack: detailBack}}"></template>
+      <template wx:elif="{{layerBack === 'result'}}" is="tpl-result" data="{{about: about, themeLogo: themeLogo, input: input, result: result, nav: nav, detail: detail, isDark: isDark, clearOpen: clearOpen, toastOpen: toastOpen, toastText: toastText, navAnim: navAnim, detailBack: detailBack}}"></template>
+      <template wx:elif="{{layerBack === 'about'}}" is="tpl-about" data="{{about: about, themeLogo: themeLogo, input: input, result: result, nav: nav, detail: detail, isDark: isDark, clearOpen: clearOpen, toastOpen: toastOpen, toastText: toastText, navAnim: navAnim, detailBack: detailBack}}"></template>
+      <template wx:elif="{{layerBack === 'us'}}" is="tpl-us" data="{{about: about, themeLogo: themeLogo, input: input, result: result, nav: nav, detail: detail, isDark: isDark, clearOpen: clearOpen, toastOpen: toastOpen, toastText: toastText, navAnim: navAnim, detailBack: detailBack}}"></template>
+      <template wx:elif="{{layerBack === 'detail'}}" is="tpl-detail" data="{{about: about, themeLogo: themeLogo, input: input, result: result, nav: nav, detail: detail, isDark: isDark, clearOpen: clearOpen, toastOpen: toastOpen, toastText: toastText, navAnim: navAnim, detailBack: detailBack}}"></template>
     </view>
     <view class="nt-layer front">
-      <template wx:if="{{view === 'home'}}" is="tpl-home" data="{{about: about, themeLogo: themeLogo, input: input, result: result, nav: nav, detail: detail, isDark: isDark, clearOpen: clearOpen, toastOpen: toastOpen, toastText: toastText, navAnim: navAnim, detailBack: detailBack}}"></template>
-      <template wx:elif="{{view === 'result'}}" is="tpl-result" data="{{about: about, themeLogo: themeLogo, input: input, result: result, nav: nav, detail: detail, isDark: isDark, clearOpen: clearOpen, toastOpen: toastOpen, toastText: toastText, navAnim: navAnim, detailBack: detailBack}}"></template>
-      <template wx:elif="{{view === 'about'}}" is="tpl-about" data="{{about: about, themeLogo: themeLogo, input: input, result: result, nav: nav, detail: detail, isDark: isDark, clearOpen: clearOpen, toastOpen: toastOpen, toastText: toastText, navAnim: navAnim, detailBack: detailBack}}"></template>
-      <template wx:elif="{{view === 'us'}}" is="tpl-us" data="{{about: about, themeLogo: themeLogo, input: input, result: result, nav: nav, detail: detail, isDark: isDark, clearOpen: clearOpen, toastOpen: toastOpen, toastText: toastText, navAnim: navAnim, detailBack: detailBack}}"></template>
-      <template wx:elif="{{view === 'detail'}}" is="tpl-detail" data="{{about: about, themeLogo: themeLogo, input: input, result: result, nav: nav, detail: detail, isDark: isDark, clearOpen: clearOpen, toastOpen: toastOpen, toastText: toastText, navAnim: navAnim, detailBack: detailBack}}"></template>
+      <template wx:if="{{layerFront === 'home'}}" is="tpl-home" data="{{about: about, themeLogo: themeLogo, input: input, result: result, nav: nav, detail: detail, isDark: isDark, clearOpen: clearOpen, toastOpen: toastOpen, toastText: toastText, navAnim: navAnim, detailBack: detailBack}}"></template>
+      <template wx:elif="{{layerFront === 'result'}}" is="tpl-result" data="{{about: about, themeLogo: themeLogo, input: input, result: result, nav: nav, detail: detail, isDark: isDark, clearOpen: clearOpen, toastOpen: toastOpen, toastText: toastText, navAnim: navAnim, detailBack: detailBack}}"></template>
+      <template wx:elif="{{layerFront === 'about'}}" is="tpl-about" data="{{about: about, themeLogo: themeLogo, input: input, result: result, nav: nav, detail: detail, isDark: isDark, clearOpen: clearOpen, toastOpen: toastOpen, toastText: toastText, navAnim: navAnim, detailBack: detailBack}}"></template>
+      <template wx:elif="{{layerFront === 'us'}}" is="tpl-us" data="{{about: about, themeLogo: themeLogo, input: input, result: result, nav: nav, detail: detail, isDark: isDark, clearOpen: clearOpen, toastOpen: toastOpen, toastText: toastText, navAnim: navAnim, detailBack: detailBack}}"></template>
+      <template wx:elif="{{layerFront === 'detail'}}" is="tpl-detail" data="{{about: about, themeLogo: themeLogo, input: input, result: result, nav: nav, detail: detail, isDark: isDark, clearOpen: clearOpen, toastOpen: toastOpen, toastText: toastText, navAnim: navAnim, detailBack: detailBack}}"></template>
     </view>
     <view class="nt-dim"></view>
   </view>
 
-  <!-- 清除缓存确认模态框（浮于最上层） -->
-  <view class="nt-mask" wx:if="{{clearOpen}}" bindtap="closeClear">
+  <!-- 清除缓存确认模态框（浮于最上层）。出场动画：clearOpen 管「卸载」，clearClosing 管「播 nt-fall」。
+       关闭时先挂 .nt-mask-out 播 200ms（见 closeModal），播完再卸载 —— 直接卸载则退场来不及播。 -->
+  <view class="nt-mask {{clearClosing ? 'nt-mask-out' : ''}}" wx:if="{{clearOpen}}" bindtap="closeModal">
     <view class="nt-modal" catchtap="noop">
       <text class="nt-modal-title">{{about.clearModal.title}}</text>
       <text class="nt-modal-desc">{{about.clearModal.desc}}</text>
       <view class="nt-modal-btns">
-        <view class="nt-pill-btn ghost" bindtap="closeClear">{{about.clearModal.cancel}}</view>
+        <view class="nt-pill-btn ghost" bindtap="closeModal">{{about.clearModal.cancel}}</view>
         <view class="nt-pill-btn" bindtap="doClear">{{about.clearModal.confirm}}</view>
       </view>
     </view>
@@ -33,77 +41,115 @@
 
   <view class="nt-toast" wx:if="{{toastOpen}}">{{toastText}}</view>
 
+  <!-- 开屏页（冷启动品牌瞬间：品牌组 Logo + 玄玖灵犀 + 副标 演乾坤·知天命，停留后退场）。
+       整屏 overlay（z-index 200，在弹窗/转场之上）。文案单一真源 = about().splash，
+       Logo 复用 themeLogo（随主题换白版），视觉 = theme.css 的 .nt-splash*。
+       退场：splashOut 挂 .nt-splash-out → 品牌组(logo+名)缩放到起始页比例淡出、背景/副标后段淡出，
+       播完(--d-splash)再卸载 splashShow（先播后摘，同弹窗）。 -->
+  <view class="nt-splash {{splashOut ? 'nt-splash-out' : ''}}" wx:if="{{splashShow}}">
+    <view class="nt-splash-brand">
+      <image class="nt-splash-logo" src="{{themeLogo}}" mode="aspectFit" />
+      <text class="nt-splash-name">{{about.splash.title}}</text>
+    </view>
+    <text class="nt-splash-sub">{{about.splash.sub}}</text>
+  </view>
+
+  <!-- 导出图片专用离屏画布（type="2d" 走 Canvas 2D 接口，与网页端同一套绘制代码；
+       尺寸由 JS 按 UIModule/export-image.js 的版式计划动态设定：402 × 计划高度） -->
+  <canvas type="2d" id="exportCanvas" class="export-canvas"></canvas>
+
+
   <!-- ========== 各视图内容（模板；两层共用同一份定义，布局不动）========== -->
-  <!-- 首页：固定上导航栏「关于」左上 + 居中 Logo/品牌/搜索胶囊/免责 + 底部备案号·版权（仅首页） -->
+  <!-- 首页（设计稿「起始页」）：导航「关于」左上 + 空态块（Logo 64.27×72 → 玄玖灵犀 22pt →
+       搜索胶囊 272×48 → 内容仅供交流学习 12pt，间距恒 16、整块垂直居中）+ 底部备案号·版权。
+       注意：起始页没有「演乾坤 · 知天命」副标（以设计稿文档为准，其内嵌缩略图是旧版）。 -->
   <template name="tpl-home">
     <view class="home">
       <view class="nt-nav" style="margin-top:{{nav.top}}px">
         <text class="nt-nav-about nt-press" bindtap="gotoAbout">关于</text>
       </view>
-      <view class="hero">
-        <image class="hero-logo" src="{{themeLogo}}" mode="aspectFit" />
-        <text class="hero-title">玄玖灵犀</text>
-        <view class="hero-pill nt-pill">
-          <input class="nt-pill-input" value="{{input}}" placeholder="{{about.placeholder}}"
-                 placeholder-style="color:#8E8E93;font-size:17px"
-                 confirm-type="send" bindinput="onInput" bindconfirm="send" />
+      <view class="nt-hero">
+        <image class="nt-hero-logo" src="{{themeLogo}}" mode="aspectFit" />
+        <text class="nt-hero-title">{{about.name}}</text>
+        <view class="nt-hero-pill nt-pill {{(input || focused) ? 'nt-ph-off' : ''}}">
+          <!-- 常驻强调光环：独立子节点（第一个孩子），只管呼吸，不参与点击与布局。
+               ⚠️ 不能把呼吸动画写到 .nt-hero-pill 自身上：一个元素只有一个 animation 槽位，
+                  会与首屏入场动画 nt-rise 互相覆盖（详见 theme.wxss 的 .nt-halo 注释）。 -->
+          <view class="nt-halo"></view>
+          <input class="nt-pill-input" value="{{input}}" confirm-type="send"
+                 bindinput="onInput" bindconfirm="send" bindfocus="onFocus" bindblur="onBlur" />
+          <!-- 滚动搜索建议（真实词条，内容来自 settings.js 的 searchHints 单一真源）。
+               结构：.nt-ph（裁切窗，48pt 高）> .nt-ph-track（整列）> N 个 .nt-ph-item + 1 个首词条副本。
+               轮换节奏（停留 5s → 上滑一行 0.5s，同百度首页）与分档 keyframe `nt-ph-step`
+               全在 theme.css，本壳不写任何动画值；该 keyframe 与词条条数绑定（当前 8 条）。
+               末尾副本是无缝衔接的关键（滑到 -N×48 时窗口里那行与第一行逐像素相同）。
+               输入非空或已聚焦 → 根节点带 .nt-ph-off，整体隐去（HIG：占位提示不与真实输入重叠；
+               聚焦时也让位，因为微信官方文档写明「input 仅在 focus 时表现为原生组件」，
+               此时它层级高于 WebView 里的一切元素，词条会被直接盖住）。 -->
+          <view class="nt-ph" wx:if="{{about.searchHints && about.searchHints.length}}">
+            <view class="nt-ph-track">
+              <text class="nt-ph-item" wx:for="{{about.searchHints}}" wx:key="index">{{item}}</text>
+              <text class="nt-ph-item">{{about.searchHints[0]}}</text>
+            </view>
+          </view>
           <view class="nt-pill-search nt-press" bindtap="send">
             <view class="nt-icon nt-i-search"></view>
           </view>
         </view>
-        <text class="hero-disclaimer">{{about.homeDisclaimer}}</text>
+        <text class="nt-hero-note">{{about.homeDisclaimer}}</text>
       </view>
-      <view class="foot">
-        <text class="foot-icp">{{about.icp}}</text>
-        <text class="foot-copy">{{about.footerCopy}}</text>
+      <view class="nt-foot">
+        <text class="nt-setfoot-line">{{about.icp}}</text>
+        <text class="nt-setfoot-line">{{about.footerCopy}}</text>
       </view>
     </view>
   </template>
 
-  <!-- 结果页 -->
+  <!-- 结果页（设计稿「搜索结果页」）：顶栏标题「玄玖灵犀」+ 页名「搜索结果」+ 单张正文范围卡
+       （卡高 = 剩余空间，天然得到设计稿 528）+ 底部双按钮「导出图片 / 再问一个」+ 页脚 -->
   <template name="tpl-result">
     <view class="res">
       <view class="nt-nav" style="margin-top:{{nav.top}}px">
         <view class="nt-nav-back nt-press" bindtap="gotoHome"><view class="nt-icon nt-i-back"></view></view>
-        <text class="nt-nav-title">{{result.title || '分析结果'}}</text>
+        <text class="nt-nav-title">{{about.navTitle}}</text>
       </view>
-      <scroll-view class="res-body" scroll-y enhanced show-scrollbar="{{false}}">
+      <text class="nt-page-h">{{result.title || about.resultPageTitle}}</text>
+      <scroll-view class="nt-pgbody" scroll-y enhanced show-scrollbar="{{false}}">
         <view class="nt-dl-card">
-          <text class="nt-dl-h1">你的提问</text>
-          <text class="nt-dl-text">{{result.question}}</text>
-        </view>
-        <view class="nt-dl-card">
-          <text class="nt-dl-h1" wx:if="{{result.lead}}">{{result.lead}}</text>
-          <view class="res-block nt-mark" wx:for="{{result.blocks}}" wx:key="index">
+          <text class="nt-dl-h1">{{about.questionLabel}}</text>
+          <text class="nt-dl-text nt-dl-text-light">{{result.question}}</text>
+          <text class="nt-dl-h1 res-lead-h" wx:if="{{result.lead}}">{{result.lead}}</text>
+          <view class="res-block" wx:for="{{result.blocks}}" wx:key="index">
             <text class="res-block-label" wx:if="{{item.label}}">{{item.label}}</text>
-            <text class="nt-dl-text res-block-text">{{item.text}}</text>
+            <text class="nt-dl-text nt-dl-text-light">{{item.text}}</text>
           </view>
         </view>
       </scroll-view>
-      <view class="res-bar">
-        <view class="nt-pill-btn res-again" bindtap="gotoHome">再问一个</view>
+      <view class="nt-dual">
+        <view class="nt-pill-btn ghost" bindtap="exportImage">{{about.resultActions.export}}</view>
+        <view class="nt-pill-btn" bindtap="gotoHome">{{about.resultActions.again}}</view>
       </view>
-      <!-- 底部信息条（固定底条：与首页页脚同规格同位置，免责+版本，不随内容滚动位置漂移） -->
       <view class="nt-foot">
         <text class="nt-setfoot-line" wx:for="{{about.aboutFoot}}" wx:key="index">{{item}}</text>
       </view>
     </view>
   </template>
 
-  <!-- 关于页 -->
+  <!-- 关于页（设计稿「关于页」）：导航「关于」+ 品牌区（Logo 64.27×72 / 玄玖灵犀 22pt / 演乾坤·知天命 12pt）
+       + 4 张设置卡（第 4 张全红态）+ 页脚 -->
   <template name="tpl-about">
     <view class="ab">
       <view class="nt-nav" style="margin-top:{{nav.top}}px">
         <view class="nt-nav-back nt-press" bindtap="gotoHome"><view class="nt-icon nt-i-back"></view></view>
         <text class="nt-nav-title">关于</text>
       </view>
-      <scroll-view class="ab-body" scroll-y enhanced show-scrollbar="{{false}}">
-        <view class="ab-brand">
-          <image class="ab-brand-logo" src="{{themeLogo}}" mode="aspectFit" />
-          <text class="ab-brand-name">玄玖灵犀</text>
-          <text class="ab-brand-sub">{{about.slogan}}</text>
+      <scroll-view class="nt-pgbody nt-pt" scroll-y enhanced show-scrollbar="{{false}}">
+        <view class="nt-brand">
+          <image class="nt-brand-logo" src="{{themeLogo}}" mode="aspectFit" />
+          <text class="nt-brand-name">{{about.name}}</text>
+          <text class="nt-brand-sub">{{about.slogan}}</text>
         </view>
-        <view class="nt-setlist">
+        <view class="nt-setlist ab-setlist">
           <view class="nt-setrow {{item.danger ? 'danger' : ''}}" wx:for="{{about.aboutRows}}" wx:key="id"
                 data-id="{{item.id}}" bindtap="onRow">
             <view class="nt-setl">
@@ -114,26 +160,21 @@
           </view>
         </view>
       </scroll-view>
-      <!-- 底部信息条（固定底条：与首页页脚同规格同位置，免责+版本） -->
       <view class="nt-foot">
         <text class="nt-setfoot-line" wx:for="{{about.aboutFoot}}" wx:key="index">{{item}}</text>
       </view>
     </view>
   </template>
 
-  <!-- 关于我们页（设计稿 关于我们）：品牌区 + 3 张卡（星玖工作室 / 协议条款 / 开源声明） -->
+  <!-- 关于我们页（设计稿「关于我们」）：导航「关于我们」+ 3 张卡（星玖工作室 / 协议条款 / 开源声明）
+       ⚠️ 设计稿此页**没有品牌区**：3 张卡直接从 y130 起（与关于页品牌区同一 y），别照抄关于页。 -->
   <template name="tpl-us">
     <view class="ab">
       <view class="nt-nav" style="margin-top:{{nav.top}}px">
         <view class="nt-nav-back nt-press" bindtap="gotoAbout"><view class="nt-icon nt-i-back"></view></view>
         <text class="nt-nav-title">{{about.usPageTitle}}</text>
       </view>
-      <scroll-view class="ab-body" scroll-y enhanced show-scrollbar="{{false}}">
-        <view class="ab-brand">
-          <image class="ab-brand-logo" src="{{themeLogo}}" mode="aspectFit" />
-          <text class="ab-brand-name">{{about.name}}</text>
-          <text class="ab-brand-sub">{{about.slogan}}</text>
-        </view>
+      <scroll-view class="nt-pgbody nt-pt" scroll-y enhanced show-scrollbar="{{false}}">
         <view class="nt-setlist">
           <view class="nt-setrow" wx:for="{{about.usRows}}" wx:key="id" data-id="{{item.id}}" bindtap="onUsRow">
             <view class="nt-setl">
@@ -150,22 +191,23 @@
     </view>
   </template>
 
-  <!-- 内容详情页（一稿两用：refs/intro 回「关于」，studio/terms/open 回「关于我们」） -->
+  <!-- 内容详情页（一稿两用：refs/intro 回「关于」，studio/terms/open 回「关于我们」）
+       顶栏标题 = 玄玖灵犀（设计稿「页面标题」图层），页名 = 板块标题（设计稿 140,130 122×44） -->
   <template name="tpl-detail">
     <view class="dl">
       <view class="nt-nav" style="margin-top:{{nav.top}}px">
         <view class="nt-nav-back nt-press" bindtap="gotoDetailBack"><view class="nt-icon nt-i-back"></view></view>
-        <text class="nt-nav-title">{{detail.title}}</text>
+        <text class="nt-nav-title">{{about.navTitle}}</text>
       </view>
-      <scroll-view class="dl-body" scroll-y enhanced show-scrollbar="{{false}}">
+      <text class="nt-page-h">{{detail.title}}</text>
+      <scroll-view class="nt-pgbody" scroll-y enhanced show-scrollbar="{{false}}">
         <view class="nt-dl-card">
-          <view wx:for="{{detail.items}}" wx:key="index" class="nt-dl-item {{index ? '' : 'first'}}">
+          <view wx:for="{{detail.items}}" wx:key="index" class="nt-dl-item">
             <text class="nt-dl-h1" wx:if="{{item.h}}">{{item.h}}</text>
             <text class="nt-dl-text">{{item.text}}</text>
           </view>
         </view>
       </scroll-view>
-      <!-- 底部信息条（固定底条：与首页页脚同规格同位置，免责+版本） -->
       <view class="nt-foot">
         <text class="nt-setfoot-line" wx:for="{{about.aboutFoot}}" wx:key="index">{{item}}</text>
       </view>

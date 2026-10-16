@@ -18,9 +18,13 @@
     var chongSx = '';
     DB.ZHI.forEach(function (z) { if (z.字 === chongZhi) chongSx = z.生肖; });
     var hour = GZ.hourOfTime(now.getHours());
+    // 彭祖百忌（当日干忌 + 支忌，db.js 的 PENGZU_GAN_BAIJI / PENGZU_ZHI_BAIJI，查证标准版）
+    var gzGan = DB.PENGZU_GAN_BAIJI[g.干];
+    var gzZhi = DB.PENGZU_ZHI_BAIJI[g.支];
     var text = '【黄历宜忌】今日为' + GZ.solarCN(now) + '，' + g.干支 + '日，' + jc.name + '日。';
     text += '冲' + chongZhi + '煞' + chongZhi + '，属' + chongSx + '者今日行事宜谨慎、慎远途。';
     text += '【宜】' + jc.yi.join('、') + '；【忌】' + jc.ji.join('、') + '。';
+    text += '彭祖百忌：' + g.干 + '不' + gzGan.忌 + '，' + gzGan.果 + '；' + g.支 + '不' + gzZhi.忌 + '，' + gzZhi.果 + '。';
     text += '因' + jc.name + '日主「' + jc.name + '」之气当令，' + jc.reason + '，故宜' + jc.yi.slice(0, 2).join('、') + '、忌' + jc.ji.slice(0, 2).join('、') + '。';
     text += '吉时' + hour.名 + '（' + hour.段 + '）内行事尤宜。';
     return text;

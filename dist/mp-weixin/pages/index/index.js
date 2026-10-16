@@ -2,7 +2,7 @@
  * 玄玖灵犀 NT-Xhex · 单页三视图：首页（输入）→ 结果页（展示分析）→ 关于页 → 二级页
  * 复用共享纯 JS 引擎（modules/），视图层小程序原生。
  * 问答流转走共享 conversation.js（单轮，不显示历史）；结果排版走共享 result-format.js。
- * 转场（双层视差）走共享 transition.js（单一真源）：底层=旧页(prevView)、顶层=当前页(view)，
+ * 转场（双层视差）走共享 transition.js（单一真源）：底层 layerBack / 顶层 layerFront 各渲染一页，
  *   切页瞬间旧页仍满屏（视觉连续不闪），新页右滑入、旧页左移压暗；330ms 后底层=顶层静止。
  */
 var Conversation = require('../../utils/modules/HomeModule/conversation.js')
@@ -13,15 +13,27 @@ var Settings = require('../../utils/modules/SettingsModule/settings.js')
 var SafeArea = require('../../utils/modules/UIModule/safe-area.js')
 var Theme = require('../../utils/modules/UIModule/theme.js')
 var Transition = require('../../utils/modules/UIModule/transition.js')
+var ExportImage = require('../../utils/modules/UIModule/export-image.js')
 
 var EMPTY_RESULT = { title: '', lead: '', blocks: [], question: '' }
 
 Page({
   data: {
-    view: 'home',        // 顶层（当前页）
-    prevView: 'home',    // 底层（转场中的旧页；静止态=当前页）
+    view: 'home',        // 逻辑当前页（静止态 = 显示页）
+    // 转场两层分别渲染哪一页（静止态两层都是当前页；只有转场那 330ms 不同）
+    //   顶层 layerFront 永远盖在最上面，底层 layerBack 被它盖住（两层都不透明，静止态底层完全不可见）
+    layerFront: 'home',
+    layerBack: 'home',
     navAnim: '',          // '' | 'stage-fwd' | 'stage-back'（驱动 theme.css 双层 keyframe）
+    // 内容错落入场开关：只在冷启动首屏为 true（挂 .nt-cascade），首次切页即置 false。
+    //   切页已有整层滑入承担位移，若内容再各自上浮一次，两层动效叠加会看成"重影"。只降不清（一次性），
+    //   因为「切页加抑制类、结束再摘」的写法在摘掉那一刻会让 animation-name 由 none 变回 nt-rise，凭空重启一次。
+    boot: true,
     input: '',
+    // 是否已聚焦：聚焦即隐去搜索框里的滚动词条（见 index.wxml 注释）。
+    //   技术原因：微信官方文档写明「input 仅在 focus 时表现为原生组件」——聚焦态它的层级
+    //   高于 WebView 里的一切元素（z-index 无效），词条会被直接盖住；干脆主动让位。
+    focused: false,
     result: EMPTY_RESULT,
     about: {},
     nav: SafeArea.DEFAULTS,
@@ -30,6 +42,9 @@ Page({
     detail: { title: '', items: [] },
     detailBack: 'about',
     clearOpen: false,
+    clearClosing: false,   // 退场动画门控：true 时给 .nt-mask 挂 .nt-mask-out 播 nt-fall
+    splashShow: true,      // 开屏 overlay 是否挂载（冷启动 true，退场后卸载）
+    splashOut: false,      // 开屏退场门控：true 时挂 .nt-splash-out（品牌组缩放到起始页比例 + 背景/副标淡出）
     toastOpen: false,
     toastText: ''
   },
@@ -46,11 +61,31 @@ Page({
       isDark: th === 'dark',
       themeLogo: (Theme && Theme.logoFor) ? Theme.logoFor(th) : '/static/icons/logo.png'
     })
-    // 恢复上次这一问（刷新/重进不丢）——直接落位，不播转场（底层=顶层=目标页）
+    this.syncWindowBg(th === 'dark')
+    this.runSplash()
+    // 恢复上次这一问（刷新/重进不丢）——直接落位，不播转场（两层都置为目标页）
     var last = this.conv.restore()
     if (last) {
-      this.setData({ view: 'result', prevView: 'result', result: this.shape(last.question, last.answer) })
+      this.setData({
+        view: 'result', layerFront: 'result', layerBack: 'result',
+        result: this.shape(last.question, last.answer)
+      })
     }
+  },
+
+  /**
+   * 同步「窗口底色」为当前主题色。
+   *
+   * 为什么必须做：app.json 的 window.backgroundColor 是**页面容器背后那一层**的底色，
+   * 它不跟 CSS 变量走（theme.wxss 的 page{background:var(--nt-bg)} 只染页面节点本身）。
+   * 深色模式下它仍是 app.json 里写死的 #ffffff，于是上下滑动越界 / 回弹时就会从页面边缘
+   * 闪出一条白底 —— 这就是「深色模式上下滑动出现白色底」的根因。改为运行时按主题写入。
+   */
+  syncWindowBg: function (isDark) {
+    if (typeof wx === 'undefined' || typeof wx.setBackgroundColor !== 'function') return
+    var c = isDark ? '#000000' : '#ffffff'
+    // backgroundColorTop/Bottom 是 iOS 下拉回弹时露出的上/下底色；基础库不支持时忽略即可
+    wx.setBackgroundColor({ backgroundColor: c, backgroundColorTop: c, backgroundColorBottom: c })
   },
 
   shape: function (question, answer) {
@@ -59,25 +94,61 @@ Page({
     return f
   },
 
-  // 切视图（双层视差转场由 transition.js 驱动；布局不动；模块缺失时降级为无动画直切，绝不影响运行）
-  // 切页瞬间：底层=旧页(view)、顶层=新页(to) + 方向类 → 旧页满屏不闪，新页右滑入。
-  // 330ms 后：清方向类 + 底层同步为新页（静止态顶层盖底层，无视觉跳变）。
+  // 切视图（双层视差转场由 transition.js 判方向、theme.css 出 keyframe；布局不动；模块缺失时降级为无动画直切）
+  // 分层规则（关键，写反了返回时新页会往右跑）：
+  //   顶层 layerFront = 盖在最上面、负责「滑出/滑入」的那一页
+  //   底层 layerBack  = 被顶层盖住、负责「视差位移」的那一页
+  //     前进：front = 新页（自右滑入 100%→0），back = 旧页（左移压暗 0→-33%）
+  //     返回：front = 旧页（右滑出 0→100%），back = 新页（自左滑回 -33%→0）
+  // 330ms（动画时长，与 theme.css --d-page 320ms 对齐 + 10ms 余量）后开始收尾，收尾再花一帧（+20ms）：
+  //   合计约 350ms 两层都变成目标页 → 静止态顶层盖底层，无视觉跳变，且可正常响应点击。
+  //   收尾必须分两帧，理由见下方注释（这是「返回时闪烁一下」的根治点）。
+  // boot 同时置 false：首屏的内容错落入场到此为止，之后切页只播整层滑入（两种动效不叠加）。
   go: function (to, prep) {
     var from = this.data.view
     if (from === to) return
-    var anim = ''
-    if (Transition && typeof Transition.dirClass === 'function') anim = Transition.dirClass(from, to)
-    var patch = { view: to, prevView: from, navAnim: anim }
+    var back = !!(Transition && typeof Transition.isBack === 'function' && Transition.isBack(from, to))
+    var anim = (Transition && typeof Transition.dirClass === 'function') ? Transition.dirClass(from, to) : ''
+    var patch = {
+      view: to,
+      navAnim: anim,
+      boot: false,
+      // 切页时把「已聚焦」清掉：聚焦态只对「当前正在用的那个输入框」有效。
+      //   不清的话，用户点一下搜索框（focused=true）再点「关于」→ 返回首页时新渲染出来的
+      //   <input> 其实没聚焦，但 data 里还是 true → 滚动词条永远不回来了。
+      focused: false,
+      layerFront: back ? from : to,
+      layerBack: back ? to : from
+    }
     if (prep) { for (var k in prep) patch[k] = prep[k] }
     var self = this
     this.setData(patch)
     clearTimeout(this._navTimer)
+    clearTimeout(this._settleTimer)
     this._navTimer = setTimeout(function () {
-      self.setData({ navAnim: '', prevView: to })   // 静止：底层=顶层=当前页
+      // 收尾分两步（关键：拆开"内容重建"与"位移归位"，否则返回时会闪一下）
+      //   ① 先把「静止后该显示的那一页」写进顶层。此刻方向类还在，顶层正停在动画终点：
+      //        · 前进：顶层本就 = 新页 → 这一步无变化；
+      //        · 返回：顶层停在 translateX(100%)（被 .nt-stage 的 overflow-x 裁在屏外）→
+      //          内容在"看不见的地方"重建，用户看不到任何中间态。
+      //      而这一步期间画面显示的是底层（已是新页、位移已归位、压暗已褪去），内容完全正确。
+      //   ② 下一帧再撤方向类（位移归位）并对齐底层。
+      //      · 若把①②并成一帧（旧写法）：返回时顶层会在同一帧里既被清空重建、又瞬间归位，
+      //        而顶层是不透明面（z-index 3 压在底层的正确画面上），于是闪出一次纯底色 ——
+      //        就是用户反馈的「返回某个页面会闪烁一下」。
+      //      · 底层对齐同理放在②：它被顶层完全盖住，重建不可见。
+      self.setData({ layerFront: to })
+      self._settleTimer = setTimeout(function () {
+        if (self.data.view !== to) return   // 已被新一轮转场接管（go() 会清掉本定时器，双保险）
+        self.setData({ navAnim: '', layerBack: to })   // 静止：两层都是当前页
+      }, 20)
     }, 330)
   },
 
   onInput: function (e) { this.setData({ input: e.detail.value }) },
+  // 聚焦/失焦只影响「要不要显示滚动词条」，不碰输入内容
+  onFocus: function () { this.setData({ focused: true }) },
+  onBlur: function () { this.setData({ focused: false }) },
 
   send: function () {
     var text = this.data.input
@@ -90,6 +161,7 @@ Page({
         input: '',
         toastText: '已切换为' + (next === 'dark' ? '深色' : '浅色') + '主题'
       })
+      this.syncWindowBg(next === 'dark')   // 窗口底色跟着主题走（否则深色下越界会闪白条）
       this.showToast()
       return
     }
@@ -104,14 +176,90 @@ Page({
     this.go('home', { input: '', result: EMPTY_RESULT })
   },
 
+  /**
+   * 结果页「导出图片」：把当前结果渲染成一张 PNG，**预览给用户，不主动写相册**。
+   *
+   * ⚠️ 隐私红线（用户初衷「无权限申请」）：这里**绝不调 wx.saveImageToPhotosAlbum** ——
+   *    它是触发微信 writePhotosAlbum（相册写入，后台显示为 "AlbumWriteOnly" 隐私接口）的唯一来源。
+   *    改为「渲染成图 → wx.previewImage 预览」，用户在预览里长按走**系统自带菜单**自行保存，
+   *    小程序侧不申请、不记录、不触发任何隐私授权 —— 与「无登录、无权限申请」的初衷一致。
+   *
+   * 版式与绘制**完全走 UIModule/export-image.js**（与网页端同一份代码，壳里不重画）：
+   *   optsFrom(about) 装配 meta → build() 出排版计划 → 离屏 <canvas type="2d"> 定尺寸 →
+   *   paint() 落笔 → canvasToTempFilePath 出临时 PNG → previewImage 预览。
+   */
+  exportImage: function () {
+    var self = this
+    var r = this.data.result
+    var has = r && (r.question || (r.blocks && r.blocks.length))
+    if (!has || !ExportImage) { this.setData({ toastText: '暂无可导出的内容' }); this.showToast(); return }
+    var a = this.data.about || {}
+    wx.showLoading({ title: '正在生成', mask: true })
+
+    wx.createSelectorQuery().in(this).select('#exportCanvas').fields({ node: true, size: true }).exec(function (res) {
+      var node = res && res[0] && res[0].node
+      if (!node) { self._exportFail('导出失败，请重试'); return }
+      var canvas = node
+      var ctx = canvas.getContext('2d')
+      // 导出 2 倍图，保证在视网膜屏上看文字不糊
+      var dpr = 2
+      try {
+        var info = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync()
+        dpr = Math.min(info.pixelRatio || 2, 3)
+      } catch (e) { /* 取不到就按 2 倍 */ }
+
+      // ① 先量字排版（measureText 只量不画，不受画布尺寸影响；meta 走 optsFrom 单一装配）
+      var plan = ExportImage.build(r, ExportImage.optsFrom(a), ctx)
+
+      // ② 按计划给画布定尺寸并落笔
+      canvas.width = Math.round(plan.width * dpr)
+      canvas.height = Math.round(plan.height * dpr)
+      ctx.scale(dpr, dpr)
+      ExportImage.paint(ctx, plan)
+
+      // ③ 出临时 PNG → 预览（不写相册、不申请任何权限；用户长按走系统菜单自存）
+      wx.canvasToTempFilePath({
+        canvas: canvas,
+        x: 0, y: 0,
+        width: plan.width, height: plan.height,
+        destWidth: plan.width * dpr, destHeight: plan.height * dpr,
+        fileType: 'png',
+        success: function (out) {
+          wx.hideLoading()
+          wx.previewImage({
+            urls: [out.tempFilePath],
+            current: out.tempFilePath
+          })
+          self._exportDone('长按图片可保存到相册')
+        },
+        fail: function () { self._exportFail('导出失败，请重试') }
+      })
+    })
+  },
+
+  // 导出收尾（成功/失败共用，避免两处重复写 hideLoading）
+  _exportDone: function (text) {
+    wx.hideLoading()
+    this.setData({ toastText: text })
+    this.showToast()
+  },
+  _exportFail: function (text) {
+    wx.hideLoading()
+    this.setData({ toastText: text })
+    this.showToast()
+  },
+
   gotoAbout: function () { this.go('about') },
 
-  // 关于页点设置项：clear（红）→ 就地弹窗；us → 关于我们页；refs/intro → 内容详情页
+  // 关于页点设置项：路由判定走 Settings.rowAction（单一真源，与 PWA/uni 同一份）
   onRow: function (e) {
     var id = e.currentTarget.dataset.id
     var rows = this.data.about.aboutRows || []
-    for (var i = 0; i < rows.length; i++) { if (rows[i].id === id && rows[i].danger) { this.setData({ clearOpen: true }); return } }
-    if (id === 'us') { this.go('us'); return }
+    var row = null
+    for (var i = 0; i < rows.length; i++) { if (rows[i].id === id) { row = rows[i]; break } }
+    var act = Settings.rowAction(row)
+    if (act === 'clear') { this.setData({ clearOpen: true }); return }
+    if (act === 'us') { this.go('us'); return }
     this.openDetail(id)
   },
 
@@ -132,24 +280,54 @@ Page({
   // 内容详情页「‹」：回上一级（about 关于 / us 关于我们）
   gotoDetailBack: function () { this.go(this.data.detailBack || 'about') },
 
-  closeClear: function () { this.setData({ clearOpen: false }) },
   noop: function () {},
+  // 开屏页：停留 1200ms → 挂 .nt-splash-out 播 400ms 淡出（theme.css --d-splash）→ 摘 overlay。
+  // 淡出手法同弹窗：先播后摘（直接 setData({splashShow:false}) 会摘掉节点、动画来不及播）。
+  // 停留 1200ms 是 PWA/uni/小程序共用的体验参数（设计稿只定退场 400ms、未定停留）；三端各写一个
+  // 带注释常量（同 DURATION 惯例）—— 视觉值真源在 theme.css，改 --d-splash 时三端的 400 一起改。
+  runSplash: function () {
+    var self = this
+    this._splashTimer = setTimeout(function () {
+      self.setData({ splashOut: true })             // 品牌组缩放到起始页比例并淡出（400ms）
+      self._splashUnload = setTimeout(function () {
+        self.setData({ splashShow: false, splashOut: false })   // 退场结束再卸载
+      }, 400)
+    }, 1200)
+  },
+  // 退场时长：与 theme.css 的 --d-modal-out(200ms) 保持一致（三端各写一个带注释常量，见 PWA app.js 同处说明）。
+  // 统一的「播退场 → 再卸载」收尾：cancel / 点遮罩 都走这里；doClear（确认）也复用，
+  // 把切页/清输入/落主题推迟到退场播完之后，避免遮罩还在淡出时页面已经跳走造成重影。
+  closeModal: function (then) {
+    if (this._modalClosing) return
+    this._modalClosing = true
+    this.setData({ clearClosing: true })   // 挂 .nt-mask-out，播 nt-fall（淡出 + 下沉 200ms）
+    var self = this
+    clearTimeout(this._modalOutTimer)
+    this._modalOutTimer = setTimeout(function () {
+      self.setData({ clearOpen: false, clearClosing: false })   // 卸载节点
+      self._modalClosing = false
+      if (then) then()
+    }, 200)
+  },
+  // 清缓存会重置主题偏好（回落跟随系统）→ 重读主题，同步 .nt-dark 反色态与品牌 logo，
+  // 否则清完后主题看着没变（「清除缓存达不到效果」根因修复）
   doClear: function () {
     Settings.clearData()
     this.conv.clear()
-    // 清缓存会重置主题偏好（回落跟随系统）→ 重读主题，同步 .nt-dark 反色态与品牌 logo，
-    // 否则清完后主题看着没变（「清除缓存达不到效果」根因修复）
     var th = (Theme && typeof Theme.current === 'function') ? Theme.current() : 'light'
-    this.setData({
-      clearOpen: false,
-      input: '',
-      result: EMPTY_RESULT,
-      isDark: th === 'dark',
-      themeLogo: (Theme && Theme.logoFor) ? Theme.logoFor(th) : '/static/icons/logo.png',
-      toastText: '已恢复出厂设置'
+    var self = this
+    this.closeModal(function () {
+      self.setData({
+        input: '',
+        result: EMPTY_RESULT,
+        isDark: th === 'dark',
+        themeLogo: (Theme && Theme.logoFor) ? Theme.logoFor(th) : '/static/icons/logo.png',
+        toastText: (self.data.about.clearModal && self.data.about.clearModal.done) || '已彻底清除缓存'
+      })
+      self.syncWindowBg(th === 'dark')
+      self.go('home')
+      self.showToast()
     })
-    this.go('home')
-    this.showToast()
   },
 
   showToast: function () {
@@ -162,5 +340,9 @@ Page({
   onUnload: function () {
     clearTimeout(this._toastTimer)
     clearTimeout(this._navTimer)
+    clearTimeout(this._settleTimer)
+    clearTimeout(this._splashTimer)
+    clearTimeout(this._splashUnload)
+    clearTimeout(this._modalOutTimer)
   }
 })

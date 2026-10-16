@@ -41,6 +41,16 @@ export default {
 /* 全局基底（token 全部来自 theme.css，单一真源；.nt-dark 时自动反色） */
 @import '@/modules/UIModule/theme.css';
 
+/* 机身边界带：theme.css 给了设计稿值（顶 59 / 底 34）；H5 端升为「设计带 与 设备安全区取大者」，
+   真机上不被刘海/手势条遮挡，无安全区的设备上仍保留设计稿留白。画布总高不变，只是占位不绘制。
+   （小程序端 WXSS 不支持 env()，由 safe-area.js 以行内值注入，见各视图的 navStyle/pageStyle） */
+/* #ifdef H5 */
+:root {
+  --safe-top: max(59px, env(safe-area-inset-top, 0px));
+  --safe-bottom: max(34px, env(safe-area-inset-bottom, 0px));
+}
+/* #endif */
+
 /* uni-app 构建会把 theme.css 内联进各端产物，url() 相对路径会失配；
    用 /static/ 绝对路径覆盖 3 个源 SVG 图标（H5 站点根 = 小程序包根，两端一致） */
 .nt-i-back { background-image: url('/static/icons/icon-back.svg'); }

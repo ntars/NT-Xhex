@@ -73,6 +73,23 @@
   var JIEQI_LIST = ['立春', '雨水', '惊蛰', '春分', '清明', '谷雨', '立夏', '小满', '芒种', '夏至', '小暑', '大暑',
     '立秋', '处暑', '白露', '秋分', '寒露', '霜降', '立冬', '小雪', '大雪', '冬至', '小寒', '大寒'];
 
+  // 城市 → 东经度（°E，市中心近似值）。
+  // 用途：为「真太阳时」校正备好数据（出生时辰按当地经度相对时区基准经度 120°E 换算：
+  //   真太阳时 ≈ 平太阳时 + (当地经度 - 120) * 4 分钟/度 + 真太阳时差，校正后的时点定「出生时柱」）。
+  // 本表**只备数据、不接算法**（真太阳时算法随「深度八字」方向落地时再接）；此处先让
+  // 意图识别能提取出「出生城市」实体，将来补算法时不用改输入契约。覆盖省级会 + 主要地级市。
+  var CITY = {
+    '北京': 116.4, '上海': 121.47, '广州': 113.26, '深圳': 114.06, '成都': 104.07, '重庆': 106.55,
+    '天津': 117.2, '武汉': 114.3, '西安': 108.94, '南京': 118.78, '杭州': 120.16, '长沙': 112.94,
+    '郑州': 113.62, '石家庄': 114.5, '太原': 112.55, '济南': 117.0, '青岛': 120.38, '合肥': 117.23,
+    '福州': 119.3, '厦门': 118.09, '南昌': 115.9, '沈阳': 123.43, '大连': 121.62, '长春': 125.32,
+    '哈尔滨': 126.53, '宁波': 121.55, '苏州': 120.6, '无锡': 120.31, '佛山': 113.12, '东莞': 113.75,
+    '珠海': 113.58, '惠州': 114.41, '中山': 113.39, '泉州': 118.6, '洛阳': 112.45, '兰州': 103.83,
+    '贵阳': 106.7, '昆明': 102.74, '海口': 110.35, '南宁': 108.37, '乌鲁木齐': 87.62, '西宁': 101.77,
+    '银川': 106.23, '拉萨': 91.18, '呼和浩特': 111.75, '包头': 106.79, '温州': 120.7, '台州': 121.42,
+    '嘉兴': 120.76, '绍兴': 120.58, '金华': 119.65, '舟山': 122.2, '衢州': 118.87, '湖州': 120.09
+  };
+
   // ==================== 3.1 全角转半角 ====================
   function toHalfWidth(str) {
     return String(str).replace(/[\uFF01-\uFF5E]/g, function (ch) {
@@ -314,6 +331,20 @@
     return null;
   }
 
+  // ==================== 4.3b 出生城市提取（为真太阳时备料，不接算法）====================
+  // 命中 CITY 表里任一城市名即返回该城市（{ city, lon }）。城市是「地名」，不参与
+  // 姓名/日期/时间识别（与它们天然不冲突：城市表里的词都不是日期/时辰/虚词）。
+  // 说明：此实体只作「数据备料」——真太阳时校正算法随「深度八字」方向落地时再接，
+  //   届时 extractCity 已就位、输入契约不变。
+  function extractCity(text) {
+    var t = String(text == null ? '' : text);
+    for (var c in CITY) {
+      if (t.indexOf(c) >= 0) return { city: c, lon: CITY[c] };
+    }
+    return null;
+  }
+
+
   // ==================== 4.4 / 9. 姓名提取 + 三级消歧义 ====================
   // 第一级：归属关系标记（非贪婪 + 后查边界，避免吞掉后续文字）
   var OWNERSHIP = [
@@ -498,6 +529,7 @@
     var restSplit = stripTime(p.split, entities.time);
     entities.date = extractDate(restSplit, p.cn, now);
     entities.gender = entities.gender || extractGender(p.cn);
+    entities.city = entities.city || extractCity(p.cn);
     var nameRes = extractName(p.cn, entities);
     entities.name = entities.name || nameRes.name;
     entities.keywords = extractKeywords(p.cn);
@@ -530,7 +562,7 @@
   }
 
   function emptyEntities() {
-    return { name: null, date: null, time: null, gender: null, keywords: [] };
+    return { name: null, date: null, time: null, gender: null, city: null, keywords: [] };
   }
 
   // 追问合并：新输入补足旧输入缺失的字段
@@ -540,18 +572,16 @@
       date: newE.date || oldE.date || null,
       time: newE.time || oldE.time || null,
       gender: newE.gender || oldE.gender || null,
+      city: newE.city || oldE.city || null,
       keywords: (oldE.keywords || []).concat(newE.keywords || []).filter(function (v, i, a) { return a.indexOf(v) === i; })
     };
   }
 
+  // 对外只暴露 parse（主入口）+ KW（analyzer.js 的节气分支读 INTENT.KW.jieqi 用）。
+  // 曾经的 5 个「测试钩子」导出（_preprocess/_cnToNum/_normalizeSeparators/_validateDate/_validateTime）
+  // 与 JIEQI_LIST 导出全仓零调用（测试改用行为断言，不读内部实现），已删；内部函数本体保留（parse 仍依赖）。
   return {
     parse: parse,
-    _preprocess: preprocess,
-    _cnToNum: cnToNum,
-    _normalizeSeparators: normalizeSeparators,
-    _validateDate: validateDate,
-    _validateTime: validateTime,
-    KW: KW,
-    JIEQI_LIST: JIEQI_LIST
+    KW: KW
   };
 });

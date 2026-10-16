@@ -1,121 +1,203 @@
 /**
  * modules/UIModule/theme.css —— 玄玖灵犀 NT-Xhex 视觉与动效规范【单一真源】
- * 依据：《玄玖灵犀 NT-Xhex UI 交互设计规范》
  *
- * 风格：黑白极简冷淡风（Normcore）× 东方术数内核 + 轻微新拟物质感
- *   · 纯黑白灰单色调（色相恒为 0），任何状态变化只用「明度 + 透明度 + 位移」表达
- *   · 大圆角卡片、发丝线框、极弱单层柔和阴影、内凹输入槽
- *   · 线性图标（内联 SVG，stroke 1.5px，无外部依赖）
- *   · 胶囊控件 / 黑色圆形按钮 / Toggle
- *   · 动效三原则：少、快、统一 —— 统一缓动曲线 + 统一时长阶梯，无弹簧/弹跳/抖动
- *   · 无 Tab Bar、无聊天气泡、无历史列表；输入 → 结果（新页展示，可返回）
+ * 唯一依据：《玄玖灵犀 NT-Xhex.sketch》11 个画板（画布 402×874pt，即 iPhone 16 Pro 逻辑点）。
+ *   · 设计稿里的坐标/尺寸全部是逻辑 pt，本文件原值照抄，不做"看着差不多"的二次换算。
+ *   · 画布内有两类「机身模拟元素」，处理方式固定：
+ *       状态栏（0–62，含灵动岛与时间/信号/电量）        → 视觉不渲染，高度必须保留
+ *       手势条（852–874，条本体 131.5,861 139×5 r100） → 视觉不渲染，高度必须保留
+ *     保留方式：H5/uni-app 走 env(safe-area-inset-*)；微信小程序 WXSS 不支持 env，
+ *     由 modules/UIModule/safe-area.js 算出后以行内 style 注入（各壳 .nt-nav / .nt-page-safe）。
+ *   · 设计稿里另有若干「排版标注辅助图形」，是说明而非 UI，一律不渲染：
+ *       正文范围框（卡内 306×552 / 306×480 的直角描边矩形）、搜索框左右两个 48pt 辅助圆。
+ *     真值以「看得见的东西 + 设计稿标注尺寸」为准。
  *
  * 三端共用方式（同一份文件，绝不复制）：
  *   · 浏览器 PWA（public/pwa/index.html）  → <link rel="stylesheet" href="../../modules/UIModule/theme.css">
- *   · uni-app（HomeModule/index.vue 等）    → import 本文件（构建期内联）
+ *   · uni-app（modules/**.vue）            → import 本文件（构建期内联）
  *   · 微信小程序（dist/mp-weixin）          → tools/sync-mp.js 生成 theme.wxss，app.wxss @import 引入
  *
  * ⚠️ 兼容约束（三端必须同时满足，故此处刻意规避）：
  *   · 微信小程序 WXSS 不支持 ::before / ::after 伪元素 → 装饰一律用真实元素 + 类名
- *   · 不支持 :hover / @media (hover:hover) / prefers-reduced-motion → 这些块 WXSS 会忽略，无害
- *   · 不使用 filter / backdrop-filter / 渐变 / 外部字体 / rpx
+ *   · 不支持 :hover → 该块 WXSS 忽略，无害（min-width 媒体查询 WXSS 支持）
+ *   · 不支持「通配选择器 *」（WXSS 官方支持列表里没有）→ 需要"批量上样式"时显式枚举类名
+ *   · 不使用 backdrop-filter / 渐变 / 外部字体 / rpx
+ *   · 全部尺寸用 px（逻辑像素，402 设计基准），字号一律 px —— 绝不用 rpx 控制字体
+ *   · 设计稿通篇无阴影、无渐变，只有 1pt 纯黑线框 → 本文件不引入任何 box-shadow
  */
 
-/* ============ 设计 Token（:root 供 PWA/Vue；page 供小程序）============ */
+/* ============ 设计 Token（:root 供 PWA/Vue；page 供小程序。单位 px = 设计 pt）============ */
 :root,
 page {
+  /* 浏览器原生 UI（滚动条 / 下拉回弹底色 / 表单控件）跟随浅色，避免深色下露出一段白色的系统区。
+   * 深色由 .nt-dark 覆写为 dark（见文末）；WXSS 忽略本属性，无害。 */
+  color-scheme: light;
   /* —— 背景层 —— */
-  --nt-bg: #ffffff;          /* 页面底色（纯白，规范 2026-10-12） */
-  --nt-paper: #ffffff;      /* 卡片 / 纸面 */
-  --nt-sunken: #f2f2f2;    /* 内凹容器（输入框、进度槽） */
+  /* ⚠️ 设计稿里的卡片/弹窗/搜索框线框只是「标注范围」用的辅助图形，不是要绘制的视觉元素。
+   *    实际界面**不画任何描边**，层级改用「面」区分（同 iOS 分组表）：底色 + 比底色略浅/略深的纸面。
+   *    故 --nt-bg 与 --nt-paper 必须有可感知的明度差，否则卡片会"消失"。 */
+  --nt-bg: #ffffff;         /* 页面底色 */
+  --nt-paper: #f5f5f5;      /* 卡片/纸面（浅灰面，靠明度差与底色分开，不靠线） */
+  --nt-elevated: #ffffff;   /* 抬升面：弹窗面板。浅色下用纯白，在压暗的遮罩上跳出来 */
 
-  /* —— 文字层 —— */
-  --nt-ink: #000000;         /* 主标题、用户提问 */
-  --nt-text: #333333;        /* 分析结果正文 */
-  --nt-text-2: #666666;      /* 辅助说明、标签 */
-  --nt-text-3: #999999;      /* 禁用态 */
-  --nt-placeholder: #8E8E93;             /* 搜索占位（原型：iOS 灰 #8E8E93） */
-  --nt-text-50: rgba(0, 0, 0, 0.5);      /* 设置项描述（原型：#000@50%） */
-  --nt-text-20: rgba(0, 0, 0, 0.2);      /* 结果页正文（原型：#000@20%，比内容页正文更浅） */
-  --nt-text-footer: #bbbbbb; /* 底部备案号、版权 */
-  --nt-foot: rgba(0, 0, 0, 0.3);        /* 页脚/底部说明（原型：#000@30%） */
-  --nt-danger: #FF5733;      /* 危险红（设计稿 #FF5733；仅「清除数据」红态，语义色不随主题翻转） */
-  --nt-danger-desc: rgba(255, 87, 51, 0.5);  /* 危险红 50%（清除项描述） */
+  /* —— 搜索胶囊常驻强调光环（用户明确要求新增的"常驻特效"，是全站唯一一处主动发光的地方）——
+   * v3.1.0 换款：去掉「白边」细环（--nt-halo-ring 已删），只留一层**柔晕**呼吸；
+   *    柔晕颜色**加深**（浅 .04/.11 → .10/.20）、范围**收小**（blur 3↔8 → 2↔5px、gap 2→1px）。
+   * 浅色用淡墨、深色用淡白（深色底上墨色光环看不见）。 */
+  --nt-halo-soft: rgba(0, 0, 0, 0.10);   /* 外圈柔晕 · 呼吸最弱（v3.1.0 由 .04 加深） */
+  --nt-halo-glow: rgba(0, 0, 0, 0.20);   /* 外圈柔晕 · 呼吸最强（v3.1.0 由 .11 加深） */
 
-  /* —— 描边档位（一律以设计稿实测值为准；设计稿只用 #000000 一种描边色）—— */
-  --b-pill: 1.5px;     /* 搜索胶囊描边（设计稿「搜索框」1.5） */
-  --b-btn: 1px;        /* 弹窗「取消」次要按钮描边（设计稿 1） */
-  --b-chevron: 1.5px;  /* 后退 / 前进 chevron 线宽（设计稿 1.5；实际落在 SVG 内） */
-  --b-ring: 1.5px;     /* 搜索放大镜圆环/斜柄线宽（设计稿 1.5；实际落在 SVG 内） */
-  --b-card: 1px;       /* 设置卡 / 正文范围卡描边（设计稿 1） */
-  --b-panel: 0px;      /* 弹窗面板：设计稿无描边（仅白底 + 阴影分离） */
-  --ic-chevron: 24px;  /* chevron/箭头/放大镜容器（原型 24×24，iOS 26 V 形箭头）：导航返回「‹」、设置行尾「›」、搜索放大镜共用 */
+  /* —— 文字层（色值全部来自设计稿 attributedString 的 color 分量）—— */
+  --nt-ink: #000000;                     /* 主文字 / 导航标题 / 卡标题 */
+  --nt-text-2: #666666;                  /* 段落小标签 */
+  --nt-placeholder: #8E8E93;             /* 搜索框滚动建议词条的字色（.nt-ph-item；设计稿占位色） */
+  --nt-text-50: rgba(0, 0, 0, 0.5);      /* 卡内描述 / 内容页正文（设计稿 #000000/50%） */
+  --nt-text-20: rgba(0, 0, 0, 0.2);      /* 结果页正文（设计稿 #000000/20%，刻意比内容页更浅） */
+  --nt-foot: rgba(0, 0, 0, 0.3);         /* 页脚两行 / 品牌副标 / 免责（设计稿 #000000/30%） */
+  --nt-danger: #FF5733;                  /* 危险红（设计稿实测 #FF5733，非 #FF5730）；语义色，不随主题翻转 */
+  --nt-danger-desc: rgba(255, 87, 51, 0.5);
 
-  /* —— 描边层（设计稿全稿只用 #000000 一种描边色）—— */
-  --nt-line: #ececec;        /* 发丝分割线（列表行分隔；设计稿未使用，保留兼容） */
-  --nt-line-strong: #000000; /* 主描边：搜索胶囊 / 设置卡 / 正文卡 / 次要按钮（设计稿 #000000） */
+  /* —— 业务语义色（全软件唯一允许出现的彩色，例外项；须双主题适配）——
+   * 全软件其余一律黑白灰（Normcore）；只有「宜忌吉凶」与「五行」两组语义允许带色。
+   * 传统五行配色的黑/白双版本（浅色用深一点的、深色用亮一点的，保证两种底上都可读）：
+   *   木=绿 火=红 土=黄(褐) 金=白/金 水=蓝。浅色取「压住底」的深色版，深色取「跳出底」的浅色版。 */
+  --nt-yi: #1a7f37;        /* 宜（吉）· 绿（浅色版） */
+  --nt-ji: #c62828;        /* 忌（凶）· 红（浅色版） */
+  /* 五行五色（浅色版）—— 金用中性深灰代替纯白（纯白在浅底上不可见），火=红 木=绿 水=蓝 土=赭黄 */
+  --wx-jin: #6b6b6b;
+  --wx-mu:  #1a7f37;
+  --wx-shui: #1f5fbf;
+  --wx-huo: #c62828;
+  --wx-tu:  #8a6d1a;
 
-  /* —— 圆角 —— */
-  --r-card: 25px;              /* 大圆角卡片：设置卡 / 正文范围卡（设计稿 25） */
-  --r-panel: 24px;             /* 弹窗面板（设计稿 24） */
-  --r-md: 12px;                /* 中圆角 */
-  --r-sm: 6px;                 /* 小圆角（骨架条） */
-  --r-pill: 999px;             /* 胶囊 / 圆形 */
+  /* —— 描边层（设计稿全稿只用 #000000 一种描边色；纯线框语言，无阴影无渐变）——
+   * ⚠️ 设计稿的矩形线框是**标注范围**用的辅助图形，实际界面一律不绘制（去掉后美感更好）。
+   *    全站不画描边，故「卡片/胶囊线宽」类 token 已删（无任何引用）；
+   *    仅 --b-chevron / --b-ring 是**图标字形自身**的线宽（落在 SVG 里），作为规格记录保留。 */
+  --b-chevron: 1.5px;          /* chevron 线宽（设计稿 1.5，落在 SVG 内） */
+  --b-ring: 1.5px;             /* 放大镜圆环/斜柄线宽（设计稿 1.5，落在 SVG 内） */
 
-  /* —— 质感（极弱、单层、柔和）—— */
-  --sh-card: 0 2px 12px rgba(0, 0, 0, 0.05);
-  --sh-float: 0 4px 16px rgba(0, 0, 0, 0.10);
-  --sh-sunken: inset 0 1px 3px rgba(0, 0, 0, 0.06);
+  /* —— 圆角（设计稿：矩形卡 25、弹窗面板 24、胶囊/圆 100 = clamp 成半圆）—— */
+  --r-card: 25px;      /* 正文卡 / 设置卡（设计稿 25） */
+  --r-panel: 24px;     /* 弹窗面板（设计稿 24） */
+  --r-pill: 999px;     /* 搜索胶囊 / 弹窗按钮 / 结果页双按钮（设计稿 cornerRadius 100） */
+  --r-md: 12px;        /* PWA 安装条（非设计稿元素，自用） */
 
-  /* —— 间距（8 的倍数，严格对齐）—— */
-  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px; --sp-6: 32px; --sp-7: 48px; --sp-8: 64px;
+  /* —— 关键尺寸（全部 = 设计稿逻辑 pt）—— */
+  --nav-h: 50px;             /* 导航条高：标题中心落在 safe-top+25。设计稿标题框 62–106 中心 84，
+                                iOS 状态栏安全区 59 → 59+25 = 84 ✓ */
+  --gutter: 24px;            /* 内容左右留白（设计稿 24；卡片 354 = 402 − 24×2） */
+  --gap: 16px;               /* 通用竖向节奏（设计稿卡片间距、首页空态元素间距均为 16） */
+  --logo-w: 64.27px;         /* 品牌 Logo（设计稿「玄玖灵犀NTYI-LINK」组 64.27×72） */
+  --logo-h: 72px;
+  --logo-splash-w: 85.69px;  /* 开屏页 Logo（设计稿 85.69×96） */
+  --logo-splash-h: 96px;
+  /* —— 图标容器尺寸 = 三个 SVG 的 **墨迹外框**（= 设计稿中心线外框 + 描边溢出）——
+   * 为什么必须用墨迹外框而不是 "0 0 7.5825 16"：SVG 作背景图/图片时视口外一律被裁，
+   *  平头端帽会把墨迹顶出中心线外框（chevron 到 x=8.1128 / y=±0.5303，放大镜到 19.0306/18.8128），
+   *  用中心线外框当 viewBox 就会把两端切平。取墨迹外框后中心线仍是 7.5825×16、1:1 不缩放。 */
+  --ic-chevron-w: 8.8628px;  /* 设计稿 chevron 中心线 7.5825×16 → 墨迹 8.8628 × 17.0606 */
+  --ic-chevron-h: 17.0606px;
+  --ic-search-w: 19.7806px;  /* 设计稿「搜索」组中心线 18.5003×18.2825 → 墨迹 19.7806 × 19.5628 */
+  --ic-search-h: 19.5628px;
+  --pill-h: 48px;            /* 搜索胶囊（设计稿「搜索框」272×48） */
+  --pill-w: 272px;
+  --row-h: 84px;             /* 设置卡（设计稿 354×84） */
+  --btn-h: 48px;             /* 结果页双按钮（设计稿 153×48） */
+  --dual-gap: 48px;          /* 结果页双按钮间距（设计稿 225 − (24+153) = 48） */
+  --modal-w: 354px;          /* 弹窗面板（设计稿 354×184） */
+  --modal-h: 184px;
+  --modal-btn-h: 44px;       /* 弹窗按钮（设计稿 135×44；135 = (354 − 24×2 − 36) / 2） */
+  --modal-btn-gap: 36px;     /* 弹窗双按钮间距（设计稿 219 − (48+135) = 36） */
 
-  /* —— 字号阶梯（23:32 原型精确值：17/22/15/12）—— */
-  --fs-h: 17px;        /* 顶栏标题 / 设置项标题 / 正文区标题 / 弹窗按钮（原型 17） */
-  --fs-xl: 22px;       /* 品牌名「玄玖灵犀」 / 弹窗大标题（原型 22） */
-  --fs-brand: 40px;    /* 品牌主标（保留兼容） */
-  --fs-title: 28px;    /* 页面标题（开屏页 28） */
-  --fs-brand-sub: 20px;/* 品牌文案（保留兼容） */
-  --fs-result: 20px;   /* 结果标题（保留兼容） */
-  --fs-body: 16px;     /* 正文 */
-  --fs-body-15: 15px;  /* 二级页正文 / 设置描述 / 弹窗描述（原型 15） */
-  --fs-note: 12px;     /* 免责·副标题·设置描述·底部说明（原型 12） */
-  --fs-pill: 17px;     /* 搜索胶囊内文字 / 占位（原型 17） */
-  --fs-sub: 13px;      /* 辅助 */
-  --fs-cap: 11px;      /* 底部 */
-  --fw-black: 800; --fw-bold: 700; --fw-mid: 600; --fw-med: 500; --fw-reg: 400;
+  /* —— 字号阶梯 + 行高（全部取自设计稿 size / minimumLineHeight）—— */
+  --fs-h: 17px;          --lh-h: 20px;          /* 导航标题 / 卡标题 / 按钮 / 胶囊内文 */
+  --fs-xl: 22px;         --lh-xl: 26px;         /* 品牌名「玄玖灵犀」/ 弹窗大标题 */
+  --fs-splash: 28px;     --lh-splash: 33px;     /* 开屏页品牌名 */
+  --fs-body-15: 15px;    --lh-15: 18px;         /* 卡内描述 / 弹窗描述 */
+  --fs-body: 16px;                              /* 业务正文兜底 */
+  --fs-note: 12px;       --lh-note: 14px;       /* 页脚两行 / 品牌副标 / 免责 */
+  --fs-sub: 13px;        --fs-cap: 11px;        /* PWA 安装条（非设计稿元素，自用） */
+  /* 长正文行高：设计稿占位正文标注 18pt，但那是三行示意；真实长文按 HIG（行高 ≥1.4×）取 22px。
+     如需 100% 复刻设计稿占位稿，把本值改成 18px 即可（唯一开关，别处不用动）。 */
+  --lh-long: 22px;
+  /* —— 字重阶梯（按 Apple HIG 的 Dynamic Type 字重规范，**只留三档**，不再自造中间档）——
+   *   Bold(700)     → 22pt 档：品牌名 / 弹窗标题（HIG Title 2 是 Bold）
+   *   Semibold(600) → 17pt 档的「标题类」：导航标题 / 页名 / 卡标题 / 主按钮（HIG Headline）
+   *   Regular(400)  → 17pt 正文与输入、15pt、12pt 全部（HIG Body / Subheadline / Caption 都是 Regular）
+   * 也就是说：**字号决定字重**，同一个字号下只有「是不是标题」这一个变量。
+   * ⚠️ 曾经用 600 的地方（22pt 品牌名、12pt 页脚/免责/副标、搜索框内文）都已按 HIG 纠正，
+   *    不要因为"看着有点细"就随手调粗 —— 那是设计稿的粗字习惯，不是 HIG。 */
+  --fw-bold: 700; --fw-mid: 600; --fw-reg: 400;
+
+  /* —— 间距刻度（8 的倍数，与设计稿节奏一致）—— */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px;
 
   /* —— 动效：统一缓动曲线（全局唯一，入场/转场/状态切换共用）—— */
   --ease-standard: cubic-bezier(0.4, 0.0, 0.2, 1);
-
   /* —— 动效：统一时长阶梯 —— */
   --d-press: 120ms;    /* 按钮按下 / 状态切换 */
-  --d-refresh: 240ms;  /* 页面内局部刷新（结果覆盖） */
-  --d-drawer: 280ms;   /* 浮层 / 抽屉 / 模态框 */
-  --d-page: 320ms;     /* 页面跳转 / 模态框 */
+  --d-drawer: 280ms;   /* 浮层 / 模态框 */
+  --d-page: 320ms;     /* 页面转场 */
+  --d-theme: 320ms;    /* 主题切换：界面色板（底/面/字/图标）的交叉过渡 */
   --d-splash: 400ms;   /* 启动页淡出 */
+  --d-modal-out: 200ms; /* 弹窗出场：比进场(--d-drawer 280ms)快一档，退场干脆 */
+  /* 滚动搜索建议：**轮换一整圈**的总时长（不是单条停留）—— 节奏对齐百度首页搜索框。
+   * 当前 searchHints 8 条 → 8 × 5.5s = 44s；每条约 5.5s =「停留 5.0s + 上滑 0.5s」。
+   * 为什么停留拉长到 5s：词条是**真实可答的长问句**（最长 9 个汉字），2.5s 读不完就滑走了；
+   *   百度首页那条也偏"多停少动"，于是整体节奏放慢到 5s 一站。
+   * ⚠️ 这是本文件与 settings.js 之间唯一的耦合点：增减 searchHints 条数时，
+   *    既要按「条数 × 5.5s」改本值，也要同步改下面 @keyframes nt-ph-step 的档位（两处注释互相指向）。
+   * 为什么不按条数自动算：CSS 数不出子元素个数（keyframe 的百分比选择器里不能写变量），
+   *    若交给三个壳各写一行 JS 去算百分比，反倒是把同一件事在三端各复制一遍 —— 违背「单一真源」。 */
+  --d-ph-rotate: 44000ms;
+  /* 搜索胶囊「常驻强调光环」一圈呼吸的时长（涨 2.2s + 收 2.2s）。
+   * 与 --d-ph-rotate 无耦合：光环是氛围，词条是内容，两者各走各的节拍，互不同步反而更自然。 */
+  --d-halo: 4400ms;
+  /* 光环几何（v3.1.0：只留柔晕一层，范围收小）。
+   * --halo-gap = 柔晕最外沿距胶囊的缝隙（2px → 1px，收小范围）；
+   * 柔晕 blur 由 keyframes 里硬写 2px ↔ 5px（收小），想改范围改 keyframe 两处数字。
+   * ⚠️ 原来的 --halo-ring-w / --nt-halo-ring（1px 白边细环）已删 —— 用户反馈"白边不好看"。 */
+  --halo-gap: 1px;
 
-  /* —— 布局容器宽度（规范 §6.2 响应式断点）—— */
-  --w-tablet: 640px;   /* 平板 768–1024 */
-  --w-desktop: 720px;  /* 电脑 ≥1024 */
+  /* —— 响应式容器上限（见文末 @media；设计稿基准 402pt）—— */
+  --w-tablet: 640px;   /* 平板 768–1023：内容居中不超 640 */
+  --w-desktop: 720px;  /* 电脑/网页 ≥1024：内容居中不超 720 */
 
-  /* —— 安全区（H5/PWA 用 env()；小程序 WXSS 不支持 env()，由 JS 行内覆盖）—— */
-  --safe-top: env(safe-area-inset-top, 0px);
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  /* —— 安全区（设计稿的「机身边界带」）——
+   * 设计稿在画布上下各模拟了一段机身区域，明确要求：**图形不画，高度必须留**。
+   *   顶带 = 状态栏 59（画布 0–62 那一条，取 iOS 安全区标准值）
+   *   底带 = 手势条 34（画布 852–874 那条手势条对应 iOS 底部安全区）
+   * 三端取值方式：
+   *   · 浏览器 PWA / uni-app H5：各壳的 H5 样式块把它升为 max(设计带, env(safe-area-inset-*))，
+   *     真机上不被刘海/手势条遮挡，无安全区的设备上仍保留设计稿的留白。
+   *   · 微信小程序：WXSS 不支持 env()，由 UIModule/safe-area.js 算出后以行内值注入（≥ 设计带）。
+   * ⚠️ 画布总高不变：页面根节点恒为整屏高，这两段只是「占位不绘制」，不是把内容区砍短。 */
+  --safe-top: 59px;
+  --safe-bottom: 34px;
+  /* —— 上/下「边界带」总高（= 安全区 + 压在其上的固定条）——首页空态居中补偿要用，见 .nt-hero —— */
+  --band-top: calc(var(--safe-top) + var(--nav-h));                          /* 59 + 50 = 109 */
+  --band-bottom: calc(var(--safe-bottom) + var(--sp-3) + var(--lh-note) * 2); /* 34 + 12 + 28 = 74 */
 }
 
 /* ============ 页面基底 ============ */
+/* 三端根节点选择器：PWA 用 html/body、微信/uni-app 用 page。三者都命中的是「满高 + 底色 + 墨色」。
+   （曾有一个 .nt-root 选项，全项目从未有元素使用，已按「零冗余」删除。） */
 html,
 body,
-page,
-.nt-root {
+page {
   height: 100%;                /* 根节点满高：让壳里 .page{height:100%}+flex 的垂直居中/留白真正成立
-                                   （WeChat/uni-app 的 page 根默认 height:auto，不设则塌成内容高度，
-                                    首页/正文全堆顶部、下方留白；PWA #app 已有 100vh，此处加 100% 无害） */
+                                 （WeChat/uni-app 的 page 根默认 height:auto，不设则塌成内容高度，
+                                  首页/正文全堆顶部、下方留白；PWA #app 已有 100vh，此处加 100% 无害） */
   margin: 0;
   padding: 0;
   background: var(--nt-bg);
   color: var(--nt-ink);
+  /* ⚠️ 滚动越界（橡皮筋 / 下拉回弹 / scroll chaining）时会露出「根节点背景」。
+   *    若根节点背景不跟随主题，深色下上下滑动就会闪出一条白底 —— 这就是用户报的"白色底"。
+   *    这里背景已绑定 var(--nt-bg)，再补一条 overscroll-behavior 彻底断掉滚动链，
+   *    越界时不再去找父级背景。微信小程序端的等价手段是 wx.setBackgroundColor（见各壳）。 */
+  overscroll-behavior: none;
   font-family: "Inter", -apple-system, BlinkMacSystemFont, "PingFang SC",
     "Helvetica Neue", "Microsoft YaHei", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -124,75 +206,288 @@ page,
   line-height: 1.7;
 }
 
-/* ============ 滚动条（共享层，WXSS 安全：只用 `page`，不用 `*`）============
- * 铁律：全站一律不显示滚动条。
+/* 滚动条：全站一律不显示。
  *   · 浏览器（PWA/uni-H5）：各壳 <style> 里 `*{scrollbar-width:none}` + `*::-webkit-scrollbar{display:none}`（`*` 合法）。
- *   · 小程序/uni-app 原生：scroll-view 加 `enhanced` + `show-scrollbar="{{false}}"`（原生渲染，CSS 无效，见各壳 wxml/vue）。
+ *   · 小程序/uni-app 原生：scroll-view 加 `enhanced` + `show-scrollbar="{{false}}"`（原生渲染，CSS 无效）。
  * 本层 `page{scrollbar-width:none}` 仅作 WXSS 安全兜底（Firefox/旧 Edge 生效，WXSS 忽略无害）。 */
 page { scrollbar-width: none; -ms-overflow-style: none; }
 
-/* ============ 通用组件（三端共用，壳里不另写）============ */
-
-/* 大圆角卡片：白底 + 1pt 主描边 + 极弱柔和阴影 */
-.nt-card {
-  background: var(--nt-paper);
-  border-radius: var(--r-card);
-  border: var(--b-card) solid var(--nt-line-strong);
-  box-shadow: var(--sh-card);
-  padding: var(--sp-4);
+/* ============ 主题切换过渡（v3.0.6 新增，用户要求"切换主题要有动画"）============
+ * 做法不是加遮罩、不是闪一下，而是让**界面色板自己交叉过渡**：底色 / 纸面 / 文字 / 线性图标
+ * 在 --d-theme(320ms) 内从旧主题平滑走到新主题，而不是硬切。切换由唯一真值源 theme.js 执行，
+ * 本文件只负责"色板怎么走"，三端因此天然一致（小程序 / uni-app / PWA 共用这一段）。
+ *
+ * 门控类 `.nt-theme-fade`：根节点带上它，下面这份 transition 才生效。
+ *   为什么必须门控、不能常开：
+ *     ① 浏览器端首帧要先按系统偏好落一次主题（浅色 → 深色），常开的话冷启动会"先白后黑闪一次渐变"；
+ *     ② 常开会让日常的按压/悬停也跟着变慢。
+ *   三端谁挂、什么时候挂：
+ *     · PWA      → app.js 在**首次** applyTheme 之后、同一 tick 内挂到 <html>（首帧之前，
+ *                  所以既不会闪，又在用户第一次切换之前早就生效）；
+ *     · 小程序    → 页面根节点 <view class="page"> 上**静态写死**（它首帧就是正确主题，无闪烁可言）；
+ *     · uni-app  → 页面根节点 <view class="page"> 上静态写死（同上）。
+ * ⚠️ 为什么是"门控类 + 显式枚举类名"，而不是 `.nt-theme-fade *`：
+ *   WXSS 官方支持的选择器列表里**没有通配选择器**，为了三端一致只能枚举。
+ *   好处是这份名单顺带成了一份清单 ——「哪些元素带界面色、需要随主题过渡」，缺了谁一眼能看出来。
+ * ⚠️ 为什么"颜色走 320ms，但 transform / opacity 仍走 120ms"要写在同一份 transition 里：
+ *   门控选择器是 `.nt-theme-fade .x`（两个类 = 特异度 0,2,0），比 `.nt-setrow` / `.nt-pill` /
+ *   `.nt-pill-btn` 自己的 `transition`（0,1,0）**更高** —— 也就是说，凡是被本块点名的元件，
+ *   它自己的那行 transition 会被整条替换掉（不是"叠加"）。
+ *   所以本块必须**把按压反馈那两条也一起写上**（opacity / transform 用 --d-press），
+ *   否则按钮的按下淡出、设置卡的按下缩放会因为没有 transition 而瞬间硬切 —— 那是真退化。
+ *   代价：`.nt-setrow` 桌面端 hover 换底的时长由 120ms 变成 320ms。这是刻意的取舍 ——
+ *   同一个 `background-color` 不可能"换主题时慢、悬停时快"，而主题过渡更需要平滑。
+ * ⚠️ filter 也列进过渡：线性图标靠 `filter: invert()` 反色，不一起过渡就会出现
+ *   "底/字在渐变、图标已经跳到新色"的错帧。为此 .nt-icon 基线补一句 `filter: invert(0)`，
+ *   让"不过滤"也有一个可插值的起点（`none` 无法插值，只能硬切）。 */
+.nt-theme-fade,
+.nt-theme-fade body,
+.nt-theme-fade page,
+.nt-theme-fade .nt-layer,
+.nt-theme-fade .nt-dl-card,
+.nt-theme-fade .nt-setrow,
+.nt-theme-fade .nt-pill,
+.nt-theme-fade .nt-pill-btn,
+.nt-theme-fade .nt-modal,
+.nt-theme-fade .nt-toast,
+.nt-theme-fade #installbar,
+.nt-theme-fade .home-install,
+.nt-theme-fade .nt-nav-title,
+.nt-theme-fade .nt-nav-about,
+.nt-theme-fade .nt-page-h,
+.nt-theme-fade .nt-hero-title,
+.nt-theme-fade .nt-hero-note,
+.nt-theme-fade .nt-brand-name,
+.nt-theme-fade .nt-brand-sub,
+.nt-theme-fade .nt-dl-h1,
+.nt-theme-fade .nt-dl-text,
+.nt-theme-fade .nt-setl-title,
+.nt-theme-fade .nt-setl-desc,
+.nt-theme-fade .nt-modal-title,
+.nt-theme-fade .nt-modal-desc,
+.nt-theme-fade .nt-setfoot-line,
+.nt-theme-fade .nt-pill-input,
+.nt-theme-fade .nt-ph-item,
+.nt-theme-fade .res-block-label,
+.nt-theme-fade .nt-icon {
+  transition:
+    background-color var(--d-theme) var(--ease-standard),
+    color var(--d-theme) var(--ease-standard),
+    border-color var(--d-theme) var(--ease-standard),
+    filter var(--d-theme) var(--ease-standard),
+    opacity var(--d-press) var(--ease-standard),
+    transform var(--d-press) var(--ease-standard);
 }
 
-/* 弱填充卡（分组容器） */
-.nt-card-soft {
-  background: var(--nt-paper);
-  border-radius: var(--r-card);
-  padding: var(--sp-4);
-}
-
-/* ============ 固定上导航栏（三视图共用；"只约束导航栏本身"，不隔开正常区域）============
- * 容器"通透"：relative + 固定 48pt 高，顶部避让（H5/PWA 走 margin-top:env(safe-area-inset-top)；
- * 小程序 WXSS 不支持 env，由 JS 行内 margin-top 覆盖 nav.top）。
+/* ============ 固定上导航栏（五视图共用；只约束导航栏本身，不隔开正常阅读区域）============
+ * 容器「通透」：relative + 固定高，顶部避让（H5/PWA 走 margin-top:env(safe-area-inset-top)；
+ * 小程序 WXSS 不支持 env，由 JS 行内 margin-top 覆盖）。
  * 内部元素【绝对定位】各自落位：标题真居中于整页 / 关于·返回 顶格在 24pt 留白边。
- * **不用左右"槽"切分导航栏**——留白由各内容区自身 padding 表达，导航栏不隔开正常阅读区域。 */
+ * 设计稿：标题 140,62 122×44（中心 y84）；后退 chevron 中心线 24.42,77 7.58×16（中心 y85）。
+ * ⚠️ 设计稿里 chevron 盒中心 85 比标题中心 84 低 1pt，本实现刻意**两者都居中于 84** ——
+ *    一来与「标题中心 = safe-top + nav-h/2」这条导航基准一致（避免写 +1px 魔数），
+ *    二来 1pt 在 17pt 字旁看不出差别，而"箭头与标题光学对齐"本身也是 HIG 的期望。 */
 .nt-nav {
   position: relative;
-  height: 48px;
+  height: var(--nav-h);
   margin-top: var(--safe-top);
   flex-shrink: 0;
 }
-/* 标题：绝对定位，真居中于整条导航（=整页宽），不受左右任何区域影响 */
+/* 标题：绝对定位，真居中于整条导航（= 整页宽），不受左右任何区域影响
+   （设计稿字距 kerning = 0，故不设 letter-spacing） */
 .nt-nav-title {
   position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
-  font-size: var(--fs-h); font-weight: var(--fw-mid); letter-spacing: 0.5px; line-height: 1.2;
+  font-size: var(--fs-h); line-height: var(--lh-h); font-weight: var(--fw-mid);
 }
-/* 首页「关于」：设计稿距左 48.4pt → left 48px；垂直居中，≥44pt 点击区（顶格，与内容区留白不冲突） */
+/* 首页「关于」：设计稿 24,62 116×44 左对齐 → left 24，垂直居中，≥44pt 点击区 */
 .nt-nav-about {
-  position: absolute; left: 24px; top: 50%; transform: translateY(-50%);
-  font-size: var(--fs-h); font-weight: var(--fw-mid); color: var(--nt-ink);
-  padding: 0 4px;
+  position: absolute; left: var(--gutter); top: 50%; transform: translateY(-50%);
+  font-size: var(--fs-h); line-height: var(--lh-h); font-weight: var(--fw-mid); color: var(--nt-ink);
+  padding: 0 var(--sp-1);
 }
-/* 子页返回「‹」：设计稿距左 24pt、图标 9×18pt（源 后退.svg 原始比例），≥44pt 点击区 */
+/* 子页返回「‹」：字形左侧贴 24pt 留白边（设计稿 chevron 中心线 24.42,77）；点击区 44×44。
+ * ⚠️ 用 flex-start 起排，且三个 icon 的 viewBox 都紧贴**墨迹** → 元素左缘 = 墨迹左缘 = left 值。 */
 .nt-nav-back {
-  position: absolute; left: 24px; top: 50%; transform: translateY(-50%);
+  position: absolute; left: var(--gutter); top: 50%; transform: translateY(-50%);
   width: 44px; height: 44px;
   display: flex; align-items: center; justify-content: flex-start;
+  padding: 0; margin: 0;
   background: none; border: none;
 }
-.nt-nav-back .nt-icon { width: var(--ic-chevron); height: var(--ic-chevron); }
 
-/* 胶囊搜索框（设计稿「搜索框」65,464 272×48 圆角 100 描边 1.5 #000000）：白底 + 1.5pt 黑描边 + 内凹；
-   48pt 高、内文字/占位 17pt；右端 48pt 辅助圆内放放大镜（作发送键） */
+/* ============ 二级页通用骨架（结果页 / 关于我们 / 5 个内容详情页）============
+ * 设计稿三处关键结论，本骨架就是它们的直译，不含任何魔数：
+ *   ① 页名（如「星玖工作室」「搜索结果」）位于 140,130 122×44，17pt 居中；距导航内容底（106）24pt。
+ *   ② 正文卡顶 174、页脚顶 798。卡高 600（内容页）/ 528（结果页）不是拍出来的 ——
+ *      它等于「卡顶到页脚之间的全部剩余空间」，故用 min-height:100% 撑满：
+ *        内容页 874 − 46(距底) − 30(页脚) − 24(卡与页脚间距) − 174(卡顶) = 600
+ *        结果页 600 − 48(双按钮) − 24(按钮与卡间距)             = 528
+ *      换到任何屏幕高度都自动成立；内容更长时卡片自己长高，绝不裁字。
+ *   ③ 卡与页脚之间恒为 24pt。
+ */
+.nt-page-h {
+  flex-shrink: 0;
+  margin-top: var(--gutter);         /* 设计稿：导航内容底 106 → 页名顶 130 */
+  height: 44px;                      /* 设计稿 page title 框高 44（行高 20 垂直居中） */
+  display: flex; align-items: center; justify-content: center;
+  font-size: var(--fs-h); line-height: var(--lh-h); font-weight: var(--fw-mid);
+  color: var(--nt-ink); text-align: center;
+}
+.nt-pgbody {
+  flex: 1; min-height: 0;
+  height: 0;                 /* 基线：flex 列里的滚动容器必须给出确定性高度，否则拿不到高度无法滚动
+                                （微信 scroll-view 尤其如此）；flex:1 会把它重新撑满，浏览器端同样成立 */
+  box-sizing: border-box;
+  padding: 0 var(--gutter) var(--gutter);   /* 左右 24；底部 24 = 卡与页脚间距（设计稿） */
+}
+/* 无页名的二级页（关于页 / 关于我们页 —— 设计稿里首块内容直接在 y130，即导航内容底 +24 起排） */
+.nt-pgbody.nt-pt { padding-top: var(--gutter); }
+
+/* 正文范围卡（设计稿「矩形 5」24,174 354×600 / 结果页 354×528；圆角 25）
+ * ⚠️ 不画描边：设计稿的线框只是标注范围，实际用「纸面色 vs 底色」的明度差区分层级。 */
+.nt-dl-card {
+  background: var(--nt-paper);
+  border-radius: var(--r-card);
+  padding: var(--gutter);            /* 设计稿卡内边 24（354 − 306 = 48 = 24×2） */
+  box-sizing: border-box;
+  min-height: 100%;                  /* 撑满剩余空间 → 得到设计稿 600 / 528，见上方 ② */
+}
+/* 卡内标题（设计稿 17pt/行高 20） */
+.nt-dl-h1 { display: block; font-size: var(--fs-h); line-height: var(--lh-h); font-weight: var(--fw-mid); margin: 0 0 var(--sp-2); }
+.nt-dl-card > .nt-dl-item:first-child .nt-dl-h1,
+.nt-dl-card > .nt-dl-h1:first-child { margin-top: 0; }
+/* 正文（内容页 15pt 黑 50%、结果页 15pt 黑 20%；顶格排版 = 顶部对齐 + 左对齐）
+ * user-select: text —— 正文是长文本，允许自由划选/复制（默认即 text，显式声明以防被父级
+ * user-select:none 波及；对网页版 PWA/H5 直接生效，小程序端 WXSS 不识别该属性、被忽略，
+ * 但微信「长按正文→复制」是原生就有的，故三端都不缺复制能力，网页版额外多「自由划选」）。 */
+.nt-dl-text { display: block; font-size: var(--fs-body-15); color: var(--nt-text-50); line-height: var(--lh-long); text-align: left; white-space: pre-wrap; user-select: text; }
+.nt-dl-text + .nt-dl-text { margin-top: var(--sp-3); }
+/* 结果页正文（设计稿 搜索结果页：15pt 黑 20%，比内容页正文更浅） */
+.nt-dl-text-light { color: var(--nt-text-20); }
+/* 卡内多段（功能介绍 / 参考文献 / 更新日志等条目） */
+.nt-dl-item + .nt-dl-item { margin-top: var(--sp-4); }
+
+/* ============ 视图纵向容器 + 结果页答案分区 + 关于页设置区节奏（v3.1.0 起集中于此，四端不再各写一份）============
+ * 这些全是「设计 token + 版式」（不含任何平台 API），此前在 PWA index.html / 小程序 index.wxss /
+ * result.vue / settings.vue 各写了一份，改一处漏几处。现在收进 theme.css 一处，
+ * 各端经 link/import/@import 自动带上，壳里只保留「平台专属」规则（按钮默认值清理、滚动、离屏画布、响应式限宽）。 */
+/* 视图容器：四个页面布局容器（首页/结果页/关于页/关于我们/详情）同规格 —— 撑满、纵向弹性、底部条不压缩 */
+.home, .res, .ab, .dl { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+/* 关于页：品牌区与设置区之间 24pt 节奏（设计稿 品牌区底 278 → 卡1 顶 302） */
+.ab-setlist { margin-top: var(--gutter); }
+/* 结果页答案分区（设计稿：单张正文卡内先回显提问、空一行、再给答案；平铺正文、无竖线、无分割线） */
+.res-lead-h { margin-top: var(--sp-4); }
+.res-block { margin-bottom: var(--sp-3); }
+.res-block:last-child { margin-bottom: 0; }
+.res-block-label {
+  display: block;
+  font-size: var(--fs-body-15); line-height: var(--lh-15); font-weight: var(--fw-mid);
+  color: var(--nt-text-2);
+  margin-bottom: var(--sp-1);
+}
+
+/* 结构化条目：左侧 2px 纯黑竖线标记（业务排版，非设计稿元素）
+ * ⚠️ 已删除：全项目无任何元素使用 `.nt-mark`（僵尸钩子类），且竖线本身也属"常驻装饰"。 */
+
+/* ============ 首页空态（设计稿「起始页」）============
+ * 主体块 24,332 354×212，自上而下：
+ *   Logo 64.27×72 → 玄玖灵犀 22pt(行高 26) → 搜索胶囊 272×48 → 内容仅供交流学习 12pt
+ *   间距恒为 16；整块**居中于整张画布**（332 + 212/2 = 438 ≈ 画布中心 437 ✓）。
+ * ⚠️ 注意是「画布中心」，不是「导航底–页脚顶」这段剩余区的中心：剩余区中心在 453.5，差 16.5。
+ *    原因：上边界带（59+50=109）比下边界带（34+12+28=74）高 35 → 自由区整体下移 17.5。
+ *    故给空态块补一段等于「上带 − 下带」的下内边距，把视觉中心拉回画布中心（换任何屏高都成立）。
+ * ⚠️ 起始页**没有**「演乾坤 · 知天命」副标：sketch 内自带的 previews/preview.png 是旧版缩略图，
+ *    以文档 document.json 为准（已核对：全稿只有「关于页」和「开屏页」含该文案）。 */
+.nt-hero {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 0 var(--gutter) calc(var(--band-top) - var(--band-bottom));
+}
+.nt-hero-logo { width: var(--logo-w); height: var(--logo-h); }
+/* 品牌名 22pt = HIG Title 2 → Bold */
+.nt-hero-title { margin-top: var(--gap); font-size: var(--fs-xl); line-height: var(--lh-xl); font-weight: var(--fw-bold); }
+.nt-hero-pill { margin-top: var(--gap); width: var(--pill-w); max-width: 100%; }
+/* 免责 12pt = HIG Caption 1 → Regular（原用 600，偏重） */
+.nt-hero-note { margin-top: var(--gap); font-size: var(--fs-note); line-height: var(--lh-note); font-weight: var(--fw-reg); color: var(--nt-foot); text-align: center; }
+
+/* ============ 品牌区（关于页 / 开屏页；关于我们页无此区）============
+ * 设计稿「关于页」信息组 24,130 354×148：Logo 64.27×72 → 玄玖灵犀 22pt → 演乾坤·知天命 12pt，间距 16。
+ * 设计稿「关于我们」页**没有品牌区**：3 张卡直接从 130 起（与关于页信息组同一 y）。 */
+.nt-brand { display: flex; flex-direction: column; align-items: center; }
+.nt-brand-logo { width: var(--logo-w); height: var(--logo-h); }
+/* 品牌名 22pt = HIG Title 2 → Bold；副标 12pt = Caption 1 → Regular */
+.nt-brand-name { margin-top: var(--gap); font-size: var(--fs-xl); line-height: var(--lh-xl); font-weight: var(--fw-bold); color: var(--nt-ink); }
+.nt-brand-sub { margin-top: var(--gap); font-size: var(--fs-note); line-height: var(--lh-note); font-weight: var(--fw-reg); color: var(--nt-foot); }
+
+/* ============ 设置区（关于页 4 张卡 / 关于我们页 3 张卡）============
+ * 设计稿：卡 24,y 354×84、圆角 25、卡距 16、卡内左边距 24（设计稿另画了 1pt 黑线框，
+ * 那只是标注范围用的辅助图形，实际不绘制）。
+ * 卡内两行：标题 17pt(行高 22) @y+18；描述 15pt(行高 18) @y+48 → 行距 8、内容高 48，(84−48)/2 = 18 ✓ */
+.nt-setlist { display: flex; flex-direction: column; gap: var(--gap); }
+.nt-setrow {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3);
+  height: var(--row-h); padding: 0 var(--gutter);
+  background: var(--nt-paper);        /* 靠纸面色区分层级，不画描边（设计稿线框仅标注范围） */
+  border-radius: var(--r-card);
+  box-sizing: border-box;
+  cursor: pointer;
+  transition: background var(--d-press) var(--ease-standard), transform var(--d-press) var(--ease-standard);
+}
+.nt-setl { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.nt-setl-title { font-size: var(--fs-h); line-height: 22px; font-weight: var(--fw-mid); color: var(--nt-ink); }
+.nt-setl-desc { font-size: var(--fs-body-15); line-height: var(--lh-15); font-weight: var(--fw-reg); color: var(--nt-text-50); }
+/* 全红态（清除数据）：标题/描述/箭头均危险红（设计稿「关于页」第 4 张卡）。
+ * 去掉描边后由「红字 + 红箭头」表达危险，不再靠红框。 */
+.nt-setrow.danger .nt-setl-title { color: var(--nt-danger); }
+.nt-setrow.danger .nt-setl-desc { color: var(--nt-danger-desc); }
+.nt-setrow.danger .nt-i-chev { background-image: url("../../static/icons/icon-forward-danger.svg"); }
+
+/* ============ 搜索胶囊（设计稿「搜索框」65,464 272×48 圆角 100）
+ * ⚠️ 不画描边：设计稿那条 1.5pt 黑线只是标注范围用的辅助图形，实际用「浅灰面」表达输入区
+ *    （同 iOS 搜索框），无边框。**但没有边框 ≠ 没有强调** —— 强调改由下方那圈「常驻光环」承担。
+ * 右端内嵌 48pt 正圆区域放放大镜作发送键（设计稿「右辅助圆」289,464 48×48；
+ * 放大镜整体字形 18.5003×18.2825 恰好居中于该圆心）。左端 48pt 辅助圆设计稿内无内容，不渲染。 */
 .nt-pill {
+  position: relative;                 /* 滚动建议词条 .nt-ph 的定位基准 */
   display: flex;
   align-items: center;
-  height: 48px;
-  padding: 0 0 0 var(--sp-5);   /* 仅左侧内边距；右端让给 48pt「辅助圆」放放大镜，不额外右推 */
+  height: var(--pill-h);
+  padding: 0 0 0 var(--sp-5);   /* 仅左侧内边距；右端整块让给 48pt 放大镜键 */
   background: var(--nt-paper);
-  border: var(--b-pill) solid var(--nt-line-strong);
   border-radius: var(--r-pill);
-  box-shadow: var(--sh-sunken);
   box-sizing: border-box;
   transition: background var(--d-press) var(--ease-standard);
+}
+/* —— 搜索胶囊「常驻强调光环」（用户明确要求新增，全站唯一一处主动发光）——
+ * v3.1.0 换款：去掉「白边」细环（--nt-halo-ring / --halo-ring-w 已删，用户反馈"白边不好看"），
+ *    只留**一层柔晕**做呼吸；颜色加深（浅 .10/.20、深 .10/.24）、范围收小（blur 2↔5px、gap 1px）。
+ * 结构：`.nt-pill > .nt-halo`（真实子节点，第一个孩子，三端标签一致）。
+ * ⚠️ 为什么必须是**独立子节点**，不能直接写在 .nt-pill 上：
+ *    CSS 一个元素只有一个 `animation` 槽位，而胶囊本体的 animation 已被首屏入场动画
+ *    （`.nt-cascade .nt-hero-pill { animation: nt-rise … }`）占用 —— 写在同一个元素上，
+ *    两者必然互相覆盖（`.nt-cascade …` 特异度更高，实测光环被静默吃掉）。
+ *    拆成子节点后：入场管本体、呼吸管光环，各管各的，永不相撞。
+ *    （不能改用 ::before/::after：WXSS 不支持伪元素，三端会不一致。）
+ * 手法：一层 box-shadow 柔晕（`0 0 <blur> 0`，blur 由 2px 呼吸到 5px）：
+ *    外阴影会被裁掉"元素边框盒以内"的部分，不会盖住胶囊本身；
+ *    box-shadow 又不参与布局，不会把胶囊撑大 —— 不与"全站无阴影"的视觉语言冲突。
+ * 为什么不用 transform 缩放做呼吸：胶囊是布局元件，缩放会连带输入框与词条一起变形。
+ * 环带定位：本元素四周向外扩 --halo-gap（v3.1.0 = 1px），柔晕贴胶囊缘收小一圈。
+ * 微调入口：改 :root 的 --halo-gap（缝隙）/ --nt-halo-soft / --nt-halo-glow（颜色深浅），
+ *    改 keyframe 里 2px / 5px（呼吸范围）。 */
+.nt-halo {
+  position: absolute;
+  left: calc(var(--halo-gap) * -1); right: calc(var(--halo-gap) * -1);
+  top: calc(var(--halo-gap) * -1);  bottom: calc(var(--halo-gap) * -1);
+  border-radius: var(--r-pill);
+  pointer-events: none;          /* 绝不拦截点击与输入 */
+  animation: nt-pill-halo var(--d-halo) var(--ease-standard) infinite;
+}
+/* 只有一层柔晕在呼吸：blur 由 2px（弱）放到 5px（强），颜色 --nt-halo-soft → --nt-halo-glow。
+ * v3.1.0 把范围从 3↔8px 收到 2↔5px、颜色从 .04↔.11 加深到 .10↔.20（浅色）。 */
+@keyframes nt-pill-halo {
+  0%, 100% { box-shadow: 0 0 2px 0 var(--nt-halo-soft); }
+  50%      { box-shadow: 0 0 5px 0 var(--nt-halo-glow); }
 }
 .nt-pill input,
 .nt-pill .nt-pill-input {
@@ -202,220 +497,310 @@ page { scrollbar-width: none; -ms-overflow-style: none; }
   outline: none;
   background: transparent;
   font-size: var(--fs-h);
-  font-weight: var(--fw-mid);
+  line-height: var(--lh-h);
+  font-weight: var(--fw-reg);         /* HIG Body = Regular；输入内容不该比正文更重 */
   color: var(--nt-ink);
   font-family: inherit;
   min-width: 0;
 }
-.nt-pill .nt-ph,
-.nt-pill input::placeholder { color: var(--nt-placeholder); font-weight: var(--fw-mid); }
+/* ⚠️ 不再写 input::placeholder：三端都不再给搜索框设原生 placeholder
+ *   （占位由下面的 .nt-ph 滚动词条承担，见 .nt-ph-item 自己的字色）。
+ *   留着就是「有用到、其实用不到」的僵尸规则，按项目规范删掉。 */
 
-/* 胶囊右端「辅助圆」放大镜（= 胶囊右端 48pt 直径的正圆区域；放大镜作发送键，须精确落在该圆正中心）
- * 按钮占满胶囊右端 48×48（= 胶囊高，即辅助圆直径），图标 flex 正中 → 与辅助圆圆心重合；去掉非对称 margin/padding 不再偏移。 */
-.nt-pill-search {
-  flex: 0 0 48px;
-  width: 48px; height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0;
-  padding: 0;
-  background: transparent;
-  border: none;
-  cursor: pointer;
+/* —— 滚动搜索建议（真实示例词条，**轮换**节奏对齐百度首页搜索框）——
+ * 输入框为空时的"占位"不是写死的 placeholder，而是一列真实词条在 48pt 高的胶囊里逐条轮换，
+ * 让人一眼看出"这里可以搜什么、能怎么问"。词条内容 = settings.js 的 searchHints（单一真源）。
+ *   · 结构：.nt-pill > .nt-ph(裁切窗) > .nt-ph-track(整列) > N 个 .nt-ph-item
+ *   · 节奏（与百度同款）：一条**停留 5.0s** 让人从容读完 → 再用 0.5s **整体上滑一行**换下一条。
+ *     刻意不做「匀速滚动条」：连续慢滚的词条永远读不完整，分档切换才抓得住注意力；
+ *     停留拉长到 5s 也是同一个理由 —— 词条是真实长问句（最长 9 个汉字），2.5s 读不完就滑走了。
+ *   · 无缝循环：track 末尾必须再放一份首词条。整列高 (N+1)×48，滑到 -N×48 时窗口里
+ *     那一行与第一行逐像素相同，动画从 100% 回到 0% 看不出接缝。
+ *   · pointer-events:none → 点击穿透到 input，不挡输入
+ *   · 让位规则：**输入非空 或 已聚焦** → 挂 .nt-ph-off，整块隐去 */
+/* ⚠️ 为什么「聚焦」也要让位（不只是"有内容"）：
+ *    ① 这就是百度首页的行为：一点进搜索框，提示词立刻让位给光标（输入时当然更不显示）；
+ *    ② 技术：微信官方文档《原生组件说明》明确写「input 仅在 focus 时表现为原生组件」——
+ *      聚焦态下它的层级高于 WebView 里的一切元素（z-index 无效），词条会被直接盖住。
+ *      干脆在聚焦瞬间就隐掉，不依赖层级谁压谁。
+ * ⚠️ 只写「让位时隐藏」这一条，不写 :not() —— WXSS 对 :not 支持不稳，三端容易不一致。
+ *    默认（壳不加 .nt-ph-off）即显示。 */
+.nt-ph {
+  position: absolute;
+  left: var(--sp-5);
+  /* 右侧让出 48pt（= 放大镜发送键的宽）—— 词条再长也不许压到发送键上。
+     不写 right 就是 shrink-to-fit（由最长词条决定宽度），实测最长那条会钻到放大镜底下。 */
+  right: var(--pill-h);
+  top: 0;
+  height: var(--pill-h);
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 1;
   transition: opacity var(--d-press) var(--ease-standard);
 }
-.nt-pill-search .nt-icon { width: var(--ic-chevron); height: var(--ic-chevron); }
+.nt-pill.nt-ph-off .nt-ph { opacity: 0; }
+/* 缓冲曲线对每个 keyframe 区间**分别生效**：停留区间的首尾值相同 → 不动；上滑区间 → 缓入缓出。
+ * 所以整条动画的观感是「停 5s → 顺滑地滑一行上去了」，而不是匀速爬行。 */
+.nt-ph-track {
+  display: flex;
+  flex-direction: column;
+  animation: nt-ph-step var(--d-ph-rotate) var(--ease-standard) infinite;
+}
+.nt-ph-item {
+  height: var(--pill-h);
+  line-height: var(--pill-h);
+  font-size: var(--fs-h);
+  color: var(--nt-placeholder);
+  white-space: nowrap;
+  overflow: hidden;          /* 万一将来加了超长词条：裁掉… */
+  text-overflow: ellipsis;   /* …并给省略号，而不是钻到放大镜底下 */
+}
+/* ⚠️ 本 keyframe 与 searchHints 的**条数绑定**（当前 8 条 → 8 个档位，每档 12.5%）。
+ *    每档 = 停留 11.364%（5.0s）+ 上滑 1.136%（0.5s）= 12.5%（5.5s），一圈共 44s。
+ *    （11.364 = 5.0 / 44 × 100，是"停留占整圈"的比例，不是"停留占本档"的比例 —— 别算串了。）
+ *    改条数时要同步改：① 档位个数与百分比（8 条→12.5%/档，9 条→11.11%/档）；
+ *    ② --d-ph-rotate（条数 × 5.5s）。settings.js 里 searchHints 的注释与本处互相指向。
+ * 位移刻意写成 --pill-h 的整数倍（-1×48 … -8×48），一眼能看出"滑了几条"；
+ * 末档 -8×48 = -384px 正好等于「整列 432 − 窗口 48」→ 末尾那条副本顶进窗口，回到 0% 无缝衔接。 */
+@keyframes nt-ph-step {
+  0%,     11.364% { transform: translateY(0); }
+  12.5%,  23.864% { transform: translateY(calc(var(--pill-h) * -1)); }
+  25%,    36.364% { transform: translateY(calc(var(--pill-h) * -2)); }
+  37.5%,  48.864% { transform: translateY(calc(var(--pill-h) * -3)); }
+  50%,    61.364% { transform: translateY(calc(var(--pill-h) * -4)); }
+  62.5%,  73.864% { transform: translateY(calc(var(--pill-h) * -5)); }
+  75%,    86.364% { transform: translateY(calc(var(--pill-h) * -6)); }
+  87.5%,  98.864% { transform: translateY(calc(var(--pill-h) * -7)); }
+  100%            { transform: translateY(calc(var(--pill-h) * -8)); }
+}
+.nt-pill-search {
+  flex: 0 0 var(--pill-h);
+  width: var(--pill-h); height: var(--pill-h);
+  display: flex; align-items: center; justify-content: center;
+  margin: 0; padding: 0;
+  background: transparent; border: none;
+  cursor: pointer;
+  transition: opacity var(--d-press) var(--ease-standard), transform var(--d-press) var(--ease-standard);
+}
 
-/* 黑色胶囊按钮：高反差填充 */
+/* ============ 按钮 ============ */
+/* 黑色胶囊主按钮（结果页「再问一个」设计稿 153×48 圆角 24 黑底；弹窗「确认」135×44 黑底）
+ * 本来就是实心底，描边与底色同色、纯属多余，一并去掉（HIG 主按钮 = Semibold 文字）。 */
 .nt-pill-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 52px;
+  height: var(--btn-h);
   padding: 0 var(--sp-5);
   background: var(--nt-ink);
-  color: var(--nt-paper);
+  color: var(--nt-bg);                /* 用底色做反白字（--nt-paper 现在是浅灰面，不能拿来当反白字） */
   border: none;
   border-radius: var(--r-pill);
-  font-size: var(--fs-body);
-  font-weight: var(--fw-mid);
+  box-sizing: border-box;
+  font-size: var(--fs-h);
+  line-height: var(--lh-h);
+  font-weight: var(--fw-mid);         /* HIG：强调按钮用 Semibold */
   font-family: inherit;
   cursor: pointer;
-  transition: opacity var(--d-press) var(--ease-standard);
+  transition: opacity var(--d-press) var(--ease-standard), transform var(--d-press) var(--ease-standard);
 }
-
-/* 通用按下态：透明度 1 → 0.6（规范 §7.1） */
+/* 次要按钮：弹窗「取消」设计稿 135×44；结果页「导出图片」设计稿 24,726 153×48 圆角 24
+ * ⚠️ 不画描边，改用浅灰面（同 iOS 灰色按钮）；文字按 HIG 用 Regular —— 次级动作不该比主按钮更重。 */
+.nt-pill-btn.ghost {
+  background: var(--nt-paper);
+  color: var(--nt-ink);
+  font-weight: var(--fw-reg);
+}
+/* 通用按下态：透明度 1 → 0.6（`.nt-press` 可能挂在用 transform 居中的导航按钮上，
+   故通用类只降透明度；缩放只给不拿 transform 做布局的元件，见下方各自规则） */
 .nt-pill-btn:active,
 .nt-press:active { opacity: 0.6; }
+/* —— 按下缩放：只给「不参与布局定位」的元件（120ms，与 --d-press 同档）—— */
+.nt-pill-btn:active   { transform: scale(0.97); }   /* 结果页双按钮 / 弹窗双按钮 */
+.nt-pill-search:active { opacity: 0.6; transform: scale(0.88); }  /* 搜索胶囊右端放大镜发送键 */
+.nt-setrow:active     { transform: scale(0.985); }  /* 设置卡 */
 
-/* Toggle 开关（真实元素结构，规避小程序无伪元素限制） */
-.nt-switch {
-  position: relative;
-  width: 52px;
-  height: 32px;
+/* 弹窗双按钮（设计稿 48/219,460 各 135×44、间距 36、左右各内缩 24）：
+   135 = (354 − 24×2 − 36) / 2 —— 用 flex:1 + gap 表达，不写死宽度 */
+.nt-modal-btns { display: flex; gap: var(--modal-btn-gap); margin-top: auto; }
+.nt-modal-btns .nt-pill-btn { flex: 1 1 0; min-width: 0; height: var(--modal-btn-h); }
+
+/* 结果页双按钮条（设计稿：导出图片 24,726 / 再问一个 225,726，各 153×48，间距 48）
+   153 = (354 − 48) / 2 —— 同样用 flex:1 + gap 表达；
+   条上方 24pt（由 .nt-pgbody 底部内边距给），条下方到页脚恒 24pt */
+.nt-dual { display: flex; gap: var(--dual-gap); flex-shrink: 0; padding: 0 var(--gutter) var(--gutter); }
+.nt-dual > .nt-pill-btn { flex: 1 1 0; min-width: 0; }
+
+/* ============ 页脚（设计稿：起始页/关于页/关于我们 24,798 354×30；内容页 48,798 306×30。
+   两行 12pt/行高 14 居中；页脚底 828 → 距画布底 46pt = 12 + 手势条安全区 34）============ */
+.nt-foot {
   flex-shrink: 0;
-  background: var(--nt-sunken);
-  border: none;
-  border-radius: var(--r-pill);
-  box-shadow: var(--sh-sunken);
-  transition: background var(--d-press) var(--ease-standard);
-  cursor: pointer;
-}
-.nt-switch .nt-knob {
-  position: absolute;
-  left: 3px;
-  top: 3px;
-  width: 26px;
-  height: 26px;
-  background: var(--nt-paper);
-  border-radius: 50%;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
-  transition: transform var(--d-press) var(--ease-standard);
-}
-.nt-switch.on { background: var(--nt-ink); }
-.nt-switch.on .nt-knob { transform: translateX(20px); }
-
-/* 分段选择 */
-.nt-seg {
-  display: flex;
-  background: var(--nt-sunken);
-  border-radius: var(--r-pill);
-  padding: 3px;
-  gap: 2px;
-}
-.nt-seg .nt-seg-i {
-  padding: 7px 16px;
-  border-radius: var(--r-pill);
-  font-size: var(--fs-sub);
-  color: var(--nt-text-2);
+  padding: 0 var(--gutter) var(--sp-3);   /* 底部 12 + .nt-page-safe 的 safe-bottom = 46（设计稿） */
   text-align: center;
-  transition: background var(--d-press) var(--ease-standard);
 }
-.nt-seg .nt-seg-i.on {
-  background: var(--nt-ink);
-  color: var(--nt-paper);
-  font-weight: var(--fw-mid);
+/* 页脚两行 12pt = HIG Caption 1 → Regular（原用 600，偏重） */
+.nt-foot .nt-setfoot-line {
+  display: block;
+  font-size: var(--fs-note); line-height: var(--lh-note); font-weight: var(--fw-reg);
+  color: var(--nt-foot);
 }
 
-/* 发丝线分隔 */
-.nt-hr { height: 1px; background: var(--nt-line); border: none; margin: 0; }
-
-/* 列表行（关于页菜单：48px 高、右侧箭头、发丝线分割） */
-.nt-list { background: var(--nt-paper); border-radius: var(--r-card); border: var(--b-card) solid var(--nt-line-strong); box-shadow: var(--sh-card); overflow: hidden; }
-.nt-list-row {
-  display: flex; align-items: center; justify-content: space-between;
-  min-height: 52px; padding: 0 var(--sp-4);
-  font-size: var(--fs-body); color: var(--nt-ink);
-  cursor: pointer;
-  transition: background var(--d-press) var(--ease-standard);
+/* ============ 线性图标 ============
+ * 设计稿实测（逐点取自 sketch 原始锚点，**frame = 路径中心线外框，不含描边**）：
+ *   · 后退「‹」/ 前进「›」：中心线 7.5825 × 16，描边 1.5；两臂 **45°（开合 90°）**，
+ *     尖端是一段三次贝塞尔弧（控制点 x = −0.0975），路径处处 G1 连续 —— 没有任何折角。
+ *   · 搜索放大镜：「搜索」组中心线 18.5003 × 18.2825（圆环直径 15.93 + 45° 斜柄），描边 1.5。
+ * 三者的线帽都是**平头**（设计稿 borderOptions.lineCapStyle = 0），SVG 里不许写 stroke-linecap="round"。
+ * 源 SVG 收在 static/icons/，构建期由 sync-mp.js 内嵌 base64（微信 WXSS 不支持本地 url()）。
+ * ⚠️ 三个 icon 的 viewBox 都取**墨迹外框**（中心线外框 + 描边溢出），所以：
+ *    ① 容器尺寸 = 上面 --ic-* 那组值，恰好等于墨迹尺寸，字形 1:1 落位、描边不会被视口裁掉；
+ *    ② 不要再套 24×24 大方框，也不要为了"给描边留地方"往里缩 —— 两者都会让字形尺寸错掉。 */
+.nt-icon {
+  display: inline-block;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  flex-shrink: 0;
+  /* 浅色下"不过滤"也显式写成 invert(0)：给主题切换的过渡一个可插值的起点
+   * （`none` 与 `invert(1)` 之间无法插值，只能硬切 → 深/浅切换时图标会跳色）。
+   * 深色由 .nt-dark .nt-i-* 覆盖为 invert(1)，见文末深色块。 */
+  filter: invert(0);
 }
-.nt-list-row + .nt-list-row { border-top: 1px solid var(--nt-line); }
-.nt-list-row .nt-chev { width: 18px; height: 18px; flex-shrink: 0; }
+.nt-i-back,
+.nt-i-chev { width: var(--ic-chevron-w); height: var(--ic-chevron-h); }
+.nt-i-back { background-image: url("../../static/icons/icon-back.svg"); }
+.nt-i-chev { background-image: url("../../static/icons/icon-forward.svg"); }
+/* 搜索放大镜：容器就是「搜索」组的墨迹外框，不再套 24×24 视框 */
+.nt-i-search { width: var(--ic-search-w); height: var(--ic-search-h); background-image: url("../../static/icons/icon-search.svg"); }
 
-/* ============ 关于页 · 设置区（设计稿「关于页」：4 张独立卡 354×84、卡距 16pt、圆角 25、描边 1pt #000000；
-   卡内：标题 17pt/600 @24,18；描述 15pt @24,48（正常项黑、清除项危险红 50%）；危险红全态）============ */
-.nt-setlist { display: flex; flex-direction: column; gap: 16px; }
-.nt-setrow {
-  display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3);
-  height: 84px; padding: 0 24px;
-  background: var(--nt-paper);
-  border: var(--b-card) solid var(--nt-line-strong);
-  border-radius: var(--r-card);
-  box-shadow: var(--sh-card);
+/* ============ 模态框（设计稿「弹窗」：面板 24,344 354×184 圆角 24）
+ * ⚠️ 不画描边。面板改用「抬升面」--nt-elevated：浅色下就是底色白（在压暗的背景上跳出来），
+ *    深色下必须比底色更亮，否则黑面板压在压暗的黑背景上会糊成一片看不见。
+ * 面板内：标题 22pt/行高 26 @48,368；描述 15pt/行高 18 @48,410；按钮 @y460 高 44 —— 对应内边距 24。 */
+.nt-mask {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(0, 0, 0, 0.32);
+  display: flex; align-items: center; justify-content: center;
+  padding: var(--gutter);
+  animation: nt-rise var(--d-drawer) var(--ease-standard) both;
+}
+/* 出场：遮罩与面板一起淡出并轻微下沉（比进场快一档，退场干脆）。
+ * 加 .nt-mask-out 即播放 nt-fall；播放完由 JS 在 --d-modal-out 后卸载（三端各自摘类/移除节点）。 */
+.nt-mask.nt-mask-out {
+  animation: nt-fall var(--d-modal-out) var(--ease-standard) both;
+  pointer-events: none;
+}
+@keyframes nt-fall {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(8px); }
+}
+.nt-modal {
+  width: 100%; max-width: var(--modal-w);
+  height: var(--modal-h);
+  background: var(--nt-elevated);
+  border-radius: var(--r-panel);
+  padding: var(--gutter);
   box-sizing: border-box;
-  cursor: pointer;
-  transition: background var(--d-press) var(--ease-standard);
+  display: flex; flex-direction: column;
 }
-.nt-setl { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.nt-setl-title { font-size: var(--fs-h); font-weight: var(--fw-mid); color: var(--nt-ink); }
-.nt-setl-desc { font-size: var(--fs-body-15); font-weight: var(--fw-reg); color: var(--nt-text-50); }
-.nt-setrow .nt-i-chev { width: var(--ic-chevron); height: var(--ic-chevron); flex-shrink: 0; }
-/* 全红态（清除数据）：卡片描边/标题/描述/箭头均危险红 */
-.nt-setrow.danger { border-color: var(--nt-danger); }
-.nt-setrow.danger .nt-setl-title { color: var(--nt-danger); }
-.nt-setrow.danger .nt-setl-desc { color: var(--nt-danger-desc); }
-.nt-setrow.danger .nt-i-chev { background-image: url("../../static/icons/icon-forward-danger.svg"); }
-/* 底部说明（定稿v3 §3.4：黑30% / 12.5pt·600，两行居中） */
-/* 底部信息条（原型 23:32：@24,798 354×30，两行 12pt 行高 15px 居中，距底 46pt；各内容页固定底条） */
-.nt-foot { padding: 16px 24px 46px; text-align: center; flex-shrink: 0; }
-.nt-foot .nt-setfoot-line { display: block; font-size: var(--fs-note); font-weight: var(--fw-mid); color: var(--nt-foot); line-height: 15px; }
-.nt-foot .nt-setfoot-line + .nt-setfoot-line { margin-top: 0; }
+/* 标题 22pt = HIG Title 2 → Bold */
+.nt-modal-title { display: block; font-size: var(--fs-xl); line-height: var(--lh-xl); font-weight: var(--fw-bold); margin-bottom: 14px; }
+.nt-modal-desc { display: block; font-size: var(--fs-body-15); line-height: var(--lh-15); color: var(--nt-text-50); margin-bottom: 14px; }
 
-/* ============ 二级页面 · 通用内容页（定稿v3 §4：一稿两用 = 搜索结果页 / 关于页 4 板块详情页；清除缓存不走此页）============ */
-/* 正文区标题（§4.2：17.7pt/600；卡片内顶格，多条之间留距） */
-.nt-dl-h1 { display: block; font-size: var(--fs-h); font-weight: var(--fw-mid); margin: 0 0 8px; }
-.nt-dl-card > .nt-dl-item:first-child .nt-dl-h1,
-.nt-dl-card > .nt-dl-h1:first-child { margin-top: 0; }
-/* 正文范围卡（设计稿内容页「矩形 5」24,174 354×600 圆角 25 描边 1 #000000；卡内边 24pt） */
-.nt-dl-card {
-  background: var(--nt-paper);
-  border: var(--b-card) solid var(--nt-line-strong);
-  border-radius: var(--r-card);
-  box-shadow: var(--sh-card);
-  padding: 24px;
-  box-sizing: border-box;
-}
-/* 正文（§4.5：苹方 15pt，顶格排版 = 顶部对齐 + 左对齐；设计稿内容页 = 黑50%） */
-.nt-dl-text { display: block; font-size: var(--fs-body-15); color: var(--nt-text-50); line-height: 1.8; text-align: left; white-space: pre-wrap; }
-.nt-dl-text + .nt-dl-text { margin-top: 12px; }
-/* 结果页正文（设计稿 搜索结果页：15pt 黑20%，比内容页正文更浅） */
-.nt-dl-text-light { color: var(--nt-text-20); }
-/* 更新日志条目（§3.3 第3项展开：多组 h1+正文，条目间 12pt） */
-.nt-dl-item + .nt-dl-item { margin-top: 12px; }
-
-/* 结构化条目：左侧 2px 纯黑竖线标记（规范 §4.3，不做彩色圆点） */
-.nt-mark { border-left: 2px solid var(--nt-ink); padding-left: var(--sp-3); }
-
-/* ============ 安全区（规范：自定义导航栏必须避开状态栏/胶囊/手势条）============ */
-/* H5/PWA：由 env(safe-area-inset-*) 自动处理。
-   小程序：WXSS 不支持 env()，由 modules/UIModule/safe-area.js 计算后以行内 style 覆盖。 */
-
-/* 页面容器：底部避让手势条/虚拟按键（所有视图通用） */
-.nt-page-safe {
-  padding-bottom: var(--safe-bottom);
+/* ============ Toast（清除缓存反馈）============ */
+/* 居中用 left/right:0 + margin:auto（不占 transform，与入场动画的 translateY 不冲突） */
+.nt-toast {
+  position: fixed; left: 0; right: 0; margin: 0 auto; width: fit-content; bottom: 96px;
+  z-index: 110;
+  background: var(--nt-ink); color: var(--nt-bg);
+  font-size: var(--fs-sub);
+  padding: 10px 20px; border-radius: var(--r-pill);
+  animation: nt-rise 200ms var(--ease-standard) both;
 }
 
-/* 结果页/关于页头部：顶部避让状态栏 */
-.nt-head-safe {
-  padding-top: calc(12px + var(--safe-top));
+/* ============ 开屏页（设计稿「开屏页」：整屏居中 品牌 Logo + 玄玖灵犀 28pt + 演乾坤·知天命 12pt 黑30%）============
+ * 与起始页的区别：开屏页**有**副标「演乾坤·知天命」（起始页没有）；开屏页无导航栏、无返回箭头、无页脚。
+ * 布局：整屏 flex 居中（品牌组 Logo→名 + 副标 三段），与首页空态同一套居中手法 ——
+ *    这样大小屏/平板/电脑自动缩放排版，不写死设计稿的绝对坐标（那是 402×874 一稿的值）。
+ * 尺寸全部走已备好的令牌（--logo-splash-w/h、--fs-splash、--lh-splash、--d-splash），改值只改 :root 一处。
+ * 退场（v3.1.0，开屏→起始页「品牌交接」）：
+ *   · logo + 「玄玖灵犀」包成 .nt-splash-brand 一组，退场时整组缩放到起始页比例（≈0.75）并淡出
+ *     （开屏 Logo 85.69×96 → 起始页 64.27×72、开屏名 28pt → 起始页 22pt）—— 观感是品牌「落」到起始页，
+ *     而不是整屏硬切消失；
+ *   · 背景色后段淡出（揭示底下的起始页同名元素）、副标（起始页没有）随背景一起淡出。 */
+.nt-splash {
+  position: fixed; inset: 0; z-index: 200;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: var(--nt-bg);
 }
-
-/* 首页顶栏：「关于」入口置于微信胶囊按钮下方（小程序端由 JS 给 aboutTop） */
-.nt-topbar-safe {
-  padding-top: calc(14px + var(--safe-top));
+/* 品牌组（Logo + 「玄玖灵犀」）：退场时整组缩放，transform-origin 取组中心（= 画布中心，与起始页品牌同轴） */
+.nt-splash-brand {
+  display: flex; flex-direction: column; align-items: center;
 }
-
-/* 页脚：底部避让手势条 */
-.nt-foot-safe {
-  padding-bottom: calc(24px + var(--safe-bottom));
+/* 开屏 Logo 比首页大（85.69×96 vs 首页 64.27×72）。复用与首页**同一份** logo 图片
+ * （各壳把 themeLogo 也填给开屏，随主题自动换 logo-white.png）—— 不新增图标源，单一真源。
+ * 元素是 <image>/<img>，只用 width/height 定框，aspectFit 缩放保持比例。 */
+.nt-splash-logo { width: var(--logo-splash-w); height: var(--logo-splash-h); }
+.nt-splash-name {
+  margin-top: var(--gap);              /* Logo(0–96) → 名(112) 间距 16 */
+  font-size: var(--fs-splash); line-height: var(--lh-splash); font-weight: var(--fw-bold);
+  color: var(--nt-ink);
 }
+.nt-splash-sub {
+  margin-top: var(--sp-2);            /* 名(146) → 副标(155) 间距 ≈8 */
+  font-size: var(--fs-note); line-height: var(--lh-note); font-weight: var(--fw-reg);
+  color: var(--nt-foot);
+}
+/* 退场（v3.1.0）：
+ *   ① 品牌组（Logo + 玄玖灵犀）缩放到起始页比例 0.75 并淡出 —— 与起始页同名元素「交接」，
+ *      transform-origin 默认取组中心（= 画布中心），与起始页品牌同轴，缩放后正好落在起始页 Logo 尺寸；
+ *   ② 背景色前 55% 保持不透明（让品牌先缩到位），后 45% 淡出揭示起始页；
+ *   ③ 副标在品牌组外，随整屏背景一起淡出（起始页没有副标，单独消失不突兀）。
+ * 三端在 --d-splash 后摘节点（先播后摘，同弹窗）。 */
+.nt-splash.nt-splash-out {
+  animation: nt-splash-bg var(--d-splash) var(--ease-standard) both;
+}
+.nt-splash.nt-splash-out .nt-splash-brand {
+  animation: nt-splash-brand-out var(--d-splash) var(--ease-standard) both;
+}
+@keyframes nt-splash-bg {
+  0%, 55% { opacity: 1; }
+  100%    { opacity: 0; }
+}
+@keyframes nt-splash-brand-out {
+  from { transform: scale(1);    opacity: 1; }
+  to   { transform: scale(0.75); opacity: 0; }   /* 0.75 = 起始页 Logo 比例 64.27/85.69 */
+}
+/* 深色下开屏 Logo 的白色版走各壳填 themeLogo（logo-white.png）实现，与首页同一机制；
+ * 开屏背景 .nt-splash 用 var(--nt-bg)（浅色 #fff / 深色 #000），随主题自动适配，无需 CSS 再翻转。 */
 
-/* ============ 全局动效（规范：所有页面/组件入场统一「由下向上淡入」，少·快·统一）============ */
-/* 唯一入场 keyframe：translateY(16px)→0 + 透明度 0→1，统一缓动 --ease-standard。
-   页面（.nt-page-in）/ 局部刷新（.nt-fade-up）/ 模态 / Toast 全部共用，视觉零差异。 */
+/* ============ 安全区 ============
+ * H5/PWA/uni-H5：由各壳 H5 样式块把 --safe-top / --safe-bottom 升为 max(设计带, env())。
+ * 小程序：WXSS 不支持 env()，由 modules/UIModule/safe-area.js 计算后以行内 style 覆盖。
+ * ⚠️ 必须 border-box —— 边界带是「在整屏高度内占位」，不能把盒子撑高出去（否则底部 34 被裁到视口外）。 */
+.nt-page-safe { box-sizing: border-box; padding-bottom: var(--safe-bottom); }
+/* 曾有一个 .nt-foot-safe（页脚自带手势条内边距），三端实际都用 .nt-page-safe 承担，
+   全项目从未有元素使用，已按「零冗余」删除。 */
+
+/* ============ 全局动效（少·快·统一）============
+ * 唯一入场 keyframe：translateY(16px) → 0 + 透明度 0 → 1，统一缓动 --ease-standard。
+ * 模态 / Toast 共用，视觉零差异。 */
 @keyframes nt-rise {
   from { opacity: 0; transform: translateY(16px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-@keyframes nt-skeleton {
-  0%, 100% { opacity: 0.45; }
-  50%      { opacity: 0.85; }
-}
-/* 页面转场：320ms */
-.nt-page-in { animation: nt-rise var(--d-page) var(--ease-standard) both; }
-/* 组件/局部刷新：240ms */
-.nt-fade-up { animation: nt-rise var(--d-refresh) var(--ease-standard) both; }
 
-/* ============ 页面转场（微信式「双层视差」，对齐"设置→子页"切页动画；动画独立于布局，类由 transition.js 驱动）============
+/* ============ 页面转场（微信式「双层视差」，对齐"设置→子页"切页动画；类由 transition.js 驱动）============
  * 结构：.nt-stage（相对·满高）含 .layer.back(底层=旧页) + .layer.front(顶层=新页) + .nt-dim(压暗遮罩)。
  *   前进 stage-fwd：顶层新页 100%→0 右滑入；底层旧页 0→-33% 左移 + dim 0→.24 压暗（左缘露出窄条）。
  *   返回 stage-back：顶层旧页 0→100% 右滑出；底层新页 -33%→0 滑回 + dim .24→0 消暗。
  * 首帧显示「动画前当前页满屏」、新页在屏外/被顶开位 → 无跳变闪烁。与 --d-page(320ms) 同缓动；三端共用。
- * ⚠️ 裁切原则：只裁「转场层」不裁内容 —— overflow-x hidden 仅兜住滑动过程中的层；overflow-y 保持可见，
- *   按键按压特效/阴影不被切。左右不设 24px 内容区约束（各页自身留白即可），导航栏才需要精确约束。 */
+ * ⚠️ 裁切原则：只裁「转场层」不裁内容 —— overflow-x hidden 仅兜住滑动过程中的层；overflow-y 保持可见。 */
 .nt-stage { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; overflow-x: hidden; overflow-y: visible; }
-.nt-layer { position: absolute; inset: 0; display: flex; flex-direction: column; min-height: 0; }
+/* ⚠️ 两层必须各自不透明：静止态两层内容相同、顶层盖在底层上，靠 z-index 分先后。
+ *    若两层透明，底层重建时重播的入场动画会从顶层内容背后透出来 → 重影（用户实测反馈）。
+ *    不透明后底层只作为「转场时的旧页/新页」可见，静止态被顶层完全遮住。 */
+.nt-layer { position: absolute; inset: 0; display: flex; flex-direction: column; min-height: 0; background: var(--nt-bg); }
 .nt-layer.back  { z-index: 1; }
 .nt-layer.front { z-index: 3; }
 .nt-dim { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; z-index: 2; }
@@ -433,110 +818,97 @@ page { scrollbar-width: none; -ms-overflow-style: none; }
 .nt-stage.stage-back .nt-layer.back  { animation: nt-px-back var(--d-page) var(--ease-standard) both; }
 .nt-stage.stage-back .nt-dim        { animation: nt-dim-out var(--d-page) var(--ease-standard) both; }
 
-/* 单层右滑入（PWA / uni-app 无"上一页"DOM，无法双层；CSS animation 从 100% 起，天然不闪，挂到进入视图容器） */
-.nt-slide-in { animation: nt-tf-in var(--d-page) var(--ease-standard) both; }
+/* 单层滑入（PWA / uni-app 无"上一页"DOM，无法双层；CSS animation 天然不闪）
+ *   前进 nt-slide-in      新页自右滑入
+ *   返回 nt-slide-in-back 新页自左滑回（起点 -33%，与双层视差里底层新页的滑回幅度一致） */
+@keyframes nt-tf-in-back { from { transform: translateX(-33%); } to { transform: none; } }
+.nt-slide-in      { animation: nt-tf-in      var(--d-page) var(--ease-standard) both; }
+.nt-slide-in-back { animation: nt-tf-in-back var(--d-page) var(--ease-standard) both; }
 
-/* 骨架屏（分析计算中：灰阶呼吸，800ms 循环） */
-.nt-skeleton { background: var(--nt-sunken); border-radius: var(--r-sm); animation: nt-skeleton 800ms var(--ease-standard) infinite; }
-.nt-skeleton-title { height: 22px; width: 40%; margin-bottom: var(--sp-4); }
-.nt-skeleton-line { height: 14px; margin-bottom: var(--sp-3); }
-
-/* ============ 模态框（设计稿「弹窗」：面板 24,344 354×184 圆角 24 无描边；大标题 22pt/600；双按钮 135×44 间距 36pt）============ */
-.nt-mask {
-  position: fixed; inset: 0; z-index: 100;
-  background: rgba(0, 0, 0, 0.32);
-  display: flex; align-items: center; justify-content: center;
-  padding: 24px;
-  animation: nt-rise var(--d-drawer) var(--ease-standard) both;
+/* ============ 内容入场（错落淡入上移）· 只在「冷启动首屏」播 ============
+ * 复用唯一入场 keyframe `nt-rise`，只靠 animation-delay 拉出 40ms 阶梯，做出「自上而下依次落位」的节奏。
+ *
+ * ⚠️ 为什么要门控在 `.nt-cascade` 之下（用户实测反馈「切换动画和加载动画重复、成了重影」）：
+ *    切页已经有整层滑入承担全部位移，如果内容再各自上浮一次，两层动效会同期叠加 —— 同一块内容
+ *    一边被整层平移、一边自己做 translateY + 淡入，看起来就是"重影/拖影"。故规定：
+ *      · 冷启动首屏 → 播内容入场（`.nt-cascade` 存在）
+ *      · 页面切换   → 只播整层滑入，内容不参与（`.nt-cascade` 已在首次切页时摘掉）
+ *    想改回"每次进页都错落"，只需让各壳持续保留 `.nt-cascade` 即可（一行的事，别处不动）。
+ *
+ * ⚠️ `.nt-cascade` 必须「一次性摘除、不再加回」：
+ *    如果反过来用"切页时加抑制类、结束再摘"的写法，摘掉那一刻 animation-name 会从 none 变回
+ *    nt-rise，等于凭空重启一次动画 —— 就成了「切换完还有一个动画重复播放」。
+ *
+ * ⚠️ 填充模式用 `backwards`（不是 both）：延迟期间保持隐藏态，**动画结束后不再接管 transform** ——
+ *    否则填充态会盖掉 :active 的按压缩放（CSS 里动画声明优先级高于普通声明）。
+ * ⚠️ 只挂「不拿 transform 做布局」的元素：`.nt-nav-title` / `.nt-nav-about` / `.nt-nav-back` 靠
+ *    translate 居中，一律不加，避免二次 transform 把居中打歪。
+ * ⚠️ PWA 靠 .view 的 display 切换重播、uni-app 靠 v-if 重建、小程序靠 <template is> 换名重建，
+ *    三端都无需动画代码；门控类由各壳在首屏渲染时挂到页面根节点上。 */
+.nt-cascade .nt-hero-logo,
+.nt-cascade .nt-hero-title,
+.nt-cascade .nt-hero-pill,
+.nt-cascade .nt-hero-note,
+.nt-cascade .nt-page-h,
+.nt-cascade .nt-dl-card,
+.nt-cascade .nt-dual,
+.nt-cascade .nt-foot,
+.nt-cascade .nt-brand,
+.nt-cascade .nt-setlist .nt-setrow {
+  animation: nt-rise var(--d-page) var(--ease-standard) backwards;
 }
-.nt-modal {
-  width: 100%; max-width: 354px;
-  height: 184px;               /* 原型：面板 354×184，固定高 */
-  background: var(--nt-paper);
-  border: none;                /* 设计稿：面板无描边，仅靠阴影与遮罩分离 */
-  border-radius: var(--r-panel);
-  box-shadow: var(--sh-card);
-  padding: 24px;
-  box-sizing: border-box;
-  display: flex; flex-direction: column;
-}
-/* 弹窗（原型 23:32：面板 354×184；标题 22pt/600 @24,24 高28；描述 15pt 黑50% @24,66 高36；双按钮 135×44 间距 36 @y116） */
-.nt-modal-title { display: block; font-size: var(--fs-xl); font-weight: var(--fw-mid); margin-bottom: 14px; }
-.nt-modal-desc { display: block; font-size: var(--fs-body-15); color: var(--nt-text-50); line-height: 1.2; margin-bottom: 14px; }
-.nt-modal-btns { display: flex; gap: 36px; margin-top: auto; }
-.nt-modal-btns .nt-pill-btn { flex: 1; height: 44px; }
-/* 次要按钮（取消）：白底 + 1pt 黑描边（设计稿 135×44 描边 1） */
-.nt-pill-btn.ghost {
-  background: var(--nt-paper);
-  color: var(--nt-ink);
-  border: var(--b-btn) solid var(--nt-line-strong);
-  box-shadow: none;
-}
+/* 首页空态：Logo → 标题 → 搜索胶囊 → 免责，40ms 一档 */
+.nt-cascade .nt-hero-logo  { animation-delay: 0ms; }
+.nt-cascade .nt-hero-title { animation-delay: 40ms; }
+.nt-cascade .nt-hero-pill  { animation-delay: 80ms; }
+.nt-cascade .nt-hero-note  { animation-delay: 120ms; }
+/* 二级页：页名 → 正文卡 → 双按钮 → 页脚 */
+.nt-cascade .nt-page-h  { animation-delay: 0ms; }
+.nt-cascade .nt-dl-card { animation-delay: 40ms; }
+.nt-cascade .nt-dual    { animation-delay: 80ms; }
+.nt-cascade .nt-foot    { animation-delay: 120ms; }
+/* 品牌区与设置卡（关于页 4 张 / 关于我们页 3 张）：品牌区先落位，卡片依次跟上 */
+.nt-cascade .nt-brand { animation-delay: 0ms; }
+.nt-cascade .nt-setlist .nt-setrow:nth-child(1) { animation-delay: 40ms; }
+.nt-cascade .nt-setlist .nt-setrow:nth-child(2) { animation-delay: 80ms; }
+.nt-cascade .nt-setlist .nt-setrow:nth-child(3) { animation-delay: 120ms; }
+.nt-cascade .nt-setlist .nt-setrow:nth-child(4) { animation-delay: 160ms; }
 
-/* ============ Toast（规范 §3.3 清除缓存反馈）============ */
-/* 居中用 left/right:0 + margin:auto（不占 transform，与入场动画的 translateY 不冲突） */
-.nt-toast {
-  position: fixed; left: 0; right: 0; margin: 0 auto; width: fit-content; bottom: 96px;
-  z-index: 110;
-  background: var(--nt-ink); color: var(--nt-paper);
-  font-size: var(--fs-sub);
-  padding: 10px 20px; border-radius: var(--r-pill);
-  animation: nt-rise 200ms var(--ease-standard) both;
-}
-
-/* ============ 线性图标（设计稿实测：轮廓 7.58×16 / 圆环 15.9×15.9，线宽一律 1.5；容器 24×24，
-   源 SVG 收在 static/icons/，构建期由 sync-mp 内联 base64）============
-   · icon-back（‹）/ icon-forward（›）：V 形折线，轮廓 7.58×16（含描边）→ 中心线 6.08×14.5，线宽 1.5。
-   · icon-forward-danger（›红）：设置区「清除数据」行尾箭头，同形危险红 #FF5733。
-   · icon-search：圆环轮廓 15.9（中心线 r7.2）+ 45° 斜柄，线宽均 1.5，整体视觉体约 18.5。
-   路径约定：PWA <link> 相对 public/pwa/ 写 ../../static/icons/；小程序由 sync-mp.js 构建期替换为内联 base64。 */
-.nt-icon {
-  display: inline-block;
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: contain;
-  width: var(--ic-chevron); height: var(--ic-chevron);  /* 24px 容器（chevron/箭头/放大镜共用） */
-  flex-shrink: 0;
-}
-/* 后退「‹」（icon-back.svg：24×24 V 形折线，线宽 1.5） */
-.nt-i-back { background-image: url("../../static/icons/icon-back.svg"); }
-/* 前进「›」（icon-forward.svg：设置区行尾箭头，同 24×24） */
-.nt-i-chev { background-image: url("../../static/icons/icon-forward.svg"); }
-/* 搜索放大镜（icon-search.svg：圆环 r7.2 + 斜柄，线宽 1.5，24×24） */
-.nt-i-search { width: var(--ic-chevron); height: var(--ic-chevron); background-image: url("../../static/icons/icon-search.svg"); }
-
-
-/* ============ 深色主题（整体反色，规范 2026-10-12）============ */
-/* 规则：只反色「界面色板」（背景/文字/描边/阴影/线性图标）。
-   宜忌、五行业务语义色不翻转 —— 它们走独立变量 --nt-yi / --nt-ji / --nt-wuxing-*，
-   在浅/深两态下保持同一套，保证业务含义（红=吉、绿=凶等）跨主题一致、可读。 */
+/* ============ 深色主题（整体反色）============
+ * 规则：只反色「界面色板」（背景 / 文字 / 线性图标）。设计稿只给了浅色，深色为等价反色方案：
+ *   白底 ↔ 纯黑底；#000 文字 ↔ #fff；透明度档位一一对应。
+ * ⚠️ 深色下「面」的层级不能只靠把底色压更黑（#0a0a0a ≈ #000，卡片会消失）——
+ *    必须把纸面提亮到明显可辨，见下面 --nt-paper / --nt-elevated。 */
 .nt-dark {
-  /* 背景层：纯黑底 */
+  color-scheme: dark;       /* 深色下浏览器原生 UI（滚动条/回弹底色/控件）同步转深，否则会闪白 */
   --nt-bg: #000000;
-  --nt-paper: #0a0a0a;
-  --nt-sunken: #161616;
+  --nt-paper: #1a1a1a;      /* 深色下的纸面必须比底色明显亮，否则去掉描边后卡片就看不见了（原 #0a0a0a 太接近纯黑） */
+  --nt-elevated: #2c2c2e;   /* 抬升面（弹窗 / 卡片悬停）：压在压暗的黑遮罩上仍要能分辨 */
 
-  /* 文字层：反白 */
+  /* 搜索胶囊光环：深色底上墨色看不见 → 换成淡白。柔晕比浅色略强（纯黑对比度高，太弱会被"黑"吞掉）。
+   * v3.1.0 与浅色同步去细环 + 柔晕加深（.05→.10、.13→.24）。 */
+  --nt-halo-soft: rgba(255, 255, 255, 0.10);
+  --nt-halo-glow: rgba(255, 255, 255, 0.24);
+
   --nt-ink: #ffffff;
-  --nt-text: #e6e6e6;
   --nt-text-2: #a1a1a1;
-  --nt-text-3: #5c5c5c;
-  --nt-placeholder: rgba(255, 255, 255, 0.3);  /* 占位：深=白 30% */
-  --nt-text-50: rgba(255, 255, 255, 0.5);   /* 设置项描述/内容页正文：深=白 50% */
-  --nt-text-20: rgba(255, 255, 255, 0.2);   /* 结果页正文：深=白 20% */
-  --nt-text-footer: #595959;
-  --nt-foot: rgba(255, 255, 255, 0.3);  /* 页脚：深=白 30% */
-  --nt-danger: #FF5733;               /* 危险红（设计稿 #FF5733；语义色不翻） */
+  --nt-placeholder: rgba(255, 255, 255, 0.3);
+  --nt-text-50: rgba(255, 255, 255, 0.5);
+  --nt-text-20: rgba(255, 255, 255, 0.2);
+  --nt-foot: rgba(255, 255, 255, 0.3);
+  --nt-danger: #FF5733;               /* 语义色不翻，深色下仍是 #FF5733 */
   --nt-danger-desc: rgba(255, 87, 51, 0.5);
 
-  /* 描边层 */
-  --nt-line: #1f1f1f;
-  --nt-line-strong: #ffffff;
-
-  /* 质感：阴影改「弱亮光」，内凹保持 */
-  --sh-card: 0 2px 12px rgba(255, 255, 255, 0.06);
-  --sh-float: 0 4px 16px rgba(255, 255, 255, 0.10);
-  --sh-sunken: inset 0 1px 3px rgba(0, 0, 0, 0.4);
+  /* 五行五色（深色版）—— 在纯黑底上要用「亮、跳」的一档，深色版与浅色版一一对应。
+   * 金在深色下反而回到暖金（浅灰在深底上够亮，#d4c89a 更耐看且明确是"金"）；
+   * 宜/忌 也换到更亮的绿/红，保证在黑底上对比充足。 */
+  --nt-yi: #4ade80;        /* 宜（吉）· 深绿→亮绿 */
+  --nt-ji: #f87171;        /* 忌（凶）· 深红→亮红 */
+  --wx-jin: #d4c89a;
+  --wx-mu:  #4ade80;
+  --wx-shui: #60a5fa;
+  --wx-huo: #f87171;
+  --wx-tu:  #d6b25e;
 }
 /* 深色下的线性图标：源 SVG 为黑线，invert 反白（放大镜 / 返回‹ / 前进›） */
 .nt-dark .nt-i-search,
@@ -544,29 +916,38 @@ page { scrollbar-width: none; -ms-overflow-style: none; }
 .nt-dark .nt-i-chev {
   filter: invert(1);
 }
-/* 例外：危险红箭头（清除数据项）不反白——invert 会把红变青，深色下保持红色 #FF5733 */
+/* 例外：危险红箭头（清除数据项）不反白 —— invert 会把红变青，深色下保持红色 #FF5733 */
 .nt-dark .nt-setrow.danger .nt-i-chev { filter: none; }
-/* 业务语义色：浅/深一致，不随主题翻转（宜忌吉凶 / 五行颜色将来接在这里） */
-.nt-dark,
-:root {
-  --nt-yi: #1a7f37;      /* 宜（吉）：绿 */
-  --nt-ji: #c62828;      /* 忌（凶）：红 */
-}
+/* 业务语义色（宜忌吉凶 / 五行）：全软件唯二允许带色的地方，且**双主题适配**（浅色用深版、深色用浅版）。
+ * 与 .nt-dark 里其他变量一起翻转 —— 这是有意为之的例外，与「界面色板整体反色」不冲突。
+ * 工具类：结果页里「宜」标绿、「忌」标红；五行标签用对应色。三端共用同一套类名。 */
+.nt-c-yi { color: var(--nt-yi); }
+.nt-c-ji { color: var(--nt-ji); }
+.nt-wx-jin { color: var(--wx-jin); }
+.nt-wx-mu { color: var(--wx-mu); }
+.nt-wx-shui { color: var(--wx-shui); }
+.nt-wx-huo { color: var(--wx-huo); }
+.nt-wx-tu { color: var(--wx-tu); }
 
-/* ============ 桌面端专属（悬停态，规范 §3.3/§6.4；WXSS 会忽略 @media hover）============ */
+/* ============ 桌面端专属（悬停态；WXSS 会忽略 @media hover，无害）============
+ * ⚠️ 不写「搜索框 focus-within 强调」：那属于"常驻特效"（聚焦后底色一变、看着像描边），
+ *    用户明确要求去掉。文本框的聚焦提示交给光标（HIG：native text field 不需要自绘聚焦环）。
+ * 卡片悬停用「抬升面」而不是底色：--nt-elevated 在浅色/深色下都比纸面更亮，
+ *   反馈方向恒定（"浮起来"），不会出现深色下悬停反而更暗的反直觉。 */
 @media (hover: hover) and (min-width: 768px) {
-  .nt-card:hover,
-  .nt-list-row:hover { background: var(--nt-bg); }
+  .nt-setrow:hover { background: var(--nt-elevated); }
   .nt-pill-btn:hover { opacity: 0.85; }
   .nt-pill-search:hover { opacity: 0.85; }
-  .nt-pill:focus-within { background: var(--nt-bg); }
 }
 
-/* ============ 无障碍降级（规范 §3.4；WXSS 会忽略，无害）============ */
-@media (prefers-reduced-motion: reduce) {
-  .nt-page-in,
-  .nt-fade-up,
-  .nt-skeleton,
-  .nt-mask,
-  .nt-toast { animation-duration: 0ms !important; }
+/* ============ 响应式：小屏手机 / 大屏手机 / 平板 / 电脑 / 网页 ============
+ * 原则（HIG）：字号永不随视口缩放；留白可收紧；宽屏上内容行宽必须限宽以保可读性。
+ *   ① 超小屏（< 360pt）：左右留白 24 → 16（HIG 最小边距），搜索胶囊改为满宽
+ *   ② 常规 / 大屏手机（360–767）：完全按设计稿 —— 留白 24、卡片满宽、字号不变
+ *   ③ 平板（768–1023）：内容居中，最大宽 640（留白由居中产生，不拉伸卡片）
+ *   ④ 电脑 / 网页（≥1024）：内容居中，最大宽 720
+ * 居中限宽由各壳的页面根节点承担（见各壳 @media），此处只收紧 token。 */
+@media screen and (max-width: 359px) {
+  :root,
+  page { --gutter: 16px; --pill-w: 100%; }
 }

@@ -22,7 +22,6 @@
   var GAN_W = DB.GAN_WUXING, ZHI_W = DB.ZHI_WUXING;
 
   function posMod(a, m) { return ((a % m) + m) % m; }
-  function pad2(n) { return (n < 10 ? '0' : '') + n; }
 
   // 东八区：把「世界时 UTC 的某日某刻」换算成北京墙钟（用于节气落在哪一天）
   function toBeijing(dt) { // dt: JS Date（UTC 语义）

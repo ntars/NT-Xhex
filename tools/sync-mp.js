@@ -23,6 +23,7 @@
 var fs = require('fs');
 var path = require('path');
 var crypto = require('crypto');
+var cp = require('child_process');
 
 var ROOT = path.resolve(__dirname, '..');
 var SRC = path.join(ROOT, 'modules');
@@ -152,6 +153,15 @@ function main() {
       bad += tplProblems.length;
     } else {
       console.log('  ✓ WXML 模板传参（<template is> 均带 data）');
+    }
+    // 版本一致性体检：7 处散落版本号必须与 version.json 一致（由 tools/sync-version.js 收敛）。
+    //   不一致 → CI 直接红，避免「改了静态资源漏动 CACHE 名 / 漏改某处版本」。
+    try {
+      cp.execSync('node tools/sync-version.js --check', { cwd: ROOT, stdio: 'inherit' });
+      console.log('  ✓ 版本号 7 处与 version.json 一致');
+    } catch (e) {
+      console.log('  ✗ 版本号漂移（跑 node tools/sync-version.js 修复）');
+      bad++;
     }
     console.log(bad === 0 ? '[sync-mp] 产物完整且与 modules/ 一致' : '[sync-mp] 发现 ' + bad + ' 处不一致，请重新生成');
     process.exit(bad === 0 ? 0 : 1);

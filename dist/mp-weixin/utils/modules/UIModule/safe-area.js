@@ -26,19 +26,29 @@
 })(typeof self !== 'undefined' ? self : this, function () {
 
   /**
+   * 设计稿「机身边界带」最小高度（pt）——见 theme.css 同名 token。
+   * 设计稿在画布上下各模拟了一段机身区域，要求：图形不画，**高度必须留**。
+   * 顶带 59（状态栏）；底带 34（手势条）。真机安全区比它大就取真机值，比它小就保底。
+   * 这样「画布总高不变、两段占位不减」在三端一致成立。
+   */
+  var MIN_TOP = 59;
+  var MIN_BOTTOM = 34;
+
+  /**
    * 计算安全区
    * @returns {{top:number, aboutTop:number, right:number, bottom:number}}
    */
   function calc() {
-    // H5 / PWA：CSS env(safe-area-inset-*) 已处理，这里不需要行内避让
+    var fallback = { top: MIN_TOP, aboutTop: MIN_TOP + 44, right: 0, bottom: MIN_BOTTOM };
+    // H5 / PWA：由 CSS env(safe-area-inset-*) 处理（各壳 H5 样式块已升为 max(设计带, env)），这里给设计带即可
     if (typeof window !== 'undefined' && !(typeof wx !== 'undefined' && wx) && !(typeof uni === 'object' && uni)) {
-      return { top: 0, aboutTop: 0, right: 0, bottom: 0 };
+      return fallback;
     }
     // 微信小程序 / uni-app 小程序端：统一走新 API getWindowInfo
     var api = (typeof wx !== 'undefined' && wx && wx.getWindowInfo) ? wx
             : (typeof uni === 'object' && uni && uni.getWindowInfo) ? uni
             : null;
-    if (!api) return { top: 0, aboutTop: 0, right: 0, bottom: 0 };
+    if (!api) return fallback;
 
     // 全防御：任何字段缺失/老基础库不支持 → 降级，绝不 throw
     // 注意：wx.getWindowInfo() 的安全区字段是 safeArea（{top,right,bottom,left}），并非 safeAreaInsets；
@@ -49,19 +59,21 @@
     var statusBar = info.statusBarHeight || 0;
     var width = info.windowWidth || info.screenWidth || 375;
     var bottomInset = (safe && info.screenHeight) ? Math.max(0, info.screenHeight - safe.bottom) : 0;
+    // 与设计带取大者：真机安全区更大时用真机值，更小时保底到设计稿留白
+    var top = Math.max(MIN_TOP, rect ? rect.top : statusBar);
     return {
-      top: rect ? rect.top : statusBar,
-      aboutTop: rect ? rect.bottom + 8 : statusBar + 44,
+      top: top,
+      aboutTop: Math.max(MIN_TOP + 44, rect ? rect.bottom + 8 : statusBar + 44),
       right: rect ? (width - rect.right + 16) : 0,
-      bottom: bottomInset
+      bottom: Math.max(MIN_BOTTOM, bottomInset)
     };
   }
 
   /**
-   * 各视图安全区默认值（calc() 未就绪 / H5·PWA 端使用）
-   * H5/PWA 由 CSS env(safe-area-inset-*) 兜底，这里给 0 即可
+   * 各视图安全区默认值（calc() 未就绪时使用）= 设计稿机身边界带。
+   * ⚠️ 不要给 0：给 0 会让首帧顶部/底部避让塌掉、页面闪一下再跳位。
    */
-  var DEFAULTS = { top: 0, aboutTop: 0, right: 0, bottom: 0 };
+  var DEFAULTS = { top: MIN_TOP, aboutTop: MIN_TOP + 44, right: 0, bottom: MIN_BOTTOM };
 
-  return { calc: calc, DEFAULTS: DEFAULTS };
+  return { calc: calc, DEFAULTS: DEFAULTS, MIN_TOP: MIN_TOP, MIN_BOTTOM: MIN_BOTTOM };
 });

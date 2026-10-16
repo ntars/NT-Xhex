@@ -1,24 +1,25 @@
 <template>
-  <view class="ab nt-page-safe">
-    <!-- 统一固定上导航栏（.nt-nav，theme.css 单一真源）：返回「‹」（源 后退.svg）+ 标题「关于」居中；元素绝对定位、无左右槽 -->
+  <!-- 关于页（设计稿「关于页」，画布 402×874pt）
+       导航「关于」+ 品牌区（信息组 24,130 354×148：Logo 64.27×72 → 玄玖灵犀 22pt → 演乾坤·知天命 12pt，间距 16）
+       + 4 张设置卡（302/402/502/602 各 354×84，卡距 16，第 4 张全红态）+ 页脚两行。 -->
+  <view class="ab nt-page-safe" :style="pageStyle">
     <view class="nt-nav" :style="navStyle">
-      <view class="nt-nav-back nt-press" @click="onBack">
+      <view class="nt-nav-back nt-press" @click="$emit('back')">
         <view class="nt-icon nt-i-back"></view>
       </view>
       <text class="nt-nav-title">关于</text>
     </view>
 
-    <scroll-view class="ab-body" scroll-y enhanced :show-scrollbar="false">
-      <!-- 品牌区（定稿v3 §3.2：Logo 72×80.6 → 玄玖灵犀 22.9/600 → 副标题 12.5/600/黑30%；居中普通区，非卡片） -->
-      <view class="ab-brand">
-        <image class="ab-brand-logo" :src="themeLogo" mode="aspectFit" />
-        <text class="ab-brand-name">玄玖灵犀</text>
-        <text class="ab-brand-sub">{{ about.slogan }}</text>
+    <!-- 无页名：首块内容直接从导航内容底 +24 起排（= 设计稿品牌区 y130）→ .nt-pt -->
+    <scroll-view class="nt-pgbody nt-pt" scroll-y enhanced :show-scrollbar="false">
+      <view class="nt-brand">
+        <image class="nt-brand-logo" :src="themeLogo" mode="aspectFit" />
+        <text class="nt-brand-name">{{ about.name }}</text>
+        <text class="nt-brand-sub">{{ about.slogan }}</text>
       </view>
 
-      <!-- 设置区（原型：4 张独立卡 354×84、16pt 间距、发丝线 0.4pt；清除项全红态。
-           3 项点进二级页面（§4 一稿两用）；清除项只弹通用弹窗（§5），不走二级页） -->
-      <view class="nt-setlist">
+      <!-- 设置区 4 卡：refs/intro → 内容详情页；us → 关于我们页；清除项 → 就地弹窗（不走二级页） -->
+      <view class="nt-setlist ab-setlist">
         <view
           class="nt-setrow"
           :class="{ danger: row.danger }"
@@ -35,29 +36,30 @@
       </view>
     </scroll-view>
 
-    <!-- 底部信息条（定稿v3 §3.4：固定底条，与首页页脚同规格同位置；免责+版本，版本号取 settings 真值） -->
     <view class="nt-foot">
-      <text class="nt-setfoot-line" v-for="(l, i) in footLines" :key="i">{{ l }}</text>
+      <text class="nt-setfoot-line" v-for="(l, i) in about.aboutFoot" :key="i">{{ l }}</text>
     </view>
 
-    <!-- 清除缓存通用弹窗（定稿v3 §5：面板 354×192、双按钮 141×49 间距 24pt；取消=白底黑边、清除=黑底白字） -->
-    <view class="nt-mask" v-if="clearOpen" @click="clearOpen = false">
+    <!-- 清除缓存确认弹窗（设计稿「弹窗」：面板 354×184 圆角 24 白底描边 1pt；标题 22pt / 描述 15pt / 双按钮 135×44 间距 36） -->
+    <!-- 出场动画：clearOpen 管「卸载」，clearClosing 管「播 nt-fall」。关闭时先挂退场类播 200ms，
+         播完再卸载（见 closeModal）——直接 clearOpen=false 会把节点摘掉，退场动画来不及播。 -->
+    <view class="nt-mask" :class="{ 'nt-mask-out': clearClosing }" v-if="clearOpen" @click="closeModal">
       <view class="nt-modal" @click.stop>
         <text class="nt-modal-title">{{ about.clearModal.title }}</text>
         <text class="nt-modal-desc">{{ about.clearModal.desc }}</text>
         <view class="nt-modal-btns">
-          <view class="nt-pill-btn ghost" @click="clearOpen = false">{{ about.clearModal.cancel }}</view>
+          <view class="nt-pill-btn ghost" @click="closeModal">{{ about.clearModal.cancel }}</view>
           <view class="nt-pill-btn" @click="doClear">{{ about.clearModal.confirm }}</view>
         </view>
       </view>
     </view>
 
-    <!-- 清除完成 Toast -->
     <view class="nt-toast" v-if="toastOpen">{{ toastText }}</view>
   </view>
 </template>
 
 <script>
+// 关于页（顶级 4 卡）：文案/标题/底部行全取 settings.js 单一真源；视觉走 theme.css；安全区走 safe-area.js。
 import Settings from '@/modules/SettingsModule/settings.js'
 import Conversation from '@/modules/HomeModule/conversation.js'
 import Analyzer from '@/modules/AnalyzerModule/analyzer.js'
@@ -65,20 +67,35 @@ import Storage from '@/modules/StorageModule/storage.js'
 import SafeArea from '@/modules/UIModule/safe-area.js'
 import Theme from '@/modules/UIModule/theme.js'
 import '@/modules/UIModule/theme.css'
+
 export default {
   name: 'SettingsModule',
   emits: ['back', 'detail', 'us', 'themechange'],
   data() {
-    var th = Theme.current()
-    return { about: Settings.about(), clearOpen: false, toastOpen: false, toastText: '', nav: SafeArea.DEFAULTS, themeLogo: Theme.logoFor(th) }
+    return {
+      about: Settings.about(),
+      clearOpen: false,
+      clearClosing: false,   // 退场动画门控：true 时给 .nt-mask 挂 .nt-mask-out 播 nt-fall
+      toastOpen: false,
+      toastText: '',
+      nav: SafeArea.DEFAULTS,
+      themeLogo: Theme.logoFor(Theme.current())
+    }
   },
   computed: {
-    // 底部两行说明（版本号已在 about().aboutFoot 内取真值）
-    footLines() { return this.about.aboutFoot },
     // 小程序端行内避让状态栏/胶囊；H5/APP 走 CSS env()
     navStyle() {
       // #ifdef MP-WEIXIN
       return { marginTop: this.nav.top + 'px' }
+      // #endif
+      // #ifndef MP-WEIXIN
+      return {}
+      // #endif
+    },
+    // 小程序端 WXSS 不支持 env() → 手势条避让由 safe-area.js 行内注入
+    pageStyle() {
+      // #ifdef MP-WEIXIN
+      return { paddingBottom: this.nav.bottom + 'px' }
       // #endif
       // #ifndef MP-WEIXIN
       return {}
@@ -91,26 +108,46 @@ export default {
   },
   methods: {
     onBack() { this.$emit('back') },
-    // 点设置项（定稿v3 §3.3/§4）：4 个内容项 → 二级页面（emit detail 交 shell 切视图）；清除项 → 通用弹窗（§5，不走二级页）
+    // 点设置项：路由判定走 Settings.rowAction（单一真源，与 PWA/小程序同一份）
     onRow(row) {
-      if (row.danger) { this.clearOpen = true; return }
-      if (row.id === 'us') { this.$emit('us'); return }
+      var act = Settings.rowAction(row)
+      if (act === 'clear') { this.clearOpen = true; return }
+      if (act === 'us') { this.$emit('us'); return }
       this.$emit('detail', row.id)
     },
+    // 退场时长：与 theme.css 的 --d-modal-out(200ms) 保持一致（三端各写一个带注释常量，见 app.js 同处说明）
+    MODAL_OUT_MS: 200,
+    // 统一的「播退场 → 再卸载」收尾：cancel / Esc / 点遮罩 / 确认 都走这里，避免各写一遍。
+    closeModal(then) {
+      if (this._modalClosing) return
+      this._modalClosing = true
+      this.clearClosing = true                    // 挂 .nt-mask-out，播 nt-fall（淡出 + 下沉 200ms）
+      var self = this
+      setTimeout(function () {
+        self.clearOpen = false                    // 卸载节点
+        self.clearClosing = false
+        self._modalClosing = false
+        if (then) then()
+      }, self.MODAL_OUT_MS)
+    },
     doClear() {
+      // 先清数据/同步状态，再走统一的退场收尾（then 里不再动弹窗相关状态）
       Settings.clearData()
       // 同步清空共享问答实例的当前结果
       var conv = Conversation.createConversation({ analyzer: Analyzer, storage: Storage })
       conv.clear()
-      this.clearOpen = false
-      this.toastText = '已恢复出厂设置'
-      this.toastOpen = true
       // 清缓存会重置主题偏好（回落跟随系统）→ 重读主题、刷新品牌 logo；
       // 并 emit themechange，让页面根元素（.page/.nt-dark）同步反色，否则清完主题看着没变
       var next = Theme.current()
       this.themeLogo = Theme.logoFor(next)
       this.$emit('themechange', next)
+      this.closeModal()
+      this.toast(this.about.clearModal.done)
+    },
+    toast(text) {
       var self = this
+      this.toastText = text
+      this.toastOpen = true
       clearTimeout(this._toastTimer)
       this._toastTimer = setTimeout(function () { self.toastOpen = false }, 2000)
     }
@@ -119,25 +156,14 @@ export default {
 </script>
 
 <style scoped>
-/* 布局仅此一处；视觉规范全部走 theme.css 的 --nt-* 变量与 .nt-* 类 */
-.ab { display: flex; flex-direction: column; flex: 1; min-height: 0; background: var(--nt-bg); color: var(--nt-ink); }
+/* 布局仅此一处；尺寸/字色/圆角/间距全部走 theme.css 的 --nt-* 与 .nt-*（单一真源）。
+   视图容器 .ab 的 flex 版式与 .ab-setlist 节奏已集中在 theme.css（v3.1.0 去重），
+   本壳只留「页面根 .ab 的背景色 + 响应式限宽」。 */
+.ab {
+  background: var(--nt-bg); color: var(--nt-ink);
+}
 
-/* 顶栏规格走 theme.css 的 .nt-nav（单一真源）；此处只留本页布局 */
-
-/* scroll-view 在 flex 列里必须 flex:1 + min-height:0 + height:0（基线），否则高度不确定无法滚动 */
-.ab-body { flex: 1; min-height: 0; height: 0; padding: 0 24px; box-sizing: border-box; }
-
-/* 品牌区（定稿v3 §3.2：居中普通区，非卡片 —— Logo 72×80.6 → 玄玖灵犀 22.9/600 → 副标题 12.5/600/黑30%） */
-.ab-brand { display: flex; flex-direction: column; align-items: center; padding: 32px 16px 20px; }
-.ab-brand-logo { width: 72px; height: 80.4px; }
-.ab-brand-name { margin-top: 12px; font-size: var(--fs-xl); font-weight: var(--fw-mid); letter-spacing: 1.6px; }
-.ab-brand-sub { margin-top: 8px; font-size: var(--fs-note); font-weight: var(--fw-mid); color: var(--nt-foot); letter-spacing: 0.8px; }
-
-/* 设置区下方留白（与底部说明拉开节奏；定稿 §3.3/§3.4） */
-.nt-setlist { margin-bottom: 8px; }
-.ab-body .nt-setfoot { margin-top: 24px; }
-
-/* 平板/电脑：限宽居中（§6.2） */
-@media screen and (min-width: 768px) { .ab { max-width: 640px; margin: 0 auto; width: 100%; } }
-@media screen and (min-width: 1024px) { .ab { max-width: 720px; } }
+/* 响应式（HIG）：平板 768+ 限宽 640 居中，电脑 1024+ 限宽 720 */
+@media screen and (min-width: 768px) { .ab { max-width: var(--w-tablet); margin: 0 auto; width: 100%; } }
+@media screen and (min-width: 1024px) { .ab { max-width: var(--w-desktop); } }
 </style>

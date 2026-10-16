@@ -1,26 +1,11 @@
-/* NT-Xhex 玄玖灵犀 · Service Worker（H5/PWA 形态）
-   离线可用 + 缓存外壳。策略：网络优先，失败回退缓存，保证纯本地运行。
-   此处 scope 为 public/pwa/（独立运行壳）。 */
-const CACHE = 'nt-xhex-pwa-v3.0';
-const CORE = ['./', './index.html', './manifest.json'];
-
-self.addEventListener('install', function (e) {
-  e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(CORE); }).then(function () { return self.skipWaiting(); }));
-});
-self.addEventListener('activate', function (e) {
-  e.waitUntil(caches.keys().then(function (keys) {
-    return Promise.all(keys.filter(function (k) { return k !== CACHE; }).map(function (k) { return caches.delete(k); }));
-  }).then(function () { return self.clients.claim(); }));
-});
-self.addEventListener('fetch', function (e) {
-  if (e.request.method !== 'GET') return;
-  e.respondWith(
-    fetch(e.request).then(function (res) {
-      var copy = res.clone();
-      caches.open(CACHE).then(function (c) { c.put(e.request, copy); });
-      return res;
-    }).catch(function () {
-      return caches.match(e.request).then(function (hit) { return hit || caches.match('./index.html'); });
-    })
-  );
+/* NT-Xhex 玄玖灵犀 · Service Worker（浏览器 PWA 独立壳，scope = public/pwa/）
+   缓存外壳逻辑单一真源 = modules/UIModule/sw-core.js（与 uni-app H5 的根 sw.js 共用一份）。
+   本壳只传本形态差异参数：CACHE 命名空间 `nt-xhex-pwa-v<ver>` + CORE/fallback 均带 ./ 前缀
+   （PWA 独立壳的 scope 是 public/pwa/，与根 H5 的 '/' 不同，故 CORE 路径形态各异，保留在各自壳里）。
+   CACHE 内嵌版本号（改静态资源后由 tools/sync-version.js 统一更新，见 version.json）。 */
+importScripts('../../modules/UIModule/sw-core.js');
+self.__SWCore.run({
+  cache: 'nt-xhex-pwa-v3.1.0',
+  core: ['./', './index.html', './manifest.json'],
+  fallback: './index.html'
 });

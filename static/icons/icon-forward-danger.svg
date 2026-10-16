@@ -1,4 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-  <!-- 清除数据行尾红色「›」：形状同 icon-forward，色值取设计稿危险红 #FF5733（非 #FF5730） -->
-  <path d="M8.96 4.75 L15.04 12 L8.96 19.25" fill="none" stroke="#FF5733" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="8.8628" height="17.0606" viewBox="-0.5303 -0.5303 8.8628 17.0606">
+  <!-- 前进「›」危险红版 = 设计稿「关于页 / 清除数据」卡行尾箭头。
+       ── 与黑色「›」只有颜色之别，几何一字不差（镜像、臂 45°/开合 90°、平头线帽、G1 连续）。──
+       色值取自 sketch 原始分量：red = 1, green = 0.3411765, blue = 0.2 → #FF5733；
+       同一张卡的 1pt 描边也是 #FF5733（实测确认），两者本就同色。
+       viewBox 同黑色版：墨迹外框 −0.5303, −0.5303, 8.8628, 17.0606。 -->
+  <path d="M0 16 L7.29 8.71 C7.68 8.32 7.68 7.68 7.29 7.29 L0 0"
+        fill="none" stroke="#FF5733" stroke-width="1.5"/>
 </svg>
