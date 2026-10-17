@@ -259,4 +259,20 @@ var dmO4 = R.run('qianwen', ent(), '梦到独角兽跳舞');
 ok(dmO4 && dmO4.text.indexOf('词库现有 161 条 / 14 类') >= 0, '未收录给总览并明说不硬编');
 ok(dmO4.text.indexOf('暂未收录') >= 0, '未收录明确说「暂未收录」');
 
+// ===== v3.1.16 六爻分门断语（黄金策用神体系）=====
+console.log('== v3.1.16 六爻分门断语 ==');
+var lyE = ent(2026, 10, 17, 14);
+var lyO = R.run('liuyao', lyE, '六爻 测财运 背 3 1 2 0 3 2');
+ok(lyO && lyO.text && lyO.text.indexOf('【六爻纳甲】') >= 0, '六爻有料出标题');
+ok(lyO.text.indexOf('【求财门】') >= 0, '问财运落到「求财门」');
+ok(/用神「妻财」（火），原神「子孙」，忌神「兄弟」/.test(lyO.text), '求财门用神/原神/忌神正确（坎宫水 → 财为火）');
+ok(lyO.text.indexOf('依据：') >= 0 && lyO.text.indexOf('世（火）克应（金）') >= 0, '给出逐条依据含世应关系');
+ok(lyO.text.indexOf('非原文抄录') >= 0, '明说不抄《黄金策》原文（只形式化其结构）');
+var lyB = R.run('liuyao', lyE, '六爻 官司 背 3 1 2 0 3 2');
+ok(lyB.text.indexOf('【官讼门】') >= 0, '问官司落到「官讼门」');
+ok(/原神「妻财」，忌神「子孙」/.test(lyB.text), '官讼门忌神为子孙（克官鬼）');
+ok(lyB.text.indexOf('背 3 1 2 0 3 2') >= 0 || lyB.text.indexOf('水泽节') >= 0, '同背数同盘（背数后带年份也不误读）');
+var lyN = R.run('liuyao', lyE, '六爻 摇一卦');
+ok(lyN.text.indexOf('分门断语：要按《黄金策》用神体系断') >= 0, '没说所问之事时提示可选的六门');
+
 if (fails === 0) { console.log('全部通过 ✓'); process.exit(0); } else { console.log(fails + ' 处失败'); process.exit(1); }

@@ -876,7 +876,7 @@
       key: 'liuyao', 名: '六爻纳甲',
       板块: '三式推演', 短名: '排六爻',
       触发词: ['六爻', '纳甲', '摇卦', '铜钱卦', '爻', '世应', '六亲', '卦象详解'],
-      说明: '铜钱起卦（指定 6 次背数或自动）→ 本卦/变卦/八宫纳甲/安世应/六亲/六神/旬空月破（C18 内核，京房纳甲）。',
+      说明: '铜钱起卦（指定 6 次背数或自动）→ 本卦/变卦/八宫纳甲/安世应/六亲/六神/旬空月破（C18 内核，京房纳甲）+ 分门断语：按《黄金策》「用神—原神—忌神」生克结构判求财/婚姻/疾病/官讼/功名/出行六门，逐条给出加减分依据。',
       run: function (ent, text) {
         if (!LY || !LY.cast) return { text: '【六爻】内核未加载，暂不可用。' };
         try {
@@ -884,8 +884,9 @@
           // 尝试从文本解析 6 次背数（如「背 3 1 2 0 3 2」）
           var m = String(text || '').match(/背\s*([0-3\s,，、]+)/);
           if (m) {
-            var bs = m[1].replace(/[^\d]/g, '').split('').map(Number).filter(function (x) { return x >= 0 && x <= 3; });
-            if (bs.length === 6) inp.backs = bs;
+            // 按「数字段」切：「背 3 1 2 0 3 2 2026年」里最后那个 2026 是年份、不是背数，须剔掉
+            var bs = m[1].split(/[^\d]+/).filter(function (x) { return x !== '' && +x <= 3; }).map(Number);
+            if (bs.length >= 6) inp.backs = bs.slice(0, 6);
           }
           if (ent && ent.date) { inp.y = ent.date.year; inp.m = ent.date.month || 1; inp.d = ent.date.day || 1; inp.h = ent.time ? ent.time.hour : 12; }
           // 测事 → 用神
@@ -901,6 +902,18 @@
           });
           if (c.用神) L.push('用神：' + c.用神 + '。');
           if (c.日干) L.push('日干 ' + c.日干 + '，旬空 ' + (c.旬空.join('') || '无') + '，月建 ' + (c.月建 || '—') + '。');
+          // 分门断语（v3.1.16）：用神—原神—忌神 生克推演
+          var men = LY.menOf(String(text || '')) || (inp.事 ? (LY.menOf(inp.事) || null) : null);
+          if (men && LY.menJudge) {
+            var mj = LY.menJudge(c, men, { 性别: (ent && ent.gender === 'female') ? '女' : '男' });
+            if (!mj.err) {
+              L.push('【' + mj.门 + '门】用神「' + mj.用神 + '」（' + mj.用神五行 + '），原神「' + mj.原神 + '」，忌神「' + mj.忌神 + '」→ ' + mj.判 + '（' + (mj.分 >= 0 ? '+' : '') + mj.分 + ' 分）。');
+              L.push('依据：' + mj.依据.join('；') + '。');
+              L.push('口径：' + mj.说明 + '门义——' + mj.备注 + '。');
+            }
+          } else {
+            L.push('分门断语：要按《黄金策》用神体系断，请说明所问之事（求财 / 婚姻 / 疾病 / 官讼 / 功名 / 出行）。');
+          }
           if (c.缺料) L.push('（' + c.缺料 + '）');
           return { text: L.join('\n') };
         } catch (e) {

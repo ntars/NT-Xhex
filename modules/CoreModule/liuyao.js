@@ -251,6 +251,173 @@
     return out;
   }
 
+  // ===== v3.1.16 补：分门断语（《黄金策》用神生克体系）=====
+  /**
+   * 口径（先说清，不冒充原文）：
+   *   · 本段**不抄《黄金策》原文**（原文各本互有出入、且属赋体对句，机器硬拆容易断错意）。
+   *     做的是把该书通篇使用的「用神—原神—忌神—仇神」四层生克结构**形式化**成可判定的规则：
+   *     看用神旺衰、原神（生用神者）动不动、忌神（克用神者）动不动、世应谁克谁。
+   *   · 各门用神取通用定论（多源一致）：求财→妻财、功名→官鬼、疾病→官鬼（病）、官讼→官鬼（官方）+
+   *     父母（文书）、出行→世爻为主 + 父母（行李车马）、婚姻→男占妻财 / 女占官鬼。
+   *   · 流派差异：① 疾病一门有「以世为病人」与「以用神为病人」两说，本段按**世爻为病人、官鬼为病、
+   *     子孙为医药**（最通行）；② 官讼有重世应与重官鬼两派，本段两栏都给，不合并。
+   *   · 判分（本应用设定，透明列出）：用神临月建 +2、月建生用神 +1、月建克用神 −2、日辰生用神 +1、
+   *     日辰克用神 −1、用神空亡/月破/日冲 各 −2、原神动 +2、忌神动 −2、用神伏藏 −1、用神全无 −3、
+   *     世克应 +1、应克世 −1。分档：≥3 大吉 / 1~2 吉 / 0 平 / −1~−2 不顺 / ≤−3 凶。
+   */
+  var WX_SHENG = { 木: '火', 火: '土', 土: '金', 金: '水', 水: '木' };   // 我生者
+  var WX_KE = { 木: '土', 土: '水', 水: '火', 火: '金', 金: '木' };      // 我克者
+  function wxShengWo(w) { for (var k in WX_SHENG) if (WX_SHENG[k] === w) return k; return ''; }  // 生我者
+  function wxKeWo(w) { for (var k in WX_KE) if (WX_KE[k] === w) return k; return ''; }            // 克我者
+  /** 六亲 → 五行（以卦宫五行为「我」） */
+  function qinWx(qin, gong) {
+    if (qin === '兄弟') return gong;
+    if (qin === '父母') return wxShengWo(gong);
+    if (qin === '子孙') return WX_SHENG[gong];
+    if (qin === '妻财') return WX_KE[gong];
+    if (qin === '官鬼') return wxKeWo(gong);
+    return '';
+  }
+  /** 五行 → 六亲（qinWx 的反函数） */
+  function qinOfWx(w, gong) {
+    if (!w || !gong) return '';
+    if (w === gong) return '兄弟';
+    if (w === wxShengWo(gong)) return '父母';
+    if (w === WX_SHENG[gong]) return '子孙';
+    if (w === WX_KE[gong]) return '妻财';
+    if (w === wxKeWo(gong)) return '官鬼';
+    return '';
+  }
+
+  /** 分门定义：「用神」可由调用方覆盖（婚姻按性别） */
+  var MEN = {
+    求财: { 名: '求财', 用神: '妻财', 备注: '妻财为财、原神为子孙（财源）、忌神为兄弟（劫财）' },
+    婚姻: { 名: '婚姻', 用神: '妻财', 男: '妻财', 女: '官鬼', 备注: '男占以妻财为妻、女占以官鬼为夫；世为自己、应为对方' },
+    疾病: { 名: '疾病', 用神: '官鬼', 主: '世', 备注: '官鬼为病、子孙为医药、世爻为病人（「以用神为病人」一派另说，未并入）' },
+    官讼: { 名: '官讼', 用神: '官鬼', 副: '父母', 备注: '官鬼为官方与对方、父母为文书状纸、世应分两造' },
+    功名: { 名: '功名', 用神: '官鬼', 副: '父母', 备注: '官鬼为名位、父母为文书学历' },
+    出行: { 名: '出行', 用神: '兄弟', 主: '世', 副: '父母', 备注: '以世爻行人为主、父母为行李车马；世旺宜行、世空破不宜' }
+  };
+  /** 文本 → 门（命中关键词最靠前者优先；都不中返回 null） */
+  function menOf(text) {
+    var t = String(text || ''), hit = null, pos = 1e9;
+    var KW = {
+      求财: ['求财', '财运', '钱', '生意', '买卖', '投资', '赚'],
+      婚姻: ['婚姻', '感情', '婚', '对象', '恋爱', '复合', '配偶'],
+      疾病: ['疾病', '病', '健康', '身体', '痊愈', '手术'],
+      官讼: ['官讼', '官司', '诉讼', '打官司', '纠纷', '是非'],
+      功名: ['功名', '考试', '升迁', '求职', '面试', '学业', '录取'],
+      出行: ['出行', '出差', '远行', '旅行', '赴任', '迁移']
+    };
+    Object.keys(KW).forEach(function (m) {
+      KW[m].forEach(function (k) {
+        var i = t.indexOf(k);
+        if (i >= 0 && i < pos) { pos = i; hit = m; }
+      });
+    });
+    return hit;
+  }
+
+  /**
+   * 按门断卦。入参是 cast() 的返回值；返回结构化的逐条依据 + 分数 + 分档。
+   * @param {Object} r cast() 结果
+   * @param {String} men 门名（MEN 的键）；婚姻可传 opt.性别 决定用神
+   * @param {Object} opt { 性别:'男'|'女' }
+   */
+  function menJudge(r, men, opt) {
+    opt = opt || {};
+    if (!r || !r.爻线) return { err: '需先装卦' };
+    var M = MEN[men];
+    if (!M) return { err: '未收录的门类：' + men + '（现有：' + Object.keys(MEN).join('/') + '）' };
+    var gong = String(r.宫 || '').replace(/^.*\(/, '').replace(/\)$/, '');   // '乾宫(金)' → '金'
+    var lines = r.爻线, out = [], score = 0;
+    function add(n, t) { score += n; out.push((n >= 0 ? '＋' : '－') + Math.abs(n) + ' ' + t); }
+
+    // 用神（婚姻分男女）
+    var yongQin = M.用神;
+    if (men === '婚姻') yongQin = (opt.性别 === '女') ? M.女 : M.男;
+    var yongWx = qinWx(yongQin, gong);
+    var yuanQin = qinOfWx(wxShengWo(yongWx), gong);   // 原神（生用神）
+    var jiQin = qinOfWx(wxKeWo(yongWx), gong);        // 忌神（克用神）
+
+    var 用神爻 = lines.filter(function (l) { return l.六亲 === yongQin; });
+    var 月建 = r.月建 || '', 日辰 = r.日辰 || '';
+    var 月Wx = WX_OF_ZHI[月建] || '', 日Wx = WX_OF_ZHI[日辰] || '';
+
+    if (!用神爻.length) {
+      var fu = (r.伏飞神 || []).filter(function (f) { return f.伏神 && f.伏神.六亲 === yongQin; });
+      if (fu.length) add(-1, yongQin + '不现于卦（用神伏藏于第' + fu.map(function (f) { return f.爻; }).join('/') + '爻），须待出伏');
+      else add(-3, yongQin + '全无（本卦与本宫纯卦皆无此六亲），此事无着落之象');
+    } else {
+      var 爻位 = 用神爻.map(function (l) { return l.爻; }).join('/');
+      var 旺 = false, 衰 = false, 破 = [];
+      用神爻.forEach(function (l) {
+        if (月建 && l.干支.charAt(1) === 月建) { 旺 = true; }
+        if (日辰 && l.干支.charAt(1) === 日辰) { 旺 = true; }
+        if (l.标记 && /空亡/.test(l.标记)) { 衰 = true; 破.push('空亡'); }
+        if (l.标记 && /月破/.test(l.标记)) { 衰 = true; 破.push('月破'); }
+        if (l.标记 && /日冲/.test(l.标记)) { 衰 = true; 破.push('日冲'); }
+      });
+      add(0, yongQin + '现于第' + 爻位 + '爻（五行' + yongWx + '）');
+      if (旺) add(2, '用神临月建或日辰（得时得势）');
+      if (破.length) add(-2 * Math.min(破.length, 2), '用神临' + 破.join('、') + '（其力受损）');
+    }
+    // 月建、日辰对用神的生克（用神五行 vs 月日五行）
+    if (月Wx && yongWx) {
+      if (WX_SHENG[月Wx] === yongWx || 月Wx === yongWx) add(1, '月建' + 月建 + '（' + 月Wx + '）生扶用神' + yongWx);
+      else if (WX_KE[月Wx] === yongWx) add(-2, '月建' + 月建 + '（' + 月Wx + '）克用神' + yongWx);
+    }
+    if (日Wx && yongWx) {
+      if (WX_SHENG[日Wx] === yongWx || 日Wx === yongWx) add(1, '日辰' + 日辰 + '（' + 日Wx + '）生扶用神');
+      else if (WX_KE[日Wx] === yongWx) add(-1, '日辰' + 日辰 + '（' + 日Wx + '）克用神');
+    }
+    // 原神／忌神动不动
+    var 动 = r.动爻 || [];
+    var 原动 = 动.filter(function (n) { var l = lines[n - 1]; return l && l.六亲 === yuanQin; });
+    var 忌动 = 动.filter(function (n) { var l = lines[n - 1]; return l && l.六亲 === jiQin; });
+    if (原动.length) add(2, '原神' + yuanQin + '动（第' + 原动.join('/') + '爻），生扶用神，有助力');
+    if (忌动.length) add(-2, '忌神' + jiQin + '动（第' + 忌动.join('/') + '爻），克伤用神，主阻隔');
+    var 原现 = lines.some(function (l) { return l.六亲 === yuanQin; });
+    var 忌现 = lines.some(function (l) { return l.六亲 === jiQin; });
+    if (!原现) add(-1, '原神' + yuanQin + '不上卦，助力无根');
+    if (忌现 && !忌动.length) add(0, '忌神' + jiQin + '虽现而不动，其害有限');
+
+    // 世应关系
+    var shi = lines[r.世 - 1], ying = lines[r.应 - 1];
+    if (shi && ying) {
+      var sw = shi.五行, yw = ying.五行;
+      if (WX_KE[sw] === yw) add(1, '世（' + sw + '）克应（' + yw + '），我方主动可制对方');
+      else if (WX_KE[yw] === sw) add(-1, '应（' + yw + '）克世（' + sw + '），对方来制，我处被动');
+      else if (WX_SHENG[yw] === sw) add(1, '应生世，得对方相助');
+      else if (WX_SHENG[sw] === yw) add(0, '世生应，我须先付出');
+      else add(0, '世应比和，两造势均');
+    }
+    // 疾病门：子孙为医药，须看其是否得力
+    if (men === '疾病') {
+      var 药 = lines.filter(function (l) { return l.六亲 === '子孙'; });
+      if (!药.length) add(-1, '子孙（医药）不上卦，治病少助力');
+      else if (药.some(function (l) { return l.标记 && /空亡|月破/.test(l.标记); })) add(-1, '子孙（医药）临空破，药力不济');
+      else add(1, '子孙（医药）在卦得力');
+    }
+    // 官讼／功名门：父母（文书）为副用神
+    if (M.副) {
+      var 文 = lines.filter(function (l) { return l.六亲 === M.副; });
+      if (!文.length) add(0, M.副 + '（文书/凭据）不上卦，文书之事难凭');
+      else if (文.some(function (l) { return l.标记 && /空亡|月破/.test(l.标记); })) add(-1, M.副 + '（文书）临空破，凭据不足');
+      else add(1, M.副 + '（文书）在卦可用');
+    }
+    var 判 = score >= 3 ? '大吉（事可成，且成得顺）' : score >= 1 ? '吉（可成，略有阻）'
+      : score === 0 ? '平（成否两可，看后天作为）' : score >= -2 ? '不顺（多阻，宜缓图）' : '凶（用神无根或被克，强求无益）';
+    return {
+      门: M.名, 用神: yongQin, 用神五行: yongWx, 原神: yuanQin, 忌神: jiQin,
+      分: score, 判: 判, 依据: out, 备注: M.备注, 宫五行: gong,
+      说明: '依《黄金策》「用神—原神—忌神」生克结构形式化推演，非原文抄录；权重为本项目设定（见 liuyao.js 段首注释）。'
+    };
+  }
+
+  /** 地支 → 五行（分门断语用；不用爻的五行字段，避免月建日辰无值时报错） */
+  var WX_OF_ZHI = { 子: '水', 丑: '土', 寅: '木', 卯: '木', 辰: '土', 巳: '火', 午: '火', 未: '土', 申: '金', 酉: '金', 戌: '土', 亥: '水' };
+
   /**
    * 铜钱起卦：六次投掷，每次记"背"数(0-3)。
    * @param {Array} backs 长度为 6 的数组，每项为 0-3（背数）；缺省随即模拟。
@@ -352,6 +519,8 @@
     // v3.1.5：飞伏 + 基础断语
     flyingHidden: flyingHidden, judge: judge, SHI_QIN: SHI_QIN, SHI_SHEN: SHI_SHEN,
     GUA_INDEX: GUA_INDEX, PALACES: PALACES, NAJIA: NAJIA, PALACE_WX: PALACE_WX, SHI_YING: SHI_YING,
-    YONG: YONG, xunKongOf: xunKongOf
+    YONG: YONG, xunKongOf: xunKongOf,
+    // v3.1.16：分门断语（《黄金策》用神生克体系形式化）
+    MEN: MEN, menOf: menOf, menJudge: menJudge, qinWx: qinWx, qinOfWx: qinOfWx
   };
 });
