@@ -48,7 +48,8 @@
       require('../CoreModule/ziwei-stars.js'),
       require('../CoreModule/jinkou.js'),
       require('../CoreModule/qimen-ri.js'),
-      require('../CoreModule/qimen-ke.js')
+      require('../CoreModule/qimen-ke.js'),
+      require('../CoreModule/qimen-nianyue.js')
     );
   } else {
     root.NT = root.NT || {};
@@ -82,10 +83,11 @@
       root.NT.core && root.NT.core.ziweiStars,
       root.NT.core && root.NT.core.jinkou,
       root.NT.core && root.NT.core.qimenRi,
-      root.NT.core && root.NT.core.qimenKe
+      root.NT.core && root.NT.core.qimenKe,
+      root.NT.core && root.NT.core.qimenNianYue
     );
   }
-})(typeof self !== 'undefined' ? self : this, function (FEI, NUM, NSTAR, ICE, BZH, XS, WX, N81, CORE, BAZI, ZD, ZW, ASTRO, QM, LR, LY, TY, YZ, XSH, QW, CZ, QF, BP, ZR, QG, LBF, LWS, ZHW, AH, BSS, ZWS, JK, QMR, QMK) {
+})(typeof self !== 'undefined' ? self : this, function (FEI, NUM, NSTAR, ICE, BZH, XS, WX, N81, CORE, BAZI, ZD, ZW, ASTRO, QM, LR, LY, TY, YZ, XSH, QW, CZ, QF, BP, ZR, QG, LBF, LWS, ZHW, AH, BSS, ZWS, JK, QMR, QMK, QNY) {
 
   // 十二地支序（大六壬天地盘/天将逐一列用）
   function ZHI2() { return ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥']; }
@@ -795,18 +797,19 @@
     {
       key: 'qimen', 名: '奇门遁甲（时家转盘·拆补）',
       板块: '三式推演', 短名: '排奇门',
-      触发词: ['奇门', '奇门遁甲', '遁甲', '值符', '值使', '阴遁', '阳遁', '转盘法', '拆补法', '九星八门', '年家奇门', '月家奇门'],
-      说明: '某时刻完整奇门局（**只做时家**·转盘·拆补定局）：四柱/阴阳遁/局数/元/旬首/值符值使/地盘/天盘九星/八门/八神。日家、刻家已另设（说「日家奇门」「刻家奇门」即走各自内核），年家/月家两种另局本版未实现，问到时明说、不拿时家属局冒充。',
+      触发词: ['奇门', '奇门遁甲', '遁甲', '值符', '值使', '阴遁', '阳遁', '转盘法', '拆补法', '九星八门'],
+      说明: '某时刻完整奇门局（**只做时家**·转盘·拆补定局）：四柱/阴阳遁/局数/元/旬首/值符值使/地盘/天盘九星/八门/八神。日家、刻家、年家、月家已各另设（说「日家奇门」「刻家奇门」「年家奇门」「月家奇门」即走各自内核）。',
       run: function (ent, text) {
         if (!ent || !ent.date || !ent.date.year) return { prompt: '奇门遁甲需要起局年月日，例如「1990年8月15日」（尽量给到时辰，时家奇门以时辰起局）。' };
         // 家数守门：本块只有时家。问「日家/刻家」已各有内核，必须指过去（否则用户会把时家属局当那家局用，那是错盘）。
         // 「年家/月家」仍未实现，如实说清，不拿时家属局冒充。
+        // 家数守门：本块只有时家。问「日家/刻家/年家/月家」都已各有内核，必须指过去（否则用户会把时家属局当那家局用，那是错盘）。
         var famM = String(text || '').match(/(年家|月家|日家|刻家)/);
         var famWarn = famM ? (famM[1] === '日家'
           ? '⚠️ 你问的是「日家奇门」，它另有一套内核（以日为单位、值符随日干、六十日一局），与时家不同。下面给的是**同一日的时家局**，只能当参考。日家局请直接说「日家奇门 ' + ent.date.year + '年' + (ent.date.month || 1) + '月' + (ent.date.day || 1) + '日」。'
           : famM[1] === '刻家'
             ? '⚠️ 你问的是「刻家奇门」，它另有一套内核（十二分钟一刻、只在时家局内推、每刻移一宫），与时家不同。下面给的是**本时辰的时家局**。刻家局请直接说「刻家奇门 ' + ent.date.year + '年' + (ent.date.month || 1) + '月' + (ent.date.day || 1) + '日' + (ent.time ? ent.time.hour : 10) + '时' + (ent.time && ent.time.minute != null ? ent.time.minute : 24) + '分」。'
-            : '⚠️ 本版只实现**时家**奇门（以时辰定局）。你问的是「' + famM[1] + '奇门」，属另一套定局体系，本版未实现 —— 下面给的是**同一时刻的时家属局**，只能当参考，不能当' + famM[1] + '局使用。') : null;
+            : '⚠️ 你问的是「' + famM[1] + '奇门」，它另有一套内核（全阴遁、三元局数 1/4/7、值符随干、值使随支），与时家不同。下面给的是**同一时刻的时家局**，只能当参考。' + famM[1] + '局请直接说「' + famM[1] + '奇门 ' + ent.date.year + '年' + (ent.date.month || 1) + '月」。') : null;
         var y = ent.date.year, m = ent.date.month || 1, d = ent.date.day || 1, h = ent.time ? ent.time.hour : 0;
         if (!QM || !QM.chart) return { text: '【奇门】奇门内核未加载，暂不可用。' };
         try {
@@ -915,6 +918,51 @@
           return { text: L.join('\n') };
         } catch (e) {
           return { text: '【刻家奇门】排局失败：' + String(e && e.message ? e.message : e) + '（内核暂不可用，不影响其他功能）。' };
+        }
+      }
+    },
+    {
+      key: 'qimen-nianyue', 名: '奇门遁甲·年家 / 月家（阴遁 1/4/7 局·值符随干）',
+      板块: '三式推演', 短名: '排年家月家',
+      触发词: ['年家奇门', '年家', '年奇门', '年家遁甲', '年家局', '月家奇门', '月家', '月奇门', '月家遁甲', '月家局'],
+      说明: '某年或某月的**年家/月家**奇门局（全阴遁，三元局数 1/4/7）：年柱或月柱/元/局数/旬首/值符值使/地盘/天盘九星/八门/八神。年家 180 年一周（上元甲子 1864）、月家按古籍月柱分组定元。值符随干、值使随支、八神一律逆排。',
+      run: function (ent, text) {
+        if (!ent || !ent.date || !ent.date.year) return { prompt: '年家/月家奇门需要日期，例如「年家奇门 2026年」（月家按节气取月柱，可说「月家奇门 2026年2月」）。' };
+        var T = String(text || '');
+        var isYue = /月家|月奇门/.test(T);
+        var y = ent.date.year, m = ent.date.month || 6, d = ent.date.day || 15;
+        if (!QNY || !QNY.nianChart) return { text: '【年家/月家奇门】内核未加载，暂不可用。' };
+        try {
+          var c = isYue ? QNY.yueChart({ y: y, m: m, d: d }) : QNY.nianChart({ y: y, m: m, d: d });
+          if (c.err) return { prompt: c.err };
+          var GONG = [1, 8, 3, 4, 9, 2, 7, 6];
+          var fam = isYue ? '月家' : '年家';
+          var L = [];
+          L.push('【' + fam + '奇门】' + c.日期 + '：');
+          L.push(fam + '奇门全用阴遁，三元局数为 1、4、7 局。');
+          if (isYue) {
+            L.push('月柱 ' + c.月柱 + '（六十甲子第 ' + c.月柱序 + ' 位，模 15 = ' + c.模15 + '），属' + c.元 + c.局数 + '局。');
+          } else {
+            L.push('年柱 ' + c.年柱 + '（干支年 ' + c.干支年 + '，距上元甲子 ' + c.距上元 + ' 年），属' + c.元 + c.局数 + '局。');
+          }
+          L.push('旬首 ' + c.旬首 + '，旬首仪「' + c.旬首仪 + '」落宫' + c.旬首宫 + '，值符「' + c.值符星 + '」、值使「' + c.值使门 + '」门。');
+          L.push('值符随' + (isYue ? '月干' : '年干') + '：干「' + c.干 + '」在地盘宫' + c.干宫 + '，故值符星落此宫。值使随' + (isYue ? '月支' : '年支') + '：支「' + c.支 + '」临宫' + c.支宫 + '。');
+          L.push('八神：年家月家全用阴遁，故八神一律逆排（小值符随大值符）。');
+          L.push('地盘布仪：' + GONG.map(function (p) { return '宫' + p + c.地盘[p]; }).join(' ') + '（中五' + c.地盘[5] + '，寄坤二）。');
+          L.push('天盘九星：' + GONG.map(function (p) { return '宫' + p + c.天盘[p]; }).join(' ') + '。');
+          L.push('人盘八门：' + GONG.map(function (p) { return '宫' + p + c.八门[p]; }).join(' ') + '。');
+          L.push('神盘八神：' + GONG.map(function (p) { return '宫' + p + c.八神[p]; }).join(' ') + '。');
+          L.push('天盘干：' + GONG.map(function (p) {
+            var g = c.天盘干[p];
+            if (c.禽宫 === p && c.禽干) g = g + c.禽干;
+            return '宫' + p + g;
+          }).join(' ') + '。');
+          if (isYue) L.push('月家定元：采古籍《奇門遁甲統宗》月奇门起例（按月柱六十甲子序位分组）。另有按年支四孟四仲四季定元一派，本内核不采。');
+          L.push('与时家/日家/刻家的区别：年家以年、月家以月为单位，全阴遁，与前述各家不是同一张盘。');
+          L.push('缺口（如实标注）：' + c.缺口.join(''));
+          return { text: L.join('\n') };
+        } catch (e) {
+          return { text: '【' + (String(text || '').match(/月家/) ? '月家' : '年家') + '奇门】排局失败：' + String(e && e.message ? e.message : e) + '（内核暂不可用，不影响其他功能）。' };
         }
       }
     },

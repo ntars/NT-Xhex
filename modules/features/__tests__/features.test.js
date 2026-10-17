@@ -344,9 +344,9 @@ ok(qrQ.text.indexOf('（节气分元）') >= 0, '说「节气分元」即切换�
 var qrW = R.run('qimen', ent(2026, 2, 9, 10), '日家奇门 2026年2月9日');
 ok(qrW.text.indexOf('另有一套内核') >= 0 && qrW.text.indexOf('日家奇门 2026年2月9日') >= 0,
   '时家块被问日家时指路到日家内核（并给出可直接复制的说法）');
-// 年家/月家/刻家仍未实现，仍须如实说
+// 年家/月家现已实现，时家块被问到时同样要指路（不再说「未实现」）
 var qrY = R.run('qimen', ent(2026, 2, 9, 10), '年家奇门 2026年2月9日');
-ok(qrY.text.indexOf('本版未实现') >= 0, '年家仍未实现，如实标注不冒充');
+ok(qrY.text.indexOf('另有一套内核') >= 0, '年家现已实现：时家块被问年家时指路，不说「未实现」');
 // 缺日期
 var qrN = R.run('qimen-ri', { date: null, time: null }, '日家奇门');
 ok(qrN && qrN.prompt && qrN.prompt.indexOf('日家奇门需要日期') >= 0, '缺日期给提示');
@@ -375,5 +375,35 @@ ok(qkW.text.indexOf('另有一套内核') >= 0 && qkW.text.indexOf('刻家奇门
 // 缺时刻
 var qkN = R.run('qimen-ke', { date: null, time: null }, '刻家奇门');
 ok(qkN && qkN.prompt && qkN.prompt.indexOf('刻家奇门需要') >= 0, '缺日期给提示');
+
+// ===== v3.1.22 年家 / 月家奇门（全阴遁 · 三元 1/4/7 · 值符随干）=====
+console.log('== v3.1.22 年家/月家奇门 ==');
+var qnM = R.match('年家奇门 2026年');
+ok(qnM && qnM.key === 'qimen-nianyue', '「年家奇门」路由到年家月家块，不被时家抢走');
+var qyM = R.match('月家奇门 2026年2月');
+ok(qyM && qyM.key === 'qimen-nianyue', '「月家奇门」路由到年家月家块');
+var qnE = ent(2026, 6, 1, 0);
+var qnO = R.run('qimen-nianyue', qnE, '年家奇门 2026年');
+ok(qnO && qnO.text && qnO.text.indexOf('【年家奇门】') >= 0, '年家有料出标题');
+ok(qnO.text.indexOf('全用阴遁') >= 0 && qnO.text.indexOf('1、4、7 局') >= 0, '点明全阴遁与三元局数 1/4/7');
+ok(qnO.text.indexOf('年柱 丙午') >= 0 && qnO.text.indexOf('距上元甲子 162 年') >= 0, '给出年柱与距上元年数');
+ok(qnO.text.indexOf('值符随年干') >= 0 && qnO.text.indexOf('值使随年支') >= 0, '给出值符随干/值使随支两条规则');
+ok(qnO.text.indexOf('八神一律逆排') >= 0, '点明八神一律逆排');
+ok(qnO.text.indexOf('未外部整盘锁死') >= 0, '缺口如实标注（未外部整盘锁死）');
+ok(qnO.text.indexOf('；') < 0, '年家输出无中文分号（切段安全）');
+// 月家
+var qyE = ent(2026, 2, 15, 0);
+var qyO = R.run('qimen-nianyue', qyE, '月家奇门 2026年2月');
+ok(qyO.text.indexOf('【月家奇门】') >= 0 && qyO.text.indexOf('月柱 庚寅') >= 0, '月家出标题并给月柱');
+ok(qyO.text.indexOf('值符随月干') >= 0 && qyO.text.indexOf('值使随月支') >= 0, '月家值符随月干/值使随月支');
+ok(qyO.text.indexOf('四孟') >= 0, '月家缺口提及另一派（年支四孟定元）');
+ok(qyO.text.indexOf('；') < 0, '月家输出无中文分号');
+// 时家块被问年家/月家要指路
+var qnW = R.run('qimen', ent(2026, 6, 1, 10), '年家奇门 2026年');
+ok(qnW.text.indexOf('另有一套内核') >= 0 && qnW.text.indexOf('年家奇门 2026') >= 0, '时家块被问年家时指路到年家内核');
+ok(qnW.text.indexOf('本版未实现') < 0, '时家块不再说年家「未实现」（已实现）');
+// 缺日期
+var qnN = R.run('qimen-nianyue', { date: null, time: null }, '年家奇门');
+ok(qnN && qnN.prompt && qnN.prompt.indexOf('需要日期') >= 0, '缺日期给提示');
 
 if (fails === 0) { console.log('全部通过 ✓'); process.exit(0); } else { console.log(fails + ' 处失败'); process.exit(1); }
