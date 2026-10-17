@@ -321,4 +321,37 @@ var jkS2 = R.run('jinkou', jkE, '金口诀 2026年2月9日10时 地分酉 原文
 ok(jkS2.text.indexOf('又主伤妻，人欲出外失财') >= 0, '问「原文」时给全句（默认只取首句）');
 ok(jkS.text.indexOf('又主伤妻') < 0, '不问原文时只取首句，不铺满屏');
 
+// ===== v3.1.20 日家奇门（六十日一局 · 值符随日干 · 值使按日干位次）=====
+console.log('== v3.1.20 日家奇门 ==');
+// 路由：不能落到时家块（时家块的触发词已去掉「日家奇门」，日家必须自成一块）
+var qrM = R.match('日家奇门 2004年8月6日');
+ok(qrM && qrM.key === 'qimen-ri', '「日家奇门」路由到日家块，不被时家抢走');
+var qrE = ent(2004, 8, 6, 0);
+var qrO = R.run('qimen-ri', qrE, '日家奇门 2004年8月6日');
+ok(qrO && qrO.text && qrO.text.indexOf('【日家奇门】') >= 0, '日家有料出标题');
+ok(qrO.text.indexOf('阴遁上元9局') >= 0, '黄金盘基准：2004-08-06 丁巳日 = 阴遁上元九局（易德轩例）');
+ok(qrO.text.indexOf('值符随日干') >= 0 && qrO.text.indexOf('值使随日干位次') >= 0, '把两条日家专属锚点写明白');
+ok(qrO.text.indexOf('甲子日数元') >= 0 && qrO.text.indexOf('节气分元') >= 0, '定元两派并列输出（不替用户选）');
+ok(qrO.text.indexOf('六十日一局') >= 0, '点明日家的「六十日一局」节奏，与时家时辰起局区分');
+ok(qrO.text.indexOf('不能互相顶替') >= 0, '明说日家/时家不是同一张盘');
+// 分歧日必须真的报警，而非只在文档里写「有分歧」
+var qrD = R.run('qimen-ri', ent(2026, 4, 20, 0), '日家奇门 2026年4月20日');
+ok(qrD.text.indexOf('两派本日局数不同') >= 0, '两派局数真不同时给出分歧提示（2026-04-20：4局 vs 7局）');
+// 口径可切换
+var qrQ = R.run('qimen-ri', ent(2026, 4, 20, 0), '日家奇门 2026年4月20日 节气分元');
+ok(qrQ.text.indexOf('（节气分元）') >= 0, '说「节气分元」即切换口径');
+// 时家块被问日家时要指路，不能默认当时家排
+var qrW = R.run('qimen', ent(2026, 2, 9, 10), '日家奇门 2026年2月9日');
+ok(qrW.text.indexOf('另有一套内核') >= 0 && qrW.text.indexOf('日家奇门 2026年2月9日') >= 0,
+  '时家块被问日家时指路到日家内核（并给出可直接复制的说法）');
+// 年家/月家/刻家仍未实现，仍须如实说
+var qrY = R.run('qimen', ent(2026, 2, 9, 10), '年家奇门 2026年2月9日');
+ok(qrY.text.indexOf('本版未实现') >= 0, '年家仍未实现，如实标注不冒充');
+// 缺日期
+var qrN = R.run('qimen-ri', { date: null, time: null }, '日家奇门');
+ok(qrN && qrN.prompt && qrN.prompt.indexOf('日家奇门需要日期') >= 0, '缺日期给提示');
+// 切段安全：结果页按 [。；\n] 切段，正文不得出现中文分号与「。；」双标点
+ok(qrO.text.indexOf('；') < 0, '日家输出无中文分号（切段安全）');
+ok(qrO.text.indexOf('。。') < 0 && qrD.text.indexOf('。。') < 0, '无重复句号（缺口拼接不叠加）');
+
 if (fails === 0) { console.log('全部通过 ✓'); process.exit(0); } else { console.log(fails + ' 处失败'); process.exit(1); }

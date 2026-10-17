@@ -279,6 +279,16 @@
   return {
     chart: chart, JUREQI: JUREQI, YANGE: YANGE, YINSEG: YINSEG, SEQ: SEQ,
     XUNSHOU: XUNSHOU, STAR_HOME: STAR_HOME, GATE_HOME: GATE_HOME, GODS: GODS,
-    zhiOfHour: zhiOfHour, yuanOf: yuanOf, currentSolarTerm: currentSolarTerm
+    zhiOfHour: zhiOfHour, yuanOf: yuanOf, currentSolarTerm: currentSolarTerm,
+    // v3.1.20：把「转盘法四盘几何」的辅助一并导出，供日家奇门（qimen-ri.js）**复用而不抄第二份**。
+    // 日家与时家的飞布几何同源（都是转盘法：九星/八门沿顺时针环永久旋转、八神分阴阳顺逆），
+    // 差别只在**锚点**（时家锚时干/时支，日家锚日干/日支），故几何工具必须单一真源。
+    STAR_RING: STAR_RING, GATE_RING: GATE_RING, CLOCK: CLOCK, ZHI_GONG: ZHI_GONG,
+    homeOf: homeOf, findHome: findHome, rotateRing: rotateRing, arrangeGods: arrangeGods,
+    mod360ish: mod360ish, firstXunshou: firstXunshou,
+    // 24 节气名（日家判阴阳遁与节气分元都要用，取 ganzhi 标准表，缺表时回落内置）
+    JIEQI_NAMES: (GANZHI && GANZHI.JIEQI_NAMES && GANZHI.JIEQI_NAMES.length) ? GANZHI.JIEQI_NAMES
+      : ['冬至', '小寒', '大寒', '立春', '雨水', '惊蛰', '春分', '清明', '谷雨', '立夏', '小满', '芒种',
+         '夏至', '小暑', '大暑', '立秋', '处暑', '白露', '秋分', '寒露', '霜降', '立冬', '小雪', '大雪']
   };
 });
