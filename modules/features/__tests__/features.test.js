@@ -354,4 +354,26 @@ ok(qrN && qrN.prompt && qrN.prompt.indexOf('日家奇门需要日期') >= 0, '�
 ok(qrO.text.indexOf('；') < 0, '日家输出无中文分号（切段安全）');
 ok(qrO.text.indexOf('。。') < 0 && qrD.text.indexOf('。。') < 0, '无重复句号（缺口拼接不叠加）');
 
+// ===== v3.1.21 刻家奇门（十二分钟一刻 · 时家局内推 · 每刻移一宫）=====
+console.log('== v3.1.21 刻家奇门 ==');
+var qkM = R.match('刻家奇门 2026年2月9日10时24分');
+ok(qkM && qkM.key === 'qimen-ke', '「刻家奇门」路由到刻家块，不被时家抢走');
+var qkE = ent(2026, 2, 9, 10); qkE.time.minute = 24;
+var qkO = R.run('qimen-ke', qkE, '刻家奇门 2026年2月9日10时24分');
+ok(qkO && qkO.text && qkO.text.indexOf('【刻家奇门】') >= 0, '刻家有料出标题');
+ok(qkO.text.indexOf('十二分钟为一刻') >= 0, '点明刻长与刻数');
+ok(qkO.text.indexOf('第 8 刻') >= 0 && qkO.text.indexOf('辛未') >= 0, '10:24 落在第 8 刻（巳时过 84 分 → ⌊84/12⌋+1=8）');
+ok(qkO.text.indexOf('本时辰十刻一览') >= 0, '给出十刻一览');
+ok((qkO.text.match(/刻/g) || []).length >= 10, '一览含十刻');
+ok(qkO.text.indexOf('与时家的区别') >= 0, '明说刻家/时家不是同一张盘');
+ok(qkO.text.indexOf('缺口') >= 0 && qkO.text.indexOf('实质单源') >= 0, '缺口如实标注（实质单源）');
+ok(qkO.text.indexOf('未外部锁死') >= 0, '明说飞布未外部锁死，不假报已锁');
+ok(qkO.text.indexOf('；') < 0, '刻家输出无中文分号（切段安全）');
+// 时家块被问刻家要指路
+var qkW = R.run('qimen', ent(2026, 2, 9, 10), '刻家奇门 2026年2月9日10时24分');
+ok(qkW.text.indexOf('另有一套内核') >= 0 && qkW.text.indexOf('刻家奇门 2026') >= 0, '时家块被问刻家时指路到刻家内核');
+// 缺时刻
+var qkN = R.run('qimen-ke', { date: null, time: null }, '刻家奇门');
+ok(qkN && qkN.prompt && qkN.prompt.indexOf('刻家奇门需要') >= 0, '缺日期给提示');
+
 if (fails === 0) { console.log('全部通过 ✓'); process.exit(0); } else { console.log(fails + ' 处失败'); process.exit(1); }

@@ -131,6 +131,21 @@
   function homeOf(x) { return x === 5 ? 2 : x; } // 中五寄坤二
 
   /**
+   * 地盘布三奇六仪：阳遁自局数宫顺飞、阴遁逆飞，**九宫独立布仪（含中五）**。
+   * v3.1.21：从 chart() 里抽出来单独成函数并导出 —— 刻家奇门每进一刻局数就移一宫，
+   * 需要按「任意局数」反复生成地盘，必须与 chart() 共用同一份实现（单一真源）。
+   */
+  function diPan(ju, yang) {
+    var out = {};
+    for (var s = 0; s < 9; s++) {
+      var palace = yang ? mod360ish(ju + s, 9) : mod360ish(ju - s, 9);
+      palace = palace === 0 ? 9 : palace;
+      out[palace] = SEQ[s];
+    }
+    return out;
+  }
+
+  /**
    * 奇门局。
    * @param {Object} inp { y, m, d, h? }
    * @returns 完整奇门局 或 { err }
@@ -169,12 +184,7 @@
     //   ⚠ v3.1.7 修正：地盘三奇六仪**布满九宫（含中五）**，中五宫独立承载其一仪（旧版把中五仪塞进坤二并覆盖/丢失坤二本仪 → 丢一仪）。
     //   黄金范例：2002-03-20 丙午时·阳遁4局 → 巽4戊 / 中5己 / 乾6庚 / 兑7辛 / 艮8壬 / 离9癸 / 坎1丁 / 坤2丙 / 震3乙（九宫全在）。
     //   「中五寄坤二」仅用于落宫取值（值符星/值使门/飞布），不参与地盘布仪占位。
-    var 地盘 = {};
-    for (var s = 0; s < 9; s++) {
-      var palace = yang ? mod360ish(ju + s, 9) : mod360ish(ju - s, 9);
-      palace = palace === 0 ? 9 : palace;
-      地盘[palace] = SEQ[s];
-    }
+    var 地盘 = diPan(ju, yang);
     // 4) 定值符值使：旬首仪落宫 → 本宫星=值符、本宫门=值使
     var xun = firstXunshou(时干支);
     var yi = XUNSHOU[xun];                       // 旬首仪
@@ -246,7 +256,9 @@
     return 2;
   }
   // 转盘法九星/八门：值符(或值使)落到 g 宫，其余按环序顺时针铺 8 实宫（中五不排）
-  function rotateRing(ring, clock, anchor, gPalace, includeAnchors) {
+  // rev（第 6 参，v3.1.21 新增）= true 时改走逆时针 —— 供刻家奇门「阴干刻八门逆行」用。
+  // ⚠ 第 5 参是历史遗留的无用参（时家里传 yang 但从不读），新代码别往里塞东西，否则会误触。
+  function rotateRing(ring, clock, anchor, gPalace, _unused, rev) {
     var out = {};
     var gi = clock.indexOf(homeOf(gPalace));
     if (gi < 0) gi = 0;
@@ -254,7 +266,7 @@
     if (ai < 0) ai = 0;
     for (var j = 0; j < 8; j++) {
       var star = ring[(ai + j) % 8];
-      var palace = clock[(gi + j) % 8];
+      var palace = rev ? clock[((gi - j) % 8 + 8) % 8] : clock[(gi + j) % 8];
       out[palace] = star;
     }
     out[2] = out[2] || ring[ai]; // 中五寄坤二兜底
@@ -285,7 +297,7 @@
     // 差别只在**锚点**（时家锚时干/时支，日家锚日干/日支），故几何工具必须单一真源。
     STAR_RING: STAR_RING, GATE_RING: GATE_RING, CLOCK: CLOCK, ZHI_GONG: ZHI_GONG,
     homeOf: homeOf, findHome: findHome, rotateRing: rotateRing, arrangeGods: arrangeGods,
-    mod360ish: mod360ish, firstXunshou: firstXunshou,
+    mod360ish: mod360ish, firstXunshou: firstXunshou, diPan: diPan,
     // 24 节气名（日家判阴阳遁与节气分元都要用，取 ganzhi 标准表，缺表时回落内置）
     JIEQI_NAMES: (GANZHI && GANZHI.JIEQI_NAMES && GANZHI.JIEQI_NAMES.length) ? GANZHI.JIEQI_NAMES
       : ['冬至', '小寒', '大寒', '立春', '雨水', '惊蛰', '春分', '清明', '谷雨', '立夏', '小满', '芒种',
