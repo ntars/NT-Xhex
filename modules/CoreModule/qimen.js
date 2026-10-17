@@ -24,12 +24,14 @@
  * 校验：modules/CoreModule/__tests__/qimen.test.js（自洽性 + 黄金盘逐宫）。
  *
  * 交叉验证状态（守零臆造，如实标注，不假报）：
- *   ✅ **阴遁盘飞布已锁定**：九星/八门/八神逐宫落宫，与 tools/qimen-golden-ref.js 的黄金盘
- *      （qimen.pro 时家·拆补·转盘法，2026-10-16 丁巳时·寒露下元·阴遁3局，离线逆向取 SSR 盘）
- *      逐宫 9星/8门/8神 全中。飞布环序 = 地理顺时针 [1,8,3,4,9,2,7,6]；值使门锚到「时支所在宫」。
- *   ⏳ **阳遁盘 + 置闰/不同旬首边界盘待补**：黄金参照目前只有 1 张阴遁盘（qimen.pro）；
- *      阳遁盘须 REA 驱动 qimen.pro 前端另取（置闰站 qimenqmdj 自相矛盾、不作裁判）。
- *      在补齐阳遁盘交叉验证前，内核九星/八门/八神仍输出但 `_待验证` 字段如实标注。
+ *   ✅ **阴遁 + 阳遁双盘飞布已锁定**（飞布几何 9星/8门/8神 各 8/8 全中）：
+ *      · 阴遁盘：tools/qimen-golden-ref.js 盘1（qimen.pro SSR，2026-10-16 丁巳·寒露下元·阴遁3局，离线逆向）
+ *      · 阳遁盘：盘3（qimen.pro 前端驱动，2026-02-10 09时·立春中元·阳遁5局，Playwright 起局重排读 DOM）
+ *      → 飞布环序 = 洛书地理顺时针 [1,8,3,4,9,2,7,6]；值符随时干·值使门锚「时支宫」·八神阳顺阴逆，双盘实证。
+ *   ⏳ **置闰边界盘未锁**：qimenqmdj 站自相矛盾（标阳遁八局但仪位逆排=阴遁特征）、不作裁判。
+ *      内核定局走**拆补法**（qimen.pro 同派），置闰法差异为流派取舍，不影响飞布几何。
+ *   🐛 **已修 bug**：`currentSolarTerm` 曾遍历 `yearJieqi` 全部 31 键（含英文越界键 LI_CHUN/DA_XUE），
+ *      非标准节气区间会取到英文键 → 与定局表中文键对不上而崩溃。改为**只遍历 24 个标准中文节气名**（JIEQI_NAMES）。
  */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) {
@@ -73,15 +75,21 @@
   function zhiOfHour(h) { return ZHI[Math.floor((((h + 1) % 24) / 2))]; } // 23/1=子
 
   // 目标时刻所属「当前节气」：取「交节时刻 ≤ 目标」的最大者（跨 y±1 表）。
+  // ⚠ 只遍历 24 个标准中文节气名（GANZHI.JIEQI_NAMES），**排除 yearJieqi 混入的英文越界 key**
+  //   （如 LI_CHUN/DA_XUE，它们指向相邻年份、与定局表 JUREQI 的中文 key 对不上 → 会取错节气）。
   function currentSolarTerm(y, m, d, h) {
     if (!GANZHI || !GANZHI.yearJieqi) return { 名: null, 时刻: null };
-    var target = y * 10000 * 100 + m * 100 + d; // 简化：用 y*10000+m*100+d 排序键（同 1900–2100 内足够）
     var targetFull = y * 10000 + m * 100 + d + (h / 24);
+    var NAMES = (GANZHI.JIEQI_NAMES && GANZHI.JIEQI_NAMES.length) ? GANZHI.JIEQI_NAMES
+      : ['冬至', '小寒', '大寒', '立春', '雨水', '惊蛰', '春分', '清明', '谷雨', '立夏', '小满', '芒种',
+         '夏至', '小暑', '大暑', '立秋', '处暑', '白露', '秋分', '寒露', '霜降', '立冬', '小雪', '大雪'];
     var best = null;
     for (var yy = y - 1; yy <= y + 1; yy++) {
       var table = GANZHI.yearJieqi(yy);
-      for (var name in table) {
+      for (var i = 0; i < NAMES.length; i++) {
+        var name = NAMES[i];
         var t = table[name]; // 'YYYY-MM-DD HH:MM:SS'
+        if (!t) continue;    // 该年表缺此节气（越界）→ 跳过
         var k = +String(t).replace(/-/g, '').replace(/[: ]/g, '').slice(0, 8) + (parseInt(String(t).slice(11, 13)) || 0) / 24;
         if (k <= targetFull && (!best || k > best.k)) best = { k: k, 名: name, 时刻: t };
       }
@@ -174,11 +182,11 @@
       四柱: { 年: pillars.年.干支, 月: pillars.月.干支, 日: 日干支, 时: 时干支 },
       阴阳遁: yinyang, 局数: ju, 节气: cur.名, 元: yuan, 旬首: xun, 值符星: 值符, 值使门: 值使,
       地盘: 地盘, 天盘: 天盘, 八门: 八门, 八神: 八神,
-      // 飞布（九星/八门/八神落宫）验证状态：阴遁盘已按 qimen.pro 黄金盘逐宫锁死（9星/8门/8神全中）；
-      // 阳遁盘待 REA 驱动 qimen.pro 前端取盘交叉验证（置闰/不同旬首边界）。不假报，如实标注。
-      _飞布验证: yang
-        ? '飞布几何（地理顺时针环）已与黄金盘逐宫锁死；本盘为阳遁，九星/八门/八神落宫待阳遁黄金盘交叉复核'
-        : '飞布几何（地理顺时针环 [1,8,3,4,9,2,7,6]）已与 qimen.pro 黄金盘（阴遁）逐宫锁死'
+      // 飞布（九星/八门/八神落宫）验证状态：阴遁盘（qimen.pro SSR，寒露下元）+ 阳遁盘（qimen.pro 前端驱动，立春中元）
+      // 均已逐宫交叉验证（9星/8门/8神各 8/8 全中）→ 飞布几何「双盘锁死」；置闰边界盘未锁（qimenqmdj 自相矛盾、不作裁判）。
+      _飞布验证: '飞布几何（洛书地理顺时针环 [1,8,3,4,9,2,7,6] + 值符随时干 + 值使随时支 + 八神阳顺阴逆）' +
+        (yang ? '阳遁盘' : '阴遁盘') + '已按 qimen.pro 黄金盘逐宫锁死（九星/八门/八神 8/8）' +
+        (yang ? '；阴遁盘亦已锁' : '；阳遁盘亦已锁') + '；置闰边界盘待补',
     };
   }
 

@@ -1,4 +1,4 @@
-# 玄玖灵犀 NT-Xhex v3.1.1
+# 玄玖灵犀 NT-Xhex v3.1.2
 
 > 算法演乾坤，一问知天命，以数据重现千年术数。（演乾坤·知天命）  
 > 无后端 / 无网络 / 无登录 · 一套代码自动切换多形态  
@@ -465,6 +465,17 @@ node tools/sync-mp.js --check      # dist 与 modules 一致性 + WXML <template
 ---
 
 ## 九、更新日志
+
+- **v3.1.2**（奇门 C14 收尾：双盘交叉验证 + 定局 bug 修复）：
+  ① **阳遁盘逐宫锁死飞布几何**：用 Playwright 驱动 qimen.pro 前端改到立春段（2026-02-10 09时·阳遁5局·立春中元）重排、读 DOM 九宫（`tools/qimen-yang-capture.cjs`，合规只读渲染结果、不复制其 JS），与内核逐宫比对**九星/八门/八神各 8/8 全中**——八神「阳遁顺布」获外部阳遁盘实证（不再只靠古籍口诀）。连同 v3.1.1 的阴遁黄金盘，奇门飞布几何现**阴遁 + 阳遁双盘交叉锁死**（`tools/qimen-golden-ref.js` 盘1 阴遁 + 盘3 阳遁）。
+  ② **修 `currentSolarTerm` 定局 bug**：`ganzhi.yearJieqi` 返回 31 个键（含英文越界键 LI_CHUN/DA_XUE…），旧版遍历全键致非标准节气区间取到英文键、与定局表中文键对不上而崩溃（`JUREQI.阳[undefined]`）。改为**只遍历 24 个标准中文节气名**（JIEQI_NAMES），越界键彻底排除；`qimen.test.js` F 组加回归断言。
+  ③ `qimen.test.js` 扩到 **42 项**（含 E 阳遁盘逐宫 24/24 + F 英文 key 回归）；全量 9 内核 + features + transition + intent 全绿；dist 已同步。
+
+- **v3.1.1**（占星·七政 + 奇门遁甲内核，features 扩到 24 个，固化 3.1.0 内核体系入库）：
+  ① 新增 `CoreModule/astro.js`（占星·七政 C18/C19）+ 内嵌 `vendor/astronomy.js`（astronomy-engine，MIT，JPL 级）：7 政回归黄经 + 3 余 Meeus 均值 + 落十二星座，对 ephem(JPL 级) 对拍 Δ0.006°。
+  ② 新增 `CoreModule/qimen.js`（奇门遁甲 C14，时家·转盘·拆补）+ `tools/qimen-golden-ref.js`（qimen.pro 黄金盘参照）；飞布几何离线逆向黄金盘锁死（阴遁盘 9星/8门/8神 逐宫全中）。
+  ③ `features` 触发词功能 22 → 24（占星·七政四余 + 奇门遁甲）；三端接线（platform-modules 两清单 + PWA `<script>` + dist）。
+  ④ **修复历史漏入库**：CoreModule 内核本体 / vendor / 全部 `__tests__` / dist 产物首次完整入库（3.1.0 施工期建的一直未 commit）。
 
 - **v3.1.0**（模块化 + 一批缺陷修复，用户 10 条指令）：
   ① **删掉相册写入隐私接口**：小程序导出原调 `wx.saveImageToPhotosAlbum`（触发微信 `writePhotosAlbum` 隐私授权，后台显示 "AlbumWriteOnly"），违背「无权限申请」初衷；改为 `canvasToTempFilePath` 出临时 PNG → `wx.previewImage` 预览，用户长按走系统菜单自存，小程序侧不申请、不记录、不触发任何隐私授权；uni-app 端同步。

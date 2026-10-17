@@ -95,7 +95,39 @@ var hit = 0, tot = 0;
   });
 });
 ok('飞布逐宫锁定：九星/八门/八神 全中（' + hit + '/' + tot + '）', hit === tot && tot === 24, '命中 ' + hit + '/' + tot);
-ok('内核 _飞布验证 标注在位（阴遁盘已锁 / 阳遁盘待补）', typeof h._飞布验证 === 'string' && h._飞布验证.indexOf('飞布几何') >= 0, h._飞布验证);
+ok('内核 _飞布验证 标注在位（阴阳遁双盘已锁）', typeof h._飞布验证 === 'string' && h._飞布验证.indexOf('飞布几何') >= 0, h._飞布验证);
+
+// E. 阳遁盘逐宫锁定（qimen.pro 盘3，Playwright 驱动前端改到立春段重排，读 DOM 九宫）
+//   把八神「阳遁顺布」+ 九星/八门飞布 从「仅古籍口诀」升级为「外部阳遁盘实证」。
+console.log('E. 阳遁盘逐宫锁定（qimen.pro 盘3 · 阳遁 · 2026-02-10 09时·立春中元）');
+var P3 = G.盘3;
+var hy = Q.chart({ y: P3.起局.y, m: P3.起局.m, d: P3.起局.d, h: 9 });
+ok('阳遁盘 无 err', !hy.err, hy.err);
+ok('阳遁 5 局 · 立春中元', hy.阴阳遁 === '阳遁' && hy.局数 === 5 && hy.节气 === '立春' && hy.元 === '中', hy.阴阳遁 + hy.局数 + hy.节气 + hy.元);
+ok('值符天心 · 值使开 · 旬首甲戌', hy.值符星 === '天心' && hy.值使门 === '开' && hy.旬首 === '甲戌', hy.值符星 + hy.值使门 + hy.旬首);
+var hit3 = 0, tot3 = 0;
+['星', '门', '神'].forEach(function (t) {
+  var src = t === '星' ? hy.天盘 : t === '门' ? hy.八门 : hy.八神;
+  Object.keys(P3.九宫).forEach(function (k) {
+    if (k === '中5') return; // 中五寄坤二
+    var want = P3.九宫[k][t];
+    if (!want) return;
+    tot3++;
+    var got = src[palaceOf(k)];
+    if (String(got).indexOf(want) >= 0 || String(want).indexOf(got) >= 0) hit3++;
+  });
+});
+ok('阳遁盘飞布逐宫：九星/八门/八神 全中（' + hit3 + '/' + tot3 + '）', hit3 === tot3 && tot3 === 24, '命中 ' + hit3 + '/' + tot3);
+
+// F. 回归：currentSolarTerm 不再被 yearJieqi 的英文越界 key（LI_CHUN/DA_XUE…）污染
+console.log('F. 回归（英文越界节气 key 不污染定局）');
+var term = Q.currentSolarTerm(2026, 2, 10, 9);
+ok('2026-02-10 当前节气 = 立春（中文，非英文越界键）', term.名 === '立春', term.名);
+ok('立春 在阳遁段 YANGE 内', Q.YANGE.indexOf('立春') >= 0);
+var term2 = Q.currentSolarTerm(2026, 1, 1, 0); // 2026-01-01 仍在「冬至段」（冬至12-21 ~ 小寒1-05）
+ok('2026-01-01 当前节气 = 冬至（冬至段，非英文 DA_XUE 等越界键）', term2.名 === '冬至', term2.名);
+var cJan = Q.chart({ y: 2026, m: 1, d: 1, h: 0 });
+ok('小寒段能正常起局（英文 key 不再致 JUREQI 查表崩溃）', !cJan.err, cJan.err || cJan.阴阳遁 + cJan.局数);
 
 console.log('\n=== qimen 自测：' + passed + ' 通过 / ' + failed + ' 失败 ===');
 process.exit(failed ? 1 : 0);

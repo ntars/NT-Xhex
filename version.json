@@ -1,4 +1,4 @@
 {
   "_说明": "NT-Xhex 唯一版本真值。改版本只改这里，再跑 node tools/sync-version.js 把版本号同步到所有散落处（package.json / manifest.json / settings.js / 两份 sw.js / platform-modules.json / README 标题）。详见 tools/sync-version.js 的写入清单。",
-  "version": "3.1.1"
+  "version": "3.1.2"
 }
