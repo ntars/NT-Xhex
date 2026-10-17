@@ -55,7 +55,7 @@
   </view>
 
   <!-- 导出图片专用离屏画布（type="2d" 走 Canvas 2D 接口，与网页端同一套绘制代码；
-       尺寸由 JS 按 UIModule/export-image.js 的版式计划动态设定：402 × 计划高度） -->
+       尺寸由 JS 按 ExportModule/export-image.js 的版式计划动态设定：402 × 计划高度） -->
   <canvas type="2d" id="exportCanvas" class="export-canvas"></canvas>
 
 

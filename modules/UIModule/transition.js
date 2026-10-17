@@ -29,6 +29,16 @@
   // 总开关：false = 不播任何转场动画（布局/双层结构保留，静止态可正常跑，方便调试其他功能）
   var ANIM_ENABLED = true;
 
+  // —— 「先播后摘」类退场/开屏的定时参数（单一真源，同 DURATION 惯例）——
+  // 背景：弹窗退场 / 开屏退场 / 开屏停留的时长，镜像 theme.css 的对应令牌（JS 读不到 CSS 变量，
+  //   故在此集中一份）。此前 PWA app.js / 小程序 index.js / uni index.vue / uni settings.vue 各写一份，
+  //   「改一处漏三处」。现统一从这里取，改 theme.css 令牌时只改本处。
+  var TIMING = {
+    MODAL_OUT: 200,     // 弹窗退场 = theme.css --d-modal-out（比进场 --d-drawer 快一档）
+    SPLASH_HOLD: 1200,  // 开屏停留（设计稿未定，纯体验参数：给品牌被记住的时长）
+    SPLASH_FADE: 400    // 开屏退场 = theme.css --d-splash
+  };
+
   /** 是否返回（目标比当前浅） */
   function isBack(from, to) { return (DEPTH[to] || 0) < (DEPTH[from] || 0); }
 
@@ -58,5 +68,5 @@
   /** 单层滑入的类名（供各壳自行挂/摘类时复用，避免各写一遍方向判断） */
   function slideClass(from, to) { return isBack(from, to) ? 'nt-slide-in-back' : 'nt-slide-in'; }
 
-  return { DEPTH: DEPTH, DURATION: DURATION, isBack: isBack, dirClass: dirClass, single: single, slideClass: slideClass };
+  return { DEPTH: DEPTH, DURATION: DURATION, TIMING: TIMING, isBack: isBack, dirClass: dirClass, single: single, slideClass: slideClass };
 });

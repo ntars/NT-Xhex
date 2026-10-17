@@ -289,14 +289,18 @@
     var isLunar = /农历|阴历|旧历|夏历/.test(cnText);
     var s = restSplit;
     // 完整公历 Y-M-D（时间已先行剥离，故只需禁止后跟数字）
+    // ⚠️ 年份须落在 1900–2100（与历法底座 lunar-javascript 的可算范围一致；超出无法排盘）
     var m = s.match(/(\d{4})-(\d{1,2})-(\d{1,2})(?!\d)/);
     if (m) {
-      var mm = +m[2], dd = +m[3];
+      var mm = +m[2], dd = +m[3], yy = +m[1];
+      if (yy < 1900 || yy > 2100) {
+        return { year: yy, month: mm, day: dd, isLunar: isLunar, rawText: m[0], _outOfRange: true };
+      }
       if (mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31) {
-        return { year: +m[1], month: mm, day: dd, isLunar: isLunar, rawText: m[0] };
+        return { year: yy, month: mm, day: dd, isLunar: isLunar, rawText: m[0] };
       }
       // 月/日越界（如 1990年13月45日）：标记为完整但非法，交由校验拒绝为 unknown
-      return { year: +m[1], month: mm, day: dd, isLunar: isLunar, rawText: m[0], _invalidDate: true };
+      return { year: yy, month: mm, day: dd, isLunar: isLunar, rawText: m[0], _invalidDate: true };
     }
     // Y-M（不完整）
     var ym = s.match(/(\d{4})-(\d{1,2})(?!\d)/);
@@ -535,6 +539,10 @@
     entities.keywords = extractKeywords(p.cn);
 
     // 8. 实体校验
+    // ① 年份越界（历法底座可算范围 = 1900–2100）：明确提示，不静默算错
+    if (entities.date && entities.date.year && (entities.date.year < 1900 || entities.date.year > 2100)) {
+      return { intent: 'unknown', confidence: 'none', entities: entities, candidates: null, prompt: null, error: '暂只支持 1900–2100 年的日期推算，请检查年份。' };
+    }
     if (entities.date && entities.date.month && entities.date.day && !entities.date._incomplete) {
       if (!validateDate(entities.date.year, entities.date.month, entities.date.day, entities.date.isLunar)) {
         return { intent: 'unknown', confidence: 'none', entities: entities, candidates: null, prompt: null, error: '日期不存在，请检查后重新输入。' };

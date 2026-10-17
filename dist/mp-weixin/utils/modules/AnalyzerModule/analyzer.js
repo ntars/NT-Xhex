@@ -7,11 +7,11 @@
  * 加载：UMD —— 小程序/uni-app 被 require；浏览器挂到全局 NT.analyzer。
  */
 (function (root, factory) {
-  if (typeof module === 'object' && module.exports) module.exports = factory(require('./name-study.js'), require('./bazi.js'), require('./ganzhi-analysis.js'), require('./intent.js'));
-  else { root.NT = root.NT || {}; root.NT.analyzer = factory(root.NT && root.NT.nameStudy, root.NT && root.NT.bazi, root.NT && root.NT.ganzhiAnalysis, root.NT && root.NT.intent); }
-})(typeof self !== 'undefined' ? self : this, function (NAME, BAZI, GA, INTENT) {
+  if (typeof module === 'object' && module.exports) module.exports = factory(require('./name-study.js'), require('./bazi.js'), require('./ganzhi-analysis.js'), require('./intent.js'), require('../features/registry.js'));
+  else { root.NT = root.NT || {}; root.NT.analyzer = factory(root.NT && root.NT.nameStudy, root.NT && root.NT.bazi, root.NT && root.NT.ganzhiAnalysis, root.NT && root.NT.intent, root.NT && root.NT.features); }
+})(typeof self !== 'undefined' ? self : this, function (NAME, BAZI, GA, INTENT, FEATURES) {
   var REFUSED = '抱歉，NT-Xhex 知识库仅限玄学与传统文化领域。';
-  var GUIDE = '可以这样问我：\n· 今日宜忌 / 明天黄历\n· 八字排盘：白玖玖，女，2005年6月9日子时\n· 姓名分析：白玖玖这个名字五行怎么补\n· 干支节气：今天是什么节气 / 今日干支\n· 择日：下周结婚哪天好';
+  var GUIDE = '可以这样问我：\n· 今日宜忌 / 明天黄历\n· 八字排盘：白玖玖，女，2005年6月9日子时\n· 姓名五格：白玖玖这个名字五格怎么补\n· 干支节气：今天是什么节气 / 今日干支\n· 择日：下周结婚哪天好\n· 紫微飞星 / 易经起卦 / 八宅命卦 / 号码八星 / 数字命理 / 小六壬';
 
   // ---------- 话题守卫：白名单 + 排盘实体放行（非玄学输入统一拒答）----------
   var TOPIC_OK_RE = /(宜忌|黄历|择日|嫁娶|结婚|婚期|开市|入宅|安葬|出行|搬家|搬迁|动土|祈福|祭祀|八字|排盘|四柱|生辰|命盘|日主|喜用|姓名|起名|名字|取名|笔画|五格|音韵|补缺|五行|干支|六十甲子|节气|廿四|生肖|属相|冲煞|建除|吉|凶|风水|玄学|传统文化|命理|神煞|贵人|年柱|月柱|日柱|时柱|纳音|相生|相克|今天|今日|明天|后天|下周|哪天|什么时候|选日|挑日|吉时|吉方|日子)/;
@@ -21,10 +21,20 @@
     return TOPIC_OK_RE.test(input) || it.intent !== 'unknown' || !!it.entities.date;
   }
 
-  // ---------- 按意图执行对应算法 ----------
+  // ---------- 扩展功能（搜索框单一入口的长尾路由）：FEATURES.match 命中触发词才跑 ----------
+  // 触发词是「明确的玄学功能词」（紫微/易经/八宅/号码八星/数字命理/小六壬/五格/生克…），
+  // 比 intent 的贪婪实体分类更具体 → 一律**先于** intent 判定，避免「紫微 2026」被误判成八字。
+  function dispatchFeature(text, ent) {
+    if (!FEATURES || !FEATURES.match) return null;
+    var f = FEATURES.match(text);
+    if (!f) return null;
+    var out = FEATURES.run(f.key, ent, text);
+    return out ? out.text || out.prompt || null : null;
+  }
+
+  // ---------- 按意图执行对应算法（核心 5 意图）----------
   function runIntent(it) {
     var e = it.entities;
-    if (it.intent === 'unknown') return GUIDE;
     switch (it.intent) {
       case 'bazi': {
         if (!e.date || !e.date.year) return '排盘需要出生日期，请补充，例如「白玖玖，女，2005年6月9日子时」。';
@@ -51,6 +61,10 @@
     if (!text) return GUIDE;
     var it = INTENT.parse(text);
     if (it.error) return it.error;
+    // ① 长尾功能触发词优先（搜索框单一入口；触发词明确，先于 intent 贪婪分类）
+    var feat = dispatchFeature(text, it.entities);
+    if (feat) return feat;
+    // ② 核心 5 意图
     if (it.intent === 'unknown') return guardTopic(text) ? GUIDE : REFUSED;
     return runIntent(it);
   }

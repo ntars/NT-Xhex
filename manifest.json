@@ -2,8 +2,8 @@
   "name": "玄玖灵犀",
   "appid": "",
   "description": "算法演乾坤，一问知天命，以数据重现千年术数。无后端 / 无网络，一套代码多端。© 星玖工作室 Ntarstudio",
-  "versionName": "3.1.0",
-  "versionCode": "310",
+  "versionName": "3.1.1",
+  "versionCode": "311",
   "transformPx": false,
   "locale": "zh-Hans",
   "app-plus": {
@@ -12,7 +12,7 @@
     "subPackages": []
   },
   "mp-weixin": {
-    "appid": "",
+    "appid": "wx7d40cfd5e4849d0d",
     "setting": {
       "urlCheck": false
     },

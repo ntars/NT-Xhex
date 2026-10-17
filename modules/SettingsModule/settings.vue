@@ -66,6 +66,7 @@ import Analyzer from '@/modules/AnalyzerModule/analyzer.js'
 import Storage from '@/modules/StorageModule/storage.js'
 import SafeArea from '@/modules/UIModule/safe-area.js'
 import Theme from '@/modules/UIModule/theme.js'
+import Transition from '@/modules/UIModule/transition.js'
 import '@/modules/UIModule/theme.css'
 
 export default {
@@ -115,20 +116,20 @@ export default {
       if (act === 'us') { this.$emit('us'); return }
       this.$emit('detail', row.id)
     },
-    // 退场时长：与 theme.css 的 --d-modal-out(200ms) 保持一致（三端各写一个带注释常量，见 app.js 同处说明）
-    MODAL_OUT_MS: 200,
     // 统一的「播退场 → 再卸载」收尾：cancel / Esc / 点遮罩 / 确认 都走这里，避免各写一遍。
+    // 退场时长走 transition.js 的 TIMING.MODAL_OUT（单一真源，三端共用，镜像 theme.css --d-modal-out）。
     closeModal(then) {
       if (this._modalClosing) return
       this._modalClosing = true
-      this.clearClosing = true                    // 挂 .nt-mask-out，播 nt-fall（淡出 + 下沉 200ms）
+      this.clearClosing = true                    // 挂 .nt-mask-out，播 nt-fall（淡出 + 下沉）
       var self = this
+      var outMs = Transition.TIMING ? Transition.TIMING.MODAL_OUT : 200
       setTimeout(function () {
         self.clearOpen = false                    // 卸载节点
         self.clearClosing = false
         self._modalClosing = false
         if (then) then()
-      }, self.MODAL_OUT_MS)
+      }, outMs)
     },
     doClear() {
       // 先清数据/同步状态，再走统一的退场收尾（then 里不再动弹窗相关状态）

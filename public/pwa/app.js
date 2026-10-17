@@ -6,7 +6,7 @@
  *   · 问答行为  → modules/HomeModule/conversation.js
  *   · 结果排版  → modules/HomeModule/result-format.js
  *   · 品牌/备案/版权/页脚 → modules/SettingsModule/settings.js
- *   · 版式与视觉 → modules/UIModule/theme.css（CSS）＋ modules/UIModule/export-image.js（导出图版式）
+ *   · 版式与视觉 → modules/UIModule/theme.css（CSS）＋ modules/ExportModule/export-image.js（导出图版式）
  * 以上均为单一真源，本壳内**不复制**任何一份。
  */
 (function () {
@@ -93,14 +93,15 @@
   if (splash) {
     $('splashName').textContent = (about.splash && about.splash.title) || '';
     $('splashSub').textContent = (about.splash && about.splash.sub) || '';
-    var SPLASH_HOLD = 1200;   // 停留时长（纯 PWA 端体验参数；设计稿只定了退场 400ms，未定停留，故放壳里）
-    var SPLASH_FADE = 400;    // 与 theme.css --d-splash 同步（改令牌时这里跟着改，见注释）
+    // 开屏停留/退场时长走 transition.js 的 TIMING（单一真源，三端共用；镜像 theme.css --d-splash）
+    var splashHold = (N.transition && N.transition.TIMING) ? N.transition.TIMING.SPLASH_HOLD : 1200;
+    var splashFade = (N.transition && N.transition.TIMING) ? N.transition.TIMING.SPLASH_FADE : 400;
     setTimeout(function () {
       splash.classList.add('nt-splash-out');
       setTimeout(function () {
         if (splash.parentNode) splash.parentNode.removeChild(splash);
-      }, SPLASH_FADE);
-    }, SPLASH_HOLD);
+      }, splashFade);
+    }, splashHold);
   }
 
 
@@ -198,7 +199,7 @@
   /**
    * 把当前结果渲染成一张 PNG 并触发下载。
    *
-   * 版式与绘制**完全走 UIModule/export-image.js**（与小程序同一份代码，壳里不重画）：
+   * 版式与绘制**完全走 ExportModule/export-image.js**（与小程序同一份代码，壳里不重画）：
    *   build() 出「矩形 + 文本」版式计划 → 按计划尺寸建 canvas → paint() 落笔 →
    *   toBlob() 出 PNG → 触发 <a download>。留白/圆角/字号/行高全部取自设计稿 token，
    *   故导出图与页面视觉一致（2 倍图，保证在视网膜屏上文字不糊）。
@@ -337,10 +338,9 @@
     '<button class="nt-pill-btn" id="m-ok">' + cm.confirm + '</button>' +
     '</div></div>';
   document.body.appendChild(mask);
-  // 退场时长：与 theme.css 的 --d-modal-out(200ms) 保持一致（退场比进场 --d-drawer 快一档）。
-  //   三端各自写一个带注释的常量（同 transition.js 的 DURATION 惯例）—— 视觉值真源在 theme.css，
-  //   这里读不到（小程序 WXSS 没有取 CSS 变量的干净途径），故只记「与哪一条 token 同步」。
-  var MODAL_OUT_MS = 200;
+  // 弹窗退场时长走 transition.js 的 TIMING.MODAL_OUT（单一真源，三端共用；镜像 theme.css --d-modal-out，
+  // 退场比进场 --d-drawer 快一档；JS 读不到 CSS 变量，故值集中在这份，改 theme.css 令牌时改 transition.js 一处）。
+  var MODAL_OUT_MS = (N.transition && N.transition.TIMING) ? N.transition.TIMING.MODAL_OUT : 200;
   function openMask() {
     mask.classList.remove('nt-mask-out');   // 复用同一节点重开：先摘退场类，让它重新播一次进场(nt-rise)
     clearTimeout(mask._outTimer);           // 若上次退场还没摘完就重开，掐掉那个延迟卸载，避免刚打开就被隐藏

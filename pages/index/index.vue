@@ -97,19 +97,21 @@ export default {
     }
   },
   methods: {
-    // 开屏页：停留 1200ms → 挂 .nt-splash-out 播 400ms 退场（theme.css --d-splash）→ 摘 overlay。
+    // 开屏页：停留 → 挂 .nt-splash-out 播退场（theme.css --d-splash）→ 摘 overlay。
     // 退场手法同弹窗：先播后摘（splashOut 触发品牌组缩放到起始页比例 nt-splash-brand-out +
-    // 背景/副标淡出 nt-splash-bg），直接卸载则动画来不及播。停留时长是 PWA/uni 端体验参数，
-    // 设计稿只定了退场 400ms、未定停留，故放壳里（与 PWA 的 SPLASH_HOLD 保持一致）。
+    // 背景/副标淡出 nt-splash-bg），直接卸载则动画来不及播。停留/退场时长走 transition.js 的
+    // TIMING（单一真源，三端共用，镜像 theme.css 令牌）。
     runSplash() {
       var self = this
+      var hold = Transition.TIMING ? Transition.TIMING.SPLASH_HOLD : 1200
+      var fade = Transition.TIMING ? Transition.TIMING.SPLASH_FADE : 400
       this._splashTimer = setTimeout(function () {
-        self.splashOut = true                       // 品牌组缩放到起始页比例并淡出（400ms）
+        self.splashOut = true                       // 品牌组缩放到起始页比例并淡出
         self._splashUnload = setTimeout(function () {
           self.splashShow = false                    // 退场结束再卸载
           self.splashOut = false
-        }, 400)
-      }, 1200)
+        }, fade)
+      }, hold)
     },
     /**
      * H5：把主题落到 <html>/<body> 与浏览器色条上。

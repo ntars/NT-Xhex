@@ -1,4 +1,4 @@
-# 玄玖灵犀 NT-Xhex v3.1.0
+# 玄玖灵犀 NT-Xhex v3.1.1
 
 > 算法演乾坤，一问知天命，以数据重现千年术数。（演乾坤·知天命）  
 > 无后端 / 无网络 / 无登录 · 一套代码自动切换多形态  
@@ -317,11 +317,39 @@ NT-Xhex/
 ├─ tools/
 │  ├─ platform-modules.json  # 各平台「加载哪些模块/静态资源」单一事实源
 │  ├─ sync-mp.js             # 生成 dist/mp-weixin（引擎 + theme.wxss + 静态资源），--check 校验 + WXML 模板传参体检
+│  ├─ sync-version.js        # 版本号收敛：version.json 唯一真值写 7 处，--check 接进 sync-mp --check
+│  ├─ gen-kangxi.js          # 生成 CoreModule/kangxi-strokes.js（3500 字康熙笔画，TDEM 康熙部首 + opencc 简繁 可复现管道）
 │  ├─ intent.test.js         # 意图解析回归（示例统一用白玖玖）
 │  ├─ transition.test.js     # 转场方向回归（13 条真实导航边 + DEPTH 层级自洽断言）
 │  └─ gen-logo.py            # Logo / App 图标生成器（Pillow）
 ├─ dist/mp-weixin/          # 原生微信小程序（IDE「导入项目」直接选这里）
 └─ modules/                 # 业务模块（唯一真源）
+   ├─ CoreModule/          # 历法 / 命理内核（纯函数，平台无关；UMD，浏览器挂 NT.core.*）
+   │  ├─ config.js          # 口径开关（立春换年 / 节 / 早子晚子 / 真太阳时 / 生肖边界）
+   │  ├─ solarlunar.js      # lunar-javascript（MIT，内嵌）历法底座
+   │  ├─ lunar.js           # Solar/Lunar/EightChar 适配层
+   │  ├─ bazi.js            # 八字四柱 / 藏干 / 十神 / 纳音 / 旺衰 / 用神 / 大运
+   │  ├─ ganzhi.js          # 干支 / 六十甲子 / 节气 / 生肖
+   │  ├─ wuxing.js          # 五行生克 / 长生 / 纳音 / 太岁
+   │  ├─ suntime.js         # 真太阳时校正（经度 + 时差 + 1986–91 夏令时）
+   │  ├─ shensha.js         # 每日黄历（值星 / 二十八宿 / 九星 / 彭祖 / 胎神 / 冲煞 / 宜忌）
+   │  ├─ bazhai.js          # 八宅命卦 / 游年八星 / 婚配 / 坐向
+   │  ├─ feixing.js         # 九宫飞星（年/月/日/时紫白入中 + 顺逆飞布 + 三元九运；日紫白走 C02 节气锚点+甲子日，公式 5 源核对）
+   │  ├─ numeral.js         # 数字命理（生命灵数 / 数字场凶数判定 / 五行通关）
+   │  ├─ numberstars.js     # 号码八星磁场（手机号 / 车牌）
+   │  ├─ iching.js          # 易经（铜钱 / 大衍起卦 / 本互卦 / 梅花体用 / 大运 + 64 卦全表）
+   │  ├─ xiaoshu.js         # 小术（一掌经 / 小六壬 / 马前课 / 人体节律）
+   │  ├─ vendor/iztro.min.js # 紫微斗数权威引擎（iztro@2.6.2，MIT，构建期内嵌、运行时不联网，798KB）
+   │  ├─ ziwei.js           # 紫微斗数 C13 适配层（命宫/身宫/五行局/十二宫/四化/大限，全走 iztro 口径）
+   │  ├─ vendor/astronomy.js # 占星/七政权威星历（astronomy-engine@cosinekitty，MIT，JPL 级，构建期内嵌、运行时不联网，116KB）
+   │  ├─ astro.js           # 占星·七政四余 C18/C19 适配层（7 政走 astronomy-engine 回归黄经 + 3 余走 Meeus 均值 + 落十二星座；紫炁/落宿/庙旺标缺口不臆造）
+   │  ├─ qimen.js           # 奇门遁甲 C14（时家·转盘·拆补定局：四柱/阴阳遁/局数/元/旬首/值符值使/地盘/天盘九星/八门/八神；权威数据多源核对，值使走宫/八神顺逆标最易错待交叉验证）
+   │  ├─ kangxi-strokes.js  # 姓名学·康熙笔画【数据】通用规范汉字 3500 字（TDEM 康熙部首计数 + opencc 简繁生成，主流五格口径，见 tools/gen-kangxi.js）
+   │  ├─ name81.js          # 五格剖象 + 81 数理（接 kangxi-strokes）
+   │  └─ zodiac-rel.js      # 十二生肖关系【数据】六合/三合/六冲/六害/六破/相刑/犯太岁（5 源核对，民俗关系表）
+   ├─ features/
+   │  ├─ registry.js        # 扩展功能注册表（搜索框单一入口·触发词最长优先 + 生肖/卦名/坐向兜底，现 24 个功能：八字排盘/大运/号码八星/数字八字/数字凶数/数字通关/九宫飞星(年·月·日·时)/紫微斗数/易经起卦/梅花易数/周易64卦/八宅命卦/小术/生肖/犯太岁/起名/八宅风水/五行穿衣/五行生克/五格/日期换算/倒数日/占星·七政四余/奇门遁甲）
+   │  └─ __tests__/         # features.test.js（触发词路由 + 有料/缺料验收）
    ├─ AnalyzerModule/        # 本地分析引擎（纯函数，平台无关）
    │  ├─ db.js              # 本地知识库（干支/时辰/五行生克/建除宜忌/地支六冲/姓名/五格，大白话注释）
    │  ├─ lunar.js           # 精确历法内核（节气/四柱/建除/旺衰）
@@ -329,8 +357,8 @@ NT-Xhex/
    │  ├─ name-study.js      # 姓名学（拆字/音韵/五格/补缺）
    │  ├─ bazi.js            # 八字排盘/命理（四柱/日主强弱/喜用/简批）
    │  ├─ ganzhi-analysis.js # 黄历宜忌/择日/干支节气 分析
-   │  ├─ intent.js          # 输入解析与意图识别
-   │  └─ analyzer.js        # 主入口：意图识别 + 话题守卫 + 调度子模块（对外仅 analyze）
+   │  ├─ intent.js          # 输入解析与意图识别（5 核心意图 + 日期 1900–2100 校验）
+   │  └─ analyzer.js        # 主入口：触发词功能优先 → 意图 → 话题守卫（对外仅 analyze）
    ├─ HomeModule/
    │  ├─ index.vue          # 首页（Vue 壳）
    │  ├─ result.vue         # 结果页（Vue 壳，含导出图片）
@@ -343,12 +371,13 @@ NT-Xhex/
    │  └─ detail.vue         # 内容详情页（Vue 壳，一稿两用）
    ├─ StorageModule/storage.js  # 本地存储（wx/localStorage/内存三级降级）
    ├─ EnvModule/env.js      # 环境检测 + PWA 安装引导 + Service Worker 注册
-   └─ UIModule/
-      ├─ theme.css            # 视觉规范单一真源（token + 组件 + 深色反色 + 动效 + 响应式）
-      ├─ theme.js             # 黑白双主题逻辑（读偏好/跟随系统/切换持久化）
-      ├─ transition.js        # 页面转场（双层视差 / 单层右滑入，统一缓动与时长）
-      ├─ safe-area.js         # 全方向安全区（状态栏/胶囊/手势条；与设计带取大者，三壳共用）
-      ├─ qrcode.js            # 二维码库（qrcode-generator，MIT，纯 JS、无 DOM 依赖；导出图右下角印它，运行时不联网）
+   ├─ UIModule/
+   │  ├─ theme.css            # 视觉规范单一真源（token + 组件 + 深色反色 + 动效 + 响应式）
+   │  ├─ theme.js             # 黑白双主题逻辑（读偏好/跟随系统/切换持久化）
+   │  ├─ transition.js        # 页面转场（双层视差 / 单层右滑入，统一缓动与时长）
+   │  └─ safe-area.js         # 全方向安全区（状态栏/胶囊/手势条；与设计带取大者，三壳共用）
+   └─ ExportModule/          # 「导出图片」独立模块（各司其职，坏一个不连累整程序）
+      ├─ qrcode.js            # 二维码库（qrcode-generator，MIT，纯 JS、无 DOM 依赖；运行时不联网）
       └─ export-image.js      # 「导出图片」版式与绘制（NT-List 卡片形式：build 出计划 / paint 落笔 / 中英混排换行 / 离线二维码）
 ```
 
@@ -412,9 +441,21 @@ python3 -m http.server 8090      # 8080 常被本机 WebDAVNav 占用，故用 8
 ```bash
 node -e "console.log(require('./modules/AnalyzerModule/analyzer.js').analyze('今日宜忌'))"
 node -e "console.log(require('./modules/AnalyzerModule/analyzer.js').analyze('白玖玖，女，2005年6月9日子时排盘'))"
+node -e "console.log(require('./modules/AnalyzerModule/analyzer.js').analyze('紫微 2026'))"   # 扩展功能（搜索框单一入口）
+node -e "console.log(require('./modules/AnalyzerModule/analyzer.js').analyze('五格 白玖玖'))"
+node -e "console.log(require('./modules/AnalyzerModule/analyzer.js').analyze('占星 1990年8月15日 14时'))"   # 占星·七政四余（C18/C19，JPL 级 + Meeus 均值）
+node -e "console.log(require('./modules/AnalyzerModule/analyzer.js').analyze('奇门遁甲 1990年8月15日 14时'))"   # 奇门遁甲（C14，时家转盘·拆补）
 node tools/intent.test.js          # 意图解析回归（30 用例）
 node tools/transition.test.js      # 转场方向回归（13 条真实导航边 + 层级自洽断言）
+node modules/CoreModule/__tests__/kangxi.test.js   # 康熙 3500 字表 + 五格 验收
+node modules/CoreModule/__tests__/cores.test.js    # 内核 C01–C06 验收
+node modules/CoreModule/__tests__/cores2.test.js   # 内核 C08–C20 验收
+node modules/CoreModule/__tests__/astro.test.js    # 占星·七政 C18/C19（7 政对 JPL + 3 余 Meeus 均值 + 落座）
+node modules/CoreModule/__tests__/qimen.test.js    # 奇门 C14（时家转盘拆补；确定性权威 + 结构自洽，值使走宫/八神留 REA 锁）
+node modules/features/__tests__/features.test.js    # 扩展功能触发词路由 + 有料/缺料 验收
 node tools/sync-mp.js --check      # dist 与 modules 一致性 + WXML <template is> 是否漏传 data
+# 占星 7 政对拍基准（ephem 自带 JPL 级 ephemeris，装在隔离 venv；改 astro 内核后重跑刷新 tools/astro-check.js 的 REF）：
+#   python3 tools/astro-gen-ref.py   # 7 政（日月光金木水火土）当回归经真值
 ```
 
 > `transition.test.js` 枚举五视图之间**所有真实可达的导航边**，逐条断言「前进 / 返回」方向与 `stage-*`、`nt-slide-in-*` 类名，并额外校验 `DEPTH` 层级自洽（父子关系不能并列）。曾出现过「关于我们 → 关于 返回时方向反了」的问题（`us` 与 `about` 被并列成同一深度），现在改坏会直接红。  
@@ -436,6 +477,41 @@ node tools/sync-mp.js --check      # dist 与 modules 一致性 + WXML <template
   ⑧ **关于卡路由去重**：`settings.js` 新增 `rowAction(row)`（`clear|us|detail`），三端同一份判定。
   ⑨ **死代码清理**：删 `intent.js` 的 5 个测试钩子导出（`_preprocess`/`_cnToNum`/`_normalizeSeparators`/`_validateDate`/`_validateTime`）+ `JIEQI_LIST` 死导出、6 个 `.DS_Store`。
   ⑩ **文档迁出**：`docs/`（设计稿规格说明书 / 未实现清单 / 模块化方案）从代码仓移到仓库外 `玄玖灵犀/docs/`，`.gitignore` 加 `docs/`；新增「功能清单」。
+  ⑪ **姓名五格接 3500 字康熙笔画真源**：新增 `CoreModule/kangxi-strokes.js`（通用规范汉字 3500 字康熙笔画，**可复现**生成，非手抄），`name81.js` 改为接此表（`KANGXI_COVERAGE=3500`，缺字仍报缺不臆造）；生成器 `tools/gen-kangxi.js`（opencc-js 简繁 + 笔画源 管道，初版用 Unihan kTotalStrokes，后见 ⑳ 升级为 TDEM 康熙部首口径），并修五格「三才 数→五行」映射（1,2 木 / 3,4 火 / 5,6 土 / 7,8 金 / 9,0 水，原映射错位）与 `score()` 死变量。
+  ⑫ **搜索框单一入口 · 扩展功能层**：新增 `features/registry.js`，把 8 个 CoreModule 内核（号码八星 / 紫微飞星 / 易经起卦 / 八宅命卦 / 数字命理 / 小术 / 五行生克 / 姓名五格）包成**触发词即路由**的长尾功能；`analyzer.js` 改为「触发词功能优先 → 5 核心意图 → 话题守卫」，**无需任何入口 UI**，命中触发词即从正文出结果。日期推理覆盖 1900–2100（`intent.js` 越界即提示）。
+  ⑬ **三端接线**：`platform-modules.json` / PWA `<script>` / `dist/mp-weixin` 同步登记新内核与 features（`sync-mp` 生成 34 个引擎文件）；新增回归 `CoreModule/__tests__/kangxi.test.js` 与 `features/__tests__/features.test.js`。
+  ⑭ **八字完整排盘 + 大运（第 3 组 ★，接 C07 内核）**：把 `CoreModule/bazi.js` 的完整 `chart()`（四柱 / 藏干 / 十神 / 纳音 / 旬空 / 胎元命宫身宫 / 五行统计 / 旺衰五档 / 用神喜忌 / 大运）注入 `features/registry.js`，新增 `bazi-chart`（完整排盘）与 `dayun`（十年大运，阳男阴女顺排 / 阴男阳女逆排）两功能。搜索框「排盘/八字/四柱/命盘/藏干/十神/用神/纳音」命中即走完整内核，替代旧的 Analyzer 简批；「大运/流年/起运」命中 `dayun`。基准与 `bazi.test.js` 一致（白玖玖女 2005-6-9 子时 → 乙酉/壬午/甲子/甲子、命宫丁亥）。
+  ⑮ **数字命理第 4 组 ★（3 个功能，全吃 C10 内核）**：把原先合并的 `numeral` 一功能拆成施工总图里的 3 个——`numeral-chart`（数字八字排盘：四柱数字/五行/日柱拆分/佩戴部位）、`numeral-judge`（凶数判定：八绝/六冲/三九/灾数/纯阳）、`numeral-fix`（五行通关化解：按四柱相克给通关行 + 随身化解物，`TONGGUAN` 表）。零新数据、零臆造，全部走 `numeral.js` 现成 API。
+  ⑯ **生肖民俗第 7 组 + 命名第 8 组 + 梅花第 5 组 ★**：新增 `CoreModule/zodiac-rel.js`（十二生肖关系【数据】：六合/三合/六冲/六害/六破/相刑/自刑/犯太岁，**5 源核对一致**，标注来源；`relOf`/`detail`/`taisui`），接 3 个功能——`zodiac`（双生肖判关系 / 单生肖速查）、`taisui`（犯太岁：值/冲/刑/害/破，太岁生肖走 C01 历法内核）、`naming`（起名补益：八字喜用神 + 五行补缺给**选字方向**，不臆造具体字）。另补 `meihua`（**梅花易数·邵康节时间起卦法**：上卦=(年支+月+日)取8余、下卦=加时辰支、动爻取6余，走 C10 农历 + C17 卦象单一真源，并把「梅花」从旧 `iching`（铜钱/大衍）拆出独立）。**路由升级为「命中触发词最长优先」**（避免「数字八字」被「八字」抢），并加「含 ≥2 生肖兜底到 zodiac」。
+  ⑰ **九宫飞星(年·月·时) + 周易64卦 + 八宅风水 + 五行穿衣 + 日期换算/倒数日（第 5/9/11/1 组，纯内核复用、零臆造）**：
+  - **九宫飞星补月/时紫白**：`feixing.js` 加 `monthChart`（年支定四正/四生/四墓月入中星，逐月逆推、入中顺飞）+ `hourChart`（日支定起数，冬至后顺 / 夏至后逆，入中冬顺飞夏逆飞），**玄空月/时紫白公式经 5 源交叉核对**；并**修掉旧 `feiGong`/`add` 的 off-by-one**（原「入中星没落中宫」，`yearChart` 也一并修正）。`feixing` 功能升级为「年·月·时·日」四盘（日紫白已补，见 ⑲）。
+  - **周易 64 卦全表**：`iching.js` 的 `HEX64` 由节选补到 **8×8 全量 64 卦**（零兜底），新增 `zhouyi` 功能（按卦名/卦序查 64 卦 + 体用生克），路由加「64 卦名/第N卦」兜底。
+  - **八宅风水**：新增 `fengshui` 功能（坐向八星吉凶 + 两造八等婚合婚，全走 C08 `bazhai` 内核；「坐X」说法加路由兜底，并从 `bazhai` 触发词里去掉「坐向」避免抢路由）。
+  - **五行穿衣**：新增 `wuxing-color`（当日日干五行 → 生我/我生 吉色，走 C01 日干 + C05 生克表，民俗参考）。
+  - **日期换算 + 倒数日**：新增 `date-convert`（公历↔农历↔干支↔生肖↔儒略日↔星期）与 `countdown`（倒数日），全走 C01/C02 内核；「干支」触发词保留在 intent 层不动（避免误抢节气/干支核心意图）。
+  `features` 触发词功能现共 **21 个**；新增回归已并入 `features.test.js`（触发词路由 + 有料/缺料）。
+
+  ⑱ **权威口径审计（用户铁律：有准的必须用准的，不自造）**：把之前标注「自研」的 3 张表逐一对照权威标准源核对并修正——
+  - **十二长生（`wuxing.js`）修正**：旧版阴干用「同五行起点 + 逆行」（乙=亥起逆行 → 乙午=衰，**错**）。权威口诀「甲亥 丙戊寅 庚巳 壬申 / 乙午 丁己酉 辛子 癸卯，阳顺阴逆」（5 源核对：天天黄历/华易网/风雅颂/玄圣网/速记口诀）→ 改为**十天干各自固定长生起点**（`CS_START` 天干键），乙午=长生 ✓ 辛亥=沐浴 ✓。
+  - **81 数理吉凶（`name81.js`）修正**：旧版吉凶档位自研（9/12/14 误判半吉、17/29 误判半吉、44 误判半吉、81 误标凶）。按**熊崎健翁标准 81 数理表**（5 源核对：cdi.org.tw 中国命相卜顾问协会/道客易/356 熊崎氏/卜易居/51sunsafe）改为 **吉 39 / 半吉 13 / 凶 29**（81/81 逐数验证一致；交界数 27/42/43/49/55/72/73 取「半吉」档）。`kangxi.test.js` 加档位锁定。
+  - **一掌经（`xiaoshu.js`）修正**：旧版自研「年干定偏移、逐月顺推」不符古籍。按**《神机妙算·达摩一掌经》权威起法**（5 源核对：维基文库原文/联贤华韵/易德轩/成都老吴/易卦网）：年宫落「生年地支宫」、**男顺女逆**、月/日/时走**农历序**，十二宫固定布局「子天贵 丑天厄 寅天权 卯天破 辰天奸 巳天文 午天福 未天驿 申天孤 酉天刃 戌天艺 亥天寿」。用古籍两条实例验证：巳年正月十二午时男 → 日辰(天奸) 时戌(天艺) ✓；戌年九月廿四戌时女 → 月寅(天权) 日卯(天破) 时巳(天文) ✓。
+  - **审计已核对无需改**（本就是权威/走底座）：干支表/六十甲子/节气/神煞（lunar-javascript 底座）、八星磁场 49 组合（对照标准数字八星表逐项一致）、生肖关系（zodiac-rel 已 5 源核对）、紫微飞星月/时（已 5 源核对）、64 卦全表、五行穿衣、数字八字（本项目独有自研体系，无外部权威，保留并标注）、真太阳时/儒略日（NOAA/lunar 内核）。
+  ⑲ **九宫飞星补「日紫白」（玄空日飞星，最易错项已落实）**：日紫白公式 = 「节气锚点 + 甲子日计数」——冬至/雨水/谷雨（顺，起 1/7/4）、夏至/处暑/霜降（逆，起 9/3/6），取**交节日后第一个甲子日**入中，其后逐日顺/逆推取 9 余。分两层落地：`ganzhi.js`（C02）出**历法锚点** `dayZiBaiAnchor`（跨 y±1 查 6 节气交节日 → 定段/顺逆/起星 → 找甲子日起星日 → 算与目标日间隔），`feixing.js`（C09）出**九宫飞布** `dayChart`（段起星 ± 间隔 取 9 余 + 顺/逆飞九宫）。**6 段「甲子日当天入中=段起星」铁点全部验证通过**（冬至 1/雨水 7/谷雨 4/夏至 9/处暑 3/霜降 6，含跨年冬至段 2025-12-21），逐日顺推次日 +1 也过；`feixing` 功能「日紫白」行由「待补」改为真实排盘，时紫白的冬/夏判定也改用锚点精确顺/逆（不再用月份近似）。`cores2.test.js` 加 7 条日紫白铁点锁定。
+  ⑳ **康熙笔画 3500 字表升 TDEM 权威源（解决之前「部首旧制待补」遗留）**：之前 ⑪ 的表底层用 **Unihan kTotalStrokes（现代总笔画）**，在康熙部首旧制敏感字上偏离主流五格（如 陈=10、万=13、花=8、远=13）。本轮按「有权威用权威」，改为 **TDEM `kangxi-strokecount`（Kawai Lo / breezyreeds，MIT，63696 字，按康熙部首计数 = 主流五格口径）** 作底层，配 opencc 简→繁 再查繁体。生成器 `tools/gen-kangxi.js` 重写（TDEM 优先 + Unihan 兜底 + 修 opencc `Converter` 实例化 bug + 无名单时从现有 DATA 回提取保 3500 覆盖）。定标核对：**TDEM 与主流五格库（bename 内置表）逐项一致**（张11 陳16 遠17 華14 萬15 羅20 鄭19），`kangxi.test.js` 断言按新口径更新（陈16/郑19/罗20 + 万15/花10/远17/门8）。TDEM CSV 存于 `~/.workbuddy/kangxi-strokecount.csv`（复现依赖，不入库）。
+  ㉑ **内嵌 iztro → 紫微斗数 C13（第 5 组 ★，权威引擎、零自研安星法）**：新增 `CoreModule/vendor/iztro.min.js`（iztro@2.6.2 dist UMD bundle，**MIT，构建期资产、运行时不联网**，798KB 自包含）+ `CoreModule/ziwei.js` 薄适配层（只读 iztro 已算好的字段：命宫主星/身宫主星/五行局/十二宫主辅星/四化/大限岁数，**不自研安星法、不自推四化表**，命宫按 `earthlyBranchOfSoulPalace` 地支定位）。接 `ziwei` 功能（触发词「紫微斗数/紫微排盘/斗数」，最长优先压过 feixing 的「紫微」，「紫微飞星/九宫飞星」仍归飞星功能）。验证：1990-8-15 14时男 → 命主星贪狼坐子、火六局、天机坐命宫戊子、大限 9/21/33 岁，与 iztro 官方口径一致；`ziwei.test.js` 锁命盘自洽 + 性别顺逆。`features` 触发词功能 **22 个**；三端接线（platform-modules 两清单 + PWA `<script>`：iztro 先于 ziwei，UMD 挂 `window.iztro`；小程序 require vendor）。
+  ㉒ **内嵌 astronomy-engine → 占星·七政四余 C18/C19（第 6 组 ★，权威星历 + Meeus 均值，零臆造）**：新增 `CoreModule/vendor/astronomy.js`（cosinekitty/astronomy，**MIT，JPL 级，构建期资产、运行时不联网**，116KB UMD）+ `CoreModule/astro.js` 薄适配层。
+  - **7 政（日/月/水/金/火/木/土）**：走 astronomy-engine `GeoVector→Ecliptic` 出**回归黄经(tropical)**，与 ephem(JPL 级)逐样本对拍 **最大 Δ=0.006°**（`tools/astro-check.js` + `tools/astro-gen-ref.py` 基准）。
+  - **3 余（罗睺/计都/月孛）**：占星标准取**均值(mean)**，走 Meeus《天文算法》§38.B 均值公式（Ω=125.0445479−1934.1362891T…、月拱点线 ϖ=83.3532465+4069.0137287T…，常数 4 源核对一致；J2000 T=0 基准点 Ω=125.04°/ϖ=83.35° 公认）。
+  - **落十二星座**：回归黄经等分 ÷30°（0=白羊，占星标准口径）。
+  - **严守零臆造、缺口如实标注**：紫炁（第 11 曜）有「日拱点 vs Chiron 小行星」两说、落二十八宿/庙旺需权威数据表 → 本轮**不硬写**，`positions()` 的 `缺口` 字段如实说明（结果文案末尾也提示）。
+  - 接 `astro` 功能（触发词「占星/星盘/七政/四余/黄经/落座/罗睺/月孛」，自带 try/catch）。`features` 触发词功能 **23 个**；自测 `CoreModule/__tests__/astro.test.js`（7 政对 JPL + 3 余命中 J2000 基准点 + 落座映射 + 缺口断言，30 项全绿）；三端接线（platform-modules 两清单 + PWA `<script>`：astronomy.js 先于 astro.js，UMD 挂 `window.Astronomy`；小程序 require vendor）。
+  ㉓ **奇门遁甲 C14（时家·转盘·拆补定局，权威规则多源核对）**：新增 `CoreModule/qimen.js`（纯自研权威规则，零 vendor、依赖 `NT.core.lunar`+`NT.core.ganzhi` 出四柱/节气/干支）。
+  - **权威数据（多源核对一致，《奇门遁甲统宗》卷一 + 4 源）**：节气定局表（阳12+阴12 × 上中下元）、三奇六仪序「戊己庚辛壬癸丁丙乙」、六甲旬首「甲子戊…甲寅癸」、九星本宫（蓬1芮2冲3辅4禽5心6柱7任8英9）、八门本宫（休1死2伤3杜4开6惊7生8景9）、八神（值符螣蛇太阴六合白虎玄武九地九天）、拆补符头定元（子午卯酉上/寅申巳亥中/辰戌丑未下）。
+  - **7 步起局**：定四柱(晚子换日)→拆补定局(阴阳遁+局数+元)→排地盘布仪(阳顺阴逆·中五寄坤二)→定值符值使(旬首仪落宫)→排天盘九星(值符随时干·转盘顺时针)→排人盘八门(值使随时支)→排神盘八神(阳顺阴逆)。
+  - **严守零臆造 + 黄金盘例交叉验证**：**确定性权威部分（四柱/局数/旬首/值符/值使/地盘/天盘九星）已逐项手算核验**；**「九星/八门/八神飞布落宫」= 奇门最易错项**，离线逆向 **qimen.pro（时家·拆补·转盘法）SSR 黄金盘**（`tools/qimen-golden-ref.js`）逐宫反推出飞布几何（洛书**地理顺时针环** `[1,8,3,4,9,2,7,6]` + 值使门锚「时支宫」+ 八神阳顺阴逆），`qimen.test.js` 用黄金盘逐宫断言 **九星/八门/八神 24/24 全中**。内核 `return._飞布验证` 如实标注：**阴遁盘已按黄金盘锁死、阳遁盘/置闰边界待 REA 驱动 qimen.pro 前端补盘交叉验证**（置闰站 qimenqmdj 自相矛盾、不作裁判，不臆造）。
+  - 接 `qimen` 功能（触发词「奇门/奇门遁甲/遁甲/值符/值使/阴遁/阳遁/转盘法/拆补法/九星八门」，自带 try/catch）。`features` 触发词功能 **24 个**；自测 `CoreModule/__tests__/qimen.test.js`（确定性权威 + 结构自洽 + 黄金盘逐宫 24/24 + 边界，34 项全绿）；三端接线（platform-modules 两清单 + PWA `<script>`：qimen.js 在 astro.js 后、registry 前，UMD 挂 `window.NT.core.qimen`；小程序 require）。
+  > **待办**：奇门「值使走宫/八神顺逆」黄金盘例交叉验证，走**用户指定 REA（Reverse Engineer Anything，`github.com/morluto/rea`，node22 可跑）**驱动浏览器逆向问真八字（pcbz.iwzwh.com）前端，逐宫比对后锁定。
+
   （说明：3.1.0 方案里 S4 的「清缓存复位收敛」未做 —— 需注入 theme 跨模块，破坏 conversation 纯净性、引入有害耦合，故保留现状；S6 两份 manifest 未合并 —— 属平台构建产物，合并需构建钩子，收益低于风险。）
 
 - **v3.0.7**：① 新增**开屏页**（Logo + 玄玖灵犀 28pt + 演乾坤·知天命，停留 1.2s 后 400ms 淡出，三端一致；原 4 组死令牌全部启用）。② 弹窗补**出场动画**（`nt-fall` 淡出下沉 200ms，三端「先播后摘」双状态）。③ 配色治理为**全黑白灰**，仅宜忌（`--nt-yi/--nt-ji`）与五行（`--wx-*`）保留彩色且双主题适配（浅深各一套值）。④ 导出图片按 **NT-List 卡片形式**重做（顶规则线 + 品牌头 + 提问/答案 + 页脚本地生成声明/版本/导出时间 + 右下角离线二维码，`qrcode.js` 纯 JS 内嵌、运行时不联网，指向网页版 `yi.ntars.cn`）。⑤ PWA 结果页双按钮改读 `about.resultActions` 单一真源。⑥ 删 `about().copyright`、`theme.js` 死导出、7 个死 token、`tools/measure-svg*.py`。

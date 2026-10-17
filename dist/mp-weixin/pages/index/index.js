@@ -13,7 +13,7 @@ var Settings = require('../../utils/modules/SettingsModule/settings.js')
 var SafeArea = require('../../utils/modules/UIModule/safe-area.js')
 var Theme = require('../../utils/modules/UIModule/theme.js')
 var Transition = require('../../utils/modules/UIModule/transition.js')
-var ExportImage = require('../../utils/modules/UIModule/export-image.js')
+var ExportImage = require('../../utils/modules/ExportModule/export-image.js')
 
 var EMPTY_RESULT = { title: '', lead: '', blocks: [], question: '' }
 
@@ -184,7 +184,7 @@ Page({
    *    改为「渲染成图 → wx.previewImage 预览」，用户在预览里长按走**系统自带菜单**自行保存，
    *    小程序侧不申请、不记录、不触发任何隐私授权 —— 与「无登录、无权限申请」的初衷一致。
    *
-   * 版式与绘制**完全走 UIModule/export-image.js**（与网页端同一份代码，壳里不重画）：
+   * 版式与绘制**完全走 ExportModule/export-image.js**（与网页端同一份代码，壳里不重画）：
    *   optsFrom(about) 装配 meta → build() 出排版计划 → 离屏 <canvas type="2d"> 定尺寸 →
    *   paint() 落笔 → canvasToTempFilePath 出临时 PNG → previewImage 预览。
    */
@@ -281,33 +281,35 @@ Page({
   gotoDetailBack: function () { this.go(this.data.detailBack || 'about') },
 
   noop: function () {},
-  // 开屏页：停留 1200ms → 挂 .nt-splash-out 播 400ms 淡出（theme.css --d-splash）→ 摘 overlay。
+  // 开屏页：停留 → 挂 .nt-splash-out 播退场（theme.css --d-splash）→ 摘 overlay。
   // 淡出手法同弹窗：先播后摘（直接 setData({splashShow:false}) 会摘掉节点、动画来不及播）。
-  // 停留 1200ms 是 PWA/uni/小程序共用的体验参数（设计稿只定退场 400ms、未定停留）；三端各写一个
-  // 带注释常量（同 DURATION 惯例）—— 视觉值真源在 theme.css，改 --d-splash 时三端的 400 一起改。
+  // 停留/退场时长走 transition.js 的 TIMING（单一真源，三端共用，镜像 theme.css 令牌）。
   runSplash: function () {
     var self = this
+    var hold = (Transition && Transition.TIMING) ? Transition.TIMING.SPLASH_HOLD : 1200
+    var fade = (Transition && Transition.TIMING) ? Transition.TIMING.SPLASH_FADE : 400
     this._splashTimer = setTimeout(function () {
-      self.setData({ splashOut: true })             // 品牌组缩放到起始页比例并淡出（400ms）
+      self.setData({ splashOut: true })             // 品牌组缩放到起始页比例并淡出
       self._splashUnload = setTimeout(function () {
         self.setData({ splashShow: false, splashOut: false })   // 退场结束再卸载
-      }, 400)
-    }, 1200)
+      }, fade)
+    }, hold)
   },
-  // 退场时长：与 theme.css 的 --d-modal-out(200ms) 保持一致（三端各写一个带注释常量，见 PWA app.js 同处说明）。
+  // 退场时长走 transition.js 的 TIMING.MODAL_OUT（单一真源，镜像 theme.css --d-modal-out）。
   // 统一的「播退场 → 再卸载」收尾：cancel / 点遮罩 都走这里；doClear（确认）也复用，
   // 把切页/清输入/落主题推迟到退场播完之后，避免遮罩还在淡出时页面已经跳走造成重影。
   closeModal: function (then) {
     if (this._modalClosing) return
     this._modalClosing = true
-    this.setData({ clearClosing: true })   // 挂 .nt-mask-out，播 nt-fall（淡出 + 下沉 200ms）
+    this.setData({ clearClosing: true })   // 挂 .nt-mask-out，播 nt-fall（淡出 + 下沉）
     var self = this
+    var outMs = (Transition && Transition.TIMING) ? Transition.TIMING.MODAL_OUT : 200
     clearTimeout(this._modalOutTimer)
     this._modalOutTimer = setTimeout(function () {
       self.setData({ clearOpen: false, clearClosing: false })   // 卸载节点
       self._modalClosing = false
       if (then) then()
-    }, 200)
+    }, outMs)
   },
   // 清缓存会重置主题偏好（回落跟随系统）→ 重读主题，同步 .nt-dark 反色态与品牌 logo，
   // 否则清完后主题看着没变（「清除缓存达不到效果」根因修复）

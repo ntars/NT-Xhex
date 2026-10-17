@@ -45,10 +45,10 @@
 <script>
 // 结果页：只负责展示 result-format.js 加工好的结构化结果 + 导出图片。
 // 排版结构与小程序结果页、PWA 结果页完全一致（同一套类名与 theme.css 变量）。
-// 导出图片的**版式与绘制**走共享 UIModule/export-image.js（三端同一份），本组件只做「取画布 / 出文件」。
+// 导出图片的**版式与绘制**走共享 ExportModule/export-image.js（三端同一份），本组件只做「取画布 / 出文件」。
 import Settings from '@/modules/SettingsModule/settings.js'
 import SafeArea from '@/modules/UIModule/safe-area.js'
-import ExportImage from '@/modules/UIModule/export-image.js'
+import ExportImage from '@/modules/ExportModule/export-image.js'
 import '@/modules/UIModule/theme.css'
 
 var EMPTY = { title: '', lead: '', blocks: [], question: '' }
