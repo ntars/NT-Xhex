@@ -44,7 +44,8 @@
       require('../CoreModule/liuyao-wangshuai.js'),
       require('../CoreModule/ziwei-horoscope.js'),
       require('../CoreModule/astro-house.js'),
-      require('../CoreModule/bazi-shensha.js')
+      require('../CoreModule/bazi-shensha.js'),
+      require('../CoreModule/ziwei-stars.js')
     );
   } else {
     root.NT = root.NT || {};
@@ -74,10 +75,11 @@
       root.NT.core && root.NT.core.liuyaoWangshuai,
       root.NT.core && root.NT.core.ziweiHoroscope,
       root.NT.core && root.NT.core.astroHouse,
-      root.NT.core && root.NT.core.baziShensha
+      root.NT.core && root.NT.core.baziShensha,
+      root.NT.core && root.NT.core.ziweiStars
     );
   }
-})(typeof self !== 'undefined' ? self : this, function (FEI, NUM, NSTAR, ICE, BZH, XS, WX, N81, CORE, BAZI, ZD, ZW, ASTRO, QM, LR, LY, TY, YZ, XSH, QW, CZ, QF, BP, ZR, QG, LBF, LWS, ZHW, AH, BSS) {
+})(typeof self !== 'undefined' ? self : this, function (FEI, NUM, NSTAR, ICE, BZH, XS, WX, N81, CORE, BAZI, ZD, ZW, ASTRO, QM, LR, LY, TY, YZ, XSH, QW, CZ, QF, BP, ZR, QG, LBF, LWS, ZHW, AH, BSS, ZWS) {
 
   // 十二地支序（大六壬天地盘/天将逐一列用）
   function ZHI2() { return ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥']; }
@@ -318,8 +320,8 @@
     {
       key: 'ziwei', 名: '紫微斗数',
       板块: '命理排盘', 短名: '排紫微',
-      触发词: ['紫微斗数', '紫微排盘', '斗数', '排紫微', '紫微盘', '紫微'],
-      说明: '紫微斗数命盘（内嵌 iztro 权威引擎）：命宫主星/身宫主星/五行局 + 十二宫主辅星 + 四化 + 大限岁数。',
+      触发词: ['紫微斗数', '紫微排盘', '斗数', '排紫微', '紫微盘', '紫微星情', '紫微'],
+      说明: '紫微斗数命盘（内嵌 iztro 权威引擎）：命宫主星/身宫主星/五行局 + 十二宫主辅星 + 四化 + 大限岁数，并给出十四主星与辅煞星的星情（五行·化气·性格长短·宜业）与三方四正；命宫空宫走「借星安宫」借迁移。',
       run: function (ent, text) {
         var y = yearOf(ent, text);
         var m = ent && ent.date && ent.date.month ? ent.date.month : 1;
@@ -332,10 +334,57 @@
         if (c.err) return { text: '【紫微斗数】' + c.err };
         var lines = [];
         lines.push('【紫微斗数】' + y + '年' + m + '月' + d + '日' + h + '时（' + g + '）：命主星「' + c.命主星 + '」坐' + c.命宫地支 + '宫，身主星「' + c.身主星 + '」坐' + c.身宫地支 + '宫，' + c.五行局 + '。');
-        lines.push('命宫（' + c.命宫.干支 + '）主星「' + c.命宫.主星 + '」' + (c.命宫.辅星 ? '，辅星 ' + c.命宫.辅星 : '') + (c.命宫.四化.length ? '，四化 ' + c.命宫.四化.join('、') : '') + '。');
-        lines.push('身宫（' + c.身宫.干支 + '）主星「' + c.身宫.主星 + '」。');
-        lines.push('十二宫：' + c.十二宫.map(function (p) { return p.宫 + (p.主星.length ? '「' + p.主星.join('/') + '」' : '·'); }).join(' '));
+        lines.push('命宫（' + c.命宫.干支 + '）主星' + starPhrase(c.命宫.主星) + (c.命宫.辅星 ? '，辅星 ' + c.命宫.辅星 : '') + (c.命宫.四化.length ? '，四化 ' + c.命宫.四化.join('、') : '') + '。');
+        lines.push('身宫（' + c.身宫.干支 + '）主星' + starPhrase(c.身宫.主星) + '。');
+        lines.push('十二宫：' + c.十二宫.map(function (p) { return p.宫 + (p.主星.length ? '「' + p.主星.join('/') + '」' : '（空）'); }).join(' '));
         lines.push('大限（命宫）：' + c.大限.命宫起限.join('、') + '。');
+        // 星情与宫义（v3.1.13）：安星只给「哪颗星在哪」，这里补「这颗星什么脾气」
+        if (ZWS && ZWS.line14) {
+          var P = {};
+          c.十二宫.forEach(function (p) { P[p.宫] = p; });
+          var 命主 = c.命宫.主星 === '（空宫）' ? [] : c.命宫.主星.split('、');
+          // 借星安宫：命宫无主星时借对宫（迁移）主星看（紫微斗数通例）
+          var 借 = '';
+          if (!命主.length) {
+            var 迁 = P['迁移'];
+            if (迁 && 迁.主星.length) { 借 = 迁.主星.join('、'); 命主 = 迁.主星.slice(); }
+            lines.push('命宫空宫（无主星），依「借星安宫」借对宫迁移的「' + (借 || '空') + '」看命。');
+          }
+          var shown = {}, 星情行 = [];
+          for (var si = 0; si < 命主.length; si++) {
+            var l14 = ZWS.line14(命主[si]);
+            if (l14) { 星情行.push(l14); shown[命主[si]] = 1; }
+          }
+          if (星情行.length) {
+            lines.push('星情·' + (借 ? '借（取迁移宫）' : '命宫') + '：' + 星情行.join('；') + '。');
+          }
+          // 三方四正（财帛·官禄·迁移）：只并排短句，已在上行讲过的星不重复
+          var trio = ['财帛', '官禄', '迁移'], tb = [];
+          trio.forEach(function (g) {
+            var p = P[g];
+            if (!p || !p.主星.length) { tb.push(g + '（空宫）'); return; }
+            p.主星.forEach(function (nm) {
+              if (shown[nm]) return;
+              var b = ZWS.brief14(nm); if (b) { tb.push(b); shown[nm] = 1; }
+            });
+          });
+          if (tb.length) lines.push('三方四正：' + tb.join('；') + '。');
+          // 命宫辅星（辅星是「加了什么料」，与主星分开讲）
+          if (c.命宫.辅星) {
+            var mn = c.命宫.辅星.split('、').map(function (nm) { return ZWS.lineMinor(nm) || (nm + '（星情未收录）'); });
+            lines.push('命宫辅星：' + mn.join('；') + '。');
+          }
+          // 落宫简断：星 × 宫合成（明标合成，不当古籍断语）
+          var comb = [];
+          ['命宫', '财帛', '官禄'].forEach(function (g) {
+            var p = P[g];
+            if (!p) return;
+            var arr = (g === '命宫' && !p.主星.length && 借) ? 借.split('、') : p.主星;
+            arr.forEach(function (nm) { var x = ZWS.comb(nm, g); if (x) comb.push(x); });
+          });
+          if (comb.length) lines.push('落宫：' + comb.join('；') + '。');
+          lines.push('星情口径：十四主星五行/化气取五源一致处（中華民國紫微斗數協會／新浪／易德轩／明明观止／《紫微斗数全书》），分歧处并列「一说」；「落宫」为星性与宫义的机械合成，非古籍逐条断语。');
+        }
         return { text: lines.join('\n') };
       }
     },
@@ -1738,6 +1787,12 @@
     var m = String(s).match(/^([二三四五六七八九])?十([一二三四五六七八九])?$/);
     if (m) return (m[1] ? CN[m[1]] : 1) * 10 + (m[2] ? CN[m[2]] : 0);
     return 30;
+  }
+
+  // 紫微：主星串的显示写法（空宫不再套一层「「（空宫）」」双括号）
+  function starPhrase(v) {
+    v = String(v == null ? '' : v);
+    return (!v || v === '（空宫）') ? '（空宫）' : '「' + v + '」';
   }
 
   // 农历月 → 通书写法（正月、二月…十月、冬月、腊月；闰月已在数值上取过绝对值）

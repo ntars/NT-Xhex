@@ -213,4 +213,19 @@ ok(zrO2.text.indexOf('三娘煞：') < 0, '非嫁娶事项不列三娘煞名单'
 ok(zrO.text.indexOf('。；') < 0, '标注段无「。；」双标点（结果页按句号分句）');
 ok(zrO.text.indexOf('黄道·黄道') < 0, '建除黄道档不再重复写「黄道·黄道」');
 
+// ===== v3.1.13 紫微星情（十四主星 + 辅星 + 宫义合成）=====
+console.log('== v3.1.13 紫微星情 ==');
+var zrw = R.run('ziwei', ent(1990, 8, 15, 14, 'male'), '紫微 1990年8月15日 男');
+ok(zrw && zrw.text && zrw.text.indexOf('【紫微斗数】') >= 0, '紫微有料出标题');
+ok(/星情·命宫：天机（乙·阴木·化气为善/.test(zrw.text), '命宫主星给出星情（天机·乙阴木·化气为善）');
+ok(zrw.text.indexOf('三方四正：') >= 0, '给出三方四正（财帛/官禄/迁移）');
+ok(/落宫：天机坐命宫：以「智慧、机变」之性应「自我」/.test(zrw.text), '落宫为星性 × 宫义合成');
+ok(zrw.text.indexOf('（合成）') >= 0, '合成句带「合成」标识（不冒充古籍断语）');
+ok(zrw.text.indexOf('星情口径：') >= 0, '标注星情出处口径');
+ok(zrw.text.indexOf('（空宫）') >= 0 && zrw.text.indexOf('「（空宫）」') < 0, '空宫显示不再套双括号');
+var zrw2 = R.run('ziwei', ent(2000, 3, 5, 10, 'female'), '紫微 2000年3月5日 女');
+ok(/命宫空宫（无主星），依「借星安宫」借对宫迁移/.test(zrw2.text), '命宫空宫时走借星安宫（借迁移）');
+ok(/星情·借（取迁移宫）：/.test(zrw2.text), '借星后星情标明是借来的');
+ok(zrw2.text.indexOf('命宫辅星：文曲（阴水·科甲·吉）') >= 0, '命宫辅星给出星情');
+
 if (fails === 0) { console.log('全部通过 ✓'); process.exit(0); } else { console.log(fails + ' 处失败'); process.exit(1); }
