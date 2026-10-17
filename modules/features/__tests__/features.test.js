@@ -85,6 +85,8 @@ var aOut = R.run('astro', ent(1990, 8, 15, 14), '占星 1990年8月15日 14时')
 ok(aOut && aOut.text && aOut.text.indexOf('【占星·七政四余】') >= 0, '占星有料出标题');
 ok(aOut && aOut.text && aOut.text.indexOf('（黄经') >= 0, '占星给出各曜黄经');
 ok(aOut && aOut.text && aOut.text.indexOf('紫炁') >= 0, '占星如实标注紫炁缺口（不臆造）');
+ok(aOut && aOut.text && aOut.text.indexOf('落二十八宿') >= 0, '占星给落二十八宿（等宫近似·淮南子宿度）');
+ok(aOut && aOut.text && aOut.text.indexOf('庙旺') >= 0, '占星给庙旺（果老星宗查表）');
 
 console.log('== 缺料 run（返回 prompt，引导补全）==');
 ok(R.run('numberstars', ent(), '号码八星 看看').prompt, '号码八星无数字 → 追问');

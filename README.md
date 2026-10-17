@@ -1,4 +1,4 @@
-# 玄玖灵犀 NT-Xhex v3.1.2
+# 玄玖灵犀 NT-Xhex v3.1.3
 
 > 算法演乾坤，一问知天命，以数据重现千年术数。（演乾坤·知天命）  
 > 无后端 / 无网络 / 无登录 · 一套代码自动切换多形态  
@@ -342,7 +342,7 @@ NT-Xhex/
    │  ├─ vendor/iztro.min.js # 紫微斗数权威引擎（iztro@2.6.2，MIT，构建期内嵌、运行时不联网，798KB）
    │  ├─ ziwei.js           # 紫微斗数 C13 适配层（命宫/身宫/五行局/十二宫/四化/大限，全走 iztro 口径）
    │  ├─ vendor/astronomy.js # 占星/七政权威星历（astronomy-engine@cosinekitty，MIT，JPL 级，构建期内嵌、运行时不联网，116KB）
-   │  ├─ astro.js           # 占星·七政四余 C18/C19 适配层（7 政走 astronomy-engine 回归黄经 + 3 余走 Meeus 均值 + 落十二星座；紫炁/落宿/庙旺标缺口不臆造）
+   │  ├─ astro.js           # 占星·七政四余 C18/C19 适配层（7 政走 astronomy-engine 回归黄经 + 3 余走 Meeus 均值 + 落十二星座 + 落二十八宿（等宫近似·《淮南子》宿度）+ 七政庙旺（《果老星宗卷一》查表）；仅紫炁定义待裁定不输出）
    │  ├─ qimen.js           # 奇门遁甲 C14（时家·转盘·拆补定局：四柱/阴阳遁/局数/元/旬首/值符值使/地盘/天盘九星/八门/八神；权威数据多源核对，值使走宫/八神顺逆标最易错待交叉验证）
    │  ├─ kangxi-strokes.js  # 姓名学·康熙笔画【数据】通用规范汉字 3500 字（TDEM 康熙部首计数 + opencc 简繁生成，主流五格口径，见 tools/gen-kangxi.js）
    │  ├─ name81.js          # 五格剖象 + 81 数理（接 kangxi-strokes）
@@ -450,7 +450,7 @@ node tools/transition.test.js      # 转场方向回归（13 条真实导航边 
 node modules/CoreModule/__tests__/kangxi.test.js   # 康熙 3500 字表 + 五格 验收
 node modules/CoreModule/__tests__/cores.test.js    # 内核 C01–C06 验收
 node modules/CoreModule/__tests__/cores2.test.js   # 内核 C08–C20 验收
-node modules/CoreModule/__tests__/astro.test.js    # 占星·七政 C18/C19（7 政对 JPL + 3 余 Meeus 均值 + 落座）
+node modules/CoreModule/__tests__/astro.test.js    # 占星·七政 C18/C19（7 政对 JPL + 3 余 Meeus 均值 + 落座 + 落二十八宿(等宫近似·淮南子宿度) + 七政庙旺(果老查表)）
 node modules/CoreModule/__tests__/qimen.test.js    # 奇门 C14（时家转盘拆补；确定性权威 + 结构自洽，值使走宫/八神留 REA 锁）
 node modules/features/__tests__/features.test.js    # 扩展功能触发词路由 + 有料/缺料 验收
 node tools/sync-mp.js --check      # dist 与 modules 一致性 + WXML <template is> 是否漏传 data
@@ -465,6 +465,12 @@ node tools/sync-mp.js --check      # dist 与 modules 一致性 + WXML <template
 ---
 
 ## 九、更新日志
+
+- **v3.1.3**（占星 astro 补「落二十八宿 + 七政庙旺」缺口，消掉 astro 内核两大缺口标注）：
+  ① **落二十八宿（等宫近似）**：`CoreModule/astro.js` 新增 `SUIXIU`（二十八宿·宿度《淮南子·天文训》，搜狐/头条/淮河早报/腾讯 4 源逐字一致、整数和 365·余 0.25 即"四分度之一"）+ `suiXiuOf()`（回归黄经→宿主+入度，角初度对齐春分 0°、按宿度占比铺满 360°；果老/周敦颐「不等宫·地支跨宿」为流派差异，如实标注未锁）。
+  ② **七政庙旺（果老星宗）**：新增 `MAOWANG`（《果老星宗卷一》星曜 庙/旺/喜/乐/入垣 表，杨国正讲义/周新春/刀豆/destiny.to 4 源逐字一致，含四余 罗/计/孛）+ `maowangOf()`（12 等分宫按「地支宫」查表，某曜在某宫 = 多态叠加，皆无 = 平常）。
+  ③ 接搜索框：`astro` 功能输出补「落二十八宿」「庙旺」两行，触发词加「落宿/二十八宿/庙旺」；尾注改为落宿走等宫近似、庙旺取果老五态查表（仅紫炁定义仍待裁定）。
+  ④ `astro.test.js` 30 → **45 项**（+落宿 8 项 +庙旺 6 项，含确定性锚点：角@0°→角入1度、1990-8-15 太阳→危入14度、日午=垣/庙/乐）；全量 9 内核 + features + transition 13/13 + intent 30/30 全绿。
 
 - **v3.1.2**（奇门 C14 收尾：双盘交叉验证 + 定局 bug 修复）：
   ① **阳遁盘逐宫锁死飞布几何**：用 Playwright 驱动 qimen.pro 前端改到立春段（2026-02-10 09时·阳遁5局·立春中元）重排、读 DOM 九宫（`tools/qimen-yang-capture.cjs`，合规只读渲染结果、不复制其 JS），与内核逐宫比对**九星/八门/八神各 8/8 全中**——八神「阳遁顺布」获外部阳遁盘实证（不再只靠古籍口诀）。连同 v3.1.1 的阴遁黄金盘，奇门飞布几何现**阴遁 + 阳遁双盘交叉锁死**（`tools/qimen-golden-ref.js` 盘1 阴遁 + 盘3 阳遁）。

@@ -567,9 +567,9 @@
       }
     },
     {
-      key: 'astro', 名: '占星·七政四余（黄经落座）',
-      触发词: ['占星', '星盘', '七政', '四余', '黄经', '落座', '月亮星座', '太阳星座', '凯龙', '罗睺', '月孛'],
-      说明: '出生时刻 10 曜（日月光金木水火土 + 罗睺/计都/月孛）回归黄经与落十二星座。七政走 astronomy-engine(JPL级)，三余走 Meeus 均值公式。',
+      key: 'astro', 名: '占星·七政四余（黄经落座·落宿·庙旺）',
+      触发词: ['占星', '星盘', '七政', '四余', '黄经', '落座', '落宿', '二十八宿', '庙旺', '月亮星座', '太阳星座', '凯龙', '罗睺', '月孛'],
+      说明: '出生时刻 10 曜（日月光金木水火土 + 罗睺/计都/月孛）回归黄经·落十二星座·落二十八宿（等宫近似）·庙旺（果老星宗）。七政走 astronomy-engine(JPL级)，三余走 Meeus 均值公式。',
       run: function (ent, text) {
         if (!ent || !ent.date || !ent.date.year) return { prompt: '占星/七政需要出生年月日，例如「1990年8月15日」（可含时辰，占星尽量给到时辰）。' };
         var y = ent.date.year, m = ent.date.month || 1, d = ent.date.day || 1, h = ent.time ? ent.time.hour : 12;
@@ -583,7 +583,15 @@
             var s = p.星座[k];
             return k + ' → ' + s.符号 + s.星座 + s.度数 + '°（黄经 ' + p.黄经[k].toFixed(1) + '°）';
           }).join('；'));
-          lines.push('（紫炁/凯龙：七政四余第 11 曜，定义有「日拱点 vs Chiron 小行星」两说，需权威裁定后补；落二十八宿/庙旺需权威表，暂未出。）');
+          lines.push('落二十八宿（等宫近似）：' + order.map(function (k) {
+            var x = p.二十八宿[k];
+            return k + '入' + x.全名 + x.入度 + '度';
+          }).join('、'));
+          lines.push('庙旺（果老星宗·地支宫查表）：' + order.map(function (k) {
+            var x = p.庙旺[k];
+            return k + '「' + (x ? x.判 : '平常') + '」';
+          }).join('、'));
+          lines.push('（紫炁/凯龙：七政四余第 11 曜，定义有「日拱点 vs Chiron 小行星」两说，需权威裁定后补。落二十八宿走「等宫近似」（角初度对齐春分·宿度《淮南子》），庙旺取《果老星宗卷一》庙/旺/喜/乐/垣 五态查表。）');
           return { text: lines.join('\n') };
         } catch (e) {
           return { text: '【占星】排盘失败：' + String(e && e.message ? e.message : e) + '（内核暂不可用，不影响其他功能）。' };
