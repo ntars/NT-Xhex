@@ -58,7 +58,9 @@ var expectKey = {
   '测字 好': 'cezi',
   '拆字 财 财运': 'cezi',
   '雷诺曼 心': 'qianwen',
-  '如尼 太阳': 'qianwen'
+  '如尼 太阳': 'qianwen',
+  '飞盘奇门 2026年8月15日 14时': 'qimen-fei',
+  '飞宫法 2026年8月15日': 'qimen-fei'
 };
 for (var tx in expectKey) {
   var f = R.match(tx);
@@ -104,7 +106,8 @@ var have = [
   ['cezi', '拆字 财 财运', ent()],
   ['qianwen', '雷诺曼 心', ent()],
   ['qianwen', '如尼 太阳', ent()],
-  ['qianwen', '雷诺曼', ent()]
+  ['qianwen', '雷诺曼', ent()],
+  ['qimen-fei', '飞盘奇门 2026年8月15日 14时', ent(2026, 8, 15, 14)]
 ];
 have.forEach(function (c) {
   var out = R.run(c[0], c[2], c[1]);
@@ -184,5 +187,14 @@ ok(rnO && rnO.text && rnO.text.indexOf('【如尼】') >= 0, '如尼有料出标
 ok(rnO && rnO.text && rnO.text.indexOf('索维罗') >= 0, '如尼按关键词「太阳」命中 Sowilo');
 var rnAll = R.run('qianwen', ent(), '如尼');
 ok(rnAll && rnAll.text && rnAll.text.indexOf('共 24 符') >= 0, '如尼概览出24符');
+
+// ===== v3.1.6 飞盘奇门 C23 =====
+console.log('== v3.1.6 飞盘奇门（飞宫法）==');
+var qfO = R.run('qimen-fei', ent(2026, 8, 15, 14), '飞盘奇门 2026年8月15日 14时');
+ok(qfO && qfO.text && qfO.text.indexOf('【飞盘奇门·飞宫法】') >= 0, '飞盘奇门有料出标题');
+ok(qfO && qfO.text && qfO.text.indexOf('九宫') >= 0, '飞盘给出九宫布局');
+ok(qfO && qfO.text && qfO.text.indexOf('值符') >= 0 && qfO.text.indexOf('值使') >= 0, '飞盘给值符/值使');
+ok(qfO && qfO.text && qfO.text.indexOf('黄金范例') >= 0, '飞盘标注飞布已按黄金范例锁死');
+ok(R.run('qimen-fei', ent(), '飞盘奇门').prompt, '飞盘无日期 → 追问');
 
 if (fails === 0) { console.log('全部通过 ✓'); process.exit(0); } else { console.log(fails + ' 处失败'); process.exit(1); }

@@ -35,7 +35,8 @@
       require('../CoreModule/yangzhai.js'),
       require('../CoreModule/xiangshu.js'),
       require('../CoreModule/qianwen.js'),
-      require('../CoreModule/cezi.js')
+      require('../CoreModule/cezi.js'),
+      require('../CoreModule/qimen-fei.js')
     );
   } else {
     root.NT = root.NT || {};
@@ -56,10 +57,11 @@
       root.NT.core && root.NT.core.yangzhai,
       root.NT.core && root.NT.core.xiangshu,
       root.NT.core && root.NT.core.qianwen,
-      root.NT.core && root.NT.core.cezi
+      root.NT.core && root.NT.core.cezi,
+      root.NT.core && root.NT.core.qimenFei
     );
   }
-})(typeof self !== 'undefined' ? self : this, function (FEI, NUM, NSTAR, ICE, BZH, XS, WX, N81, CORE, BAZI, ZD, ZW, ASTRO, QM, LR, LY, TY, YZ, XSH, QW, CZ) {
+})(typeof self !== 'undefined' ? self : this, function (FEI, NUM, NSTAR, ICE, BZH, XS, WX, N81, CORE, BAZI, ZD, ZW, ASTRO, QM, LR, LY, TY, YZ, XSH, QW, CZ, QF) {
 
   // 十二地支序（大六壬天地盘/天将逐一列用）
   function ZHI2() { return ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥']; }
@@ -642,8 +644,8 @@
     },
     {
       key: 'liuren', 名: '大六壬（时家·月将加占时·四课三传·十二天将）',
-      触发词: ['大六壬', '六壬', '月将加时', '月将加占时', '四课', '三传', '十二天将', '天乙贵人', '贵人', '伏吟', '返吟', '涉害', '蒿矢', '弹射', '遥克', '重审', '元首'],
-      说明: '某时刻完整六壬课（时家·月将加占时）：四柱/月将/占时/天地盘/四课/九宗门发用/三传/十二天将（贵人昼夜+顺逆布将）/旬空/驿马/三传遁干。权威规则多源核对（零臆造）。',
+      触发词: ['大六壬', '六壬', '月将加时', '月将加占时', '四课', '三传', '十二天将', '天乙贵人', '贵人', '伏吟', '返吟', '涉害', '蒿矢', '弹射', '遥克', '重审', '元首', '别责', '八专', '昴星', '井栏'],
+      说明: '某时刻完整六壬课（时家·月将加占时）：四柱/月将/占时/天地盘/四课/**九宗门全门**发用（贼克·比用·涉害·遥克·昴星·别责·八专·伏吟·返吟）/三传/十二天将（贵人昼夜+顺逆布将）/旬空/驿马/三传遁干。多源条文核对 + 古籍黄金课例锁死（零臆造）。',
       run: function (ent, text) {
         if (!ent || !ent.date || !ent.date.year) return { prompt: '大六壬需要起课时辰年月日，例如「1990年8月15日14时」（可只给日期，占时另说）。' };
         var y = ent.date.year, m = ent.date.month || 1, d = ent.date.day || 1, h = ent.time ? ent.time.hour : 0;
@@ -663,7 +665,9 @@
           L.push('十二天将（' + c.十二天将.贵人 + '贵·' + c.十二天将.昼夜 + '·' + c.十二天将.顺逆 + '布）：' + ZHI2().map(function (z) { return z + c.十二天将.将[z]; }).join(' '));
           // 旬空 / 驿马
           L.push('旬空（空亡）' + (c.旬空.join('') || '无') + '；驿马' + (c.驿马 || '无') + '。');
-          L.push('（' + c.发用.说明 + ' 涉害深计数/伏吟返吟中末/金口诀顺逆异说/夜子日柱 等细分项内核已如实标注待黄金盘验证，不假报已锁。）');
+          L.push('（' + c.发用.说明 + '）');
+          L.push('（九宗门全门已按《大六壬指南》《心印赋》《六壬大全》《探源》多源条文实现，并由古籍黄金课例逐条锁死；'
+            + '涉害藏干/季无取/元首重审混见次序/金口诀贵人顺逆异说/夜子日柱 等细分项内核已如实标注，不假报已锁。）');
           return { text: L.join('\n') };
         } catch (e) {
           return { text: '【大六壬】起课失败：' + String(e && e.message ? e.message : e) + '（内核暂不可用，不影响其他功能）。' };
@@ -924,6 +928,37 @@
         if (r.缺字.length) return { text: head + '\n' + r.缺料 + '\n' + r.说明 };
         var body = r.断语.join('\n');
         return { text: head + '\n' + body + '\n' + r.说明 };
+      }
+    },
+    {
+      key: 'qimen-fei', 名: '飞盘奇门（飞宫法）',
+      触发词: ['飞盘奇门', '飞盘', '飞宫', '飞宫法', '九星飞布', '飞布奇门'],
+      说明: '奇门另一大流派 C23：前三步(四柱/定局/地盘)复用 qimen.js 单一真源，天/人/神三盘按宫数「飞」（阳遁顺飞、阴遁逆飞）；九星九宫数序、八门跳中五、用九神。飞布几何已按黄金范例锁死。',
+      run: function (ent, text) {
+        if (!QF) return { text: '【飞盘奇门】内核未加载。' };
+        if (!ent || !ent.date) return { prompt: '飞盘奇门需占局时刻，例如「飞盘奇门 2026年8月15日14时」。' };
+        var r = QF.feiChart({ y: ent.date.year, m: ent.date.month || 1, d: ent.date.day || 1, h: (ent.time && ent.time.hour) || 12 });
+        if (r.err) return { text: '【飞盘奇门】' + r.err };
+        // 九宫展示序（巽4 离9 坤2 / 震3 中5 兑7 / 艮8 坎1 乾6）
+        var order = [4, 9, 2, 3, 5, 7, 8, 1, 6];
+        var grid = [];
+        for (var i = 0; i < 9; i += 3) {
+          var row = [];
+          for (var j = 0; j < 3; j++) {
+            var p = order[i + j];
+            row.push(p + '宫 ' + (r.地盘[p] || '—') + (r.天盘[p] ? '·' + r.天盘[p].replace('天', '') : '')
+              + (r.八门[p] ? '·' + r.八门[p] : '') + (r.九神[p] ? '·' + r.九神[p] : ''));
+          }
+          grid.push(row.join(' │ '));
+        }
+        return {
+          text: '【飞盘奇门·飞宫法】' + r.时刻 + ' ' + r.阴阳遁 + r.局数 + '局（' + r.节气 + '·' + r.元 + '元）\n'
+            + '旬首 ' + r.旬首 + '（' + r.旬首宫 + '宫）｜值符 ' + r.值符星 + ' 落 ' + r.时干宫 + '宫｜值使 ' + r.值使门 + ' 落 ' + r.值使落宫 + '宫\n'
+            + '四柱 ' + r.四柱.年 + ' ' + r.四柱.月 + ' ' + r.四柱.日 + ' ' + r.四柱.时 + '\n'
+            + '── 九宫（地盘仪·天盘星·八门·九神）──\n' + grid.join('\n') + '\n'
+            + '（中五宫有星无门；地盘中五保留不寄坤，与转盘不同）\n'
+            + r._飞布验证
+        };
       }
     }
   ];
