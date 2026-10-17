@@ -10,8 +10,8 @@
  *       为「花色义 + 序数义」组合推导（通用塔罗释义，非逐字照搬某译本）。
  *   · 占星骰子：12 宫位 + 12 星座 + 10 行星 为确定组合（1440 类），内核按「行星(做什么)·星座(怎样)·宫位(在哪)」生成。
  *   · 解梦：传统《周公解梦》类通则 + 心理向双栏，按类别种子词典（持续可扩）。
- *   · 观音灵签：100 签号框架 + 抽签机制（按日期哈希 deterministic，同日同签） + 种子库（数签，
- *       全本签诗待按权威《观音灵签》逐签录入，内核不臆造未经验证的签诗文本）。
+ *   · 观音灵签：100 签全本（签诗四句 + 诗意 + 解曰 + 圣意 + 宫位 + 等级），数据在 guanyin-data.js
+ *       （单一真源，三源比对，异本情况如实标注）；本文件只做「按号取 / 按名取 / 按日期抽」。
  *   · 答案之书：随机激励文库（产品标「纯随机·非占卜」）。
  *
  * 加载：UMD —— require（纯数据）；浏览器挂 NT.core.qianwen。
@@ -19,14 +19,19 @@
  *
  * 交叉验证状态（守零臆造，如实标注）：
  *   ✅ 塔罗 78 张名目、占星骰子 1440 组合结构、观音 100 签号框架 均为确定事实，无歧义。
- *   📌 缺口（标待补）：① 观音灵签「签诗/解曰/圣意/典故」全本为长文本，需按权威本逐签录入（内核仅种子+框架，
- *       不假报已锁）；② 解梦词典为「分类种子」规模，可分批扩至数万条；③ 塔罗关键词为通用释义组合，
+ *   ✅ 观音 100 签签文（签诗/诗意/解曰/圣意/宫位/等级）已全本录入，三源比对见 guanyin-data.js 文件头。
+ *   📌 缺口（标待补）：① 解梦词典为「分类种子」规模，可分批扩至数万条；② 塔罗关键词为通用释义组合，
  *       深度牌义/牌阵解读（凯尔特十字等）由产品层调用内核数据生成。
  */
 (function (root, factory) {
-  if (typeof module === 'object' && module.exports) module.exports = factory();
-  else { root.NT = root.NT || {}; root.NT.core = root.NT.core || {}; root.NT.core.qianwen = factory(); }
-})(typeof self !== 'undefined' ? self : this, function () {
+  // ⚠️ 跨模块依赖必须「静态 require 注入工厂参数」：uni-app(Vite/rollup) 把 CJS 转换后 module/require
+  //    语义消失，若在函数里 typeof module/require 判断会永假 → 静默走全局分支拿不到数据。
+  if (typeof module === 'object' && module.exports) module.exports = factory(require('./guanyin-data.js'));
+  else {
+    root.NT = root.NT || {}; root.NT.core = root.NT.core || {};
+    root.NT.core.qianwen = factory(root.NT.core.guanyinData || null);
+  }
+})(typeof self !== 'undefined' ? self : this, function (GY) {
 
   // ============ 塔罗 78 张 ============
   var MAJOR = [
@@ -94,21 +99,40 @@
     return { 行星: p, 星座: s, 宫位: h, 解读: p + '（做什么）在' + s + '（怎样的方式）于' + h + '（哪个生活领域）' };
   }
 
-  // ============ 观音灵签（100 签框架 + 种子库）============
-  var GUANYIN_COUNT = 100;
-  // 种子库（数签，全本待按权威本补全；不臆造未验证签诗）
-  var GUANYIN_SEED = {
-    1: { 签名: '锺离权度吕洞宾', 等级: '上上', 签诗: '（种子·待按《观音灵签》权威本补全签诗）' },
-    22: { 签名: '六郎逢杨府', 等级: '中平', 签诗: '（种子·待补全）' },
-    100: { 签名: '三教归一', 等级: '下下', 签诗: '（种子·待补全）' }
-  };
+  // ============ 观音灵签（100 签，签文见 guanyin-data.js）============
+  var GUANYIN_COUNT = GY ? GY.count : 100;
+
+  /**
+   * 数据层用短字段（省字节），对外统一成长字段：给三个壳和搜索框用同一套名字，
+   * 免得一处写「签名」一处写「名」对不上。
+   */
+  function gyInfo(r) {
+    if (!r) return null;
+    return {
+      签号: r.号, 签名: r.名, 等级: r.等, 吉凶: r.吉凶, 宫位: r.宫,
+      签诗: r.诗, 诗意: r.意, 解曰: r.解, 圣意: r.圣
+    };
+  }
+
+  /** 按签号取签（1–100）；越界返回 null。签文原样返回，本文件不改一个字。 */
+  function guanyinByNo(n) { return GY ? gyInfo(GY.byNo(n)) : null; }
+  /** 按签名（典故名）取签，如「苏秦不第」「风送滕王阁」。 */
+  function guanyinByName(s) { return GY ? gyInfo(GY.byName(s)) : null; }
+
+  /**
+   * 按日期抽签：字符串哈希 → 1–100，同日同签（可复现，不依赖随机数）。
+   * 传统上「一签一问」，同日重复抽不作数，故产品层按「一日一签」处理。
+   */
   function guanyinDraw(dateStr) {
-    // 按日期哈希 → deterministic（同日同签）
-    var h = 0, s = String(dateStr || new Date().toISOString().slice(0, 10));
+    var s = String(dateStr || new Date().toISOString().slice(0, 10));
+    var h = 0;
     for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
     var n = (h % GUANYIN_COUNT) + 1;
-    var seed = GUANYIN_SEED[n];
-    return { 签号: n, 总签数: GUANYIN_COUNT, 签名: seed ? seed.签名 : '（第' + n + '签·全本待录入）', 等级: seed ? seed.等级 : null, 签诗: seed ? seed.签诗 : null, 注: '观音灵签 100 签框架；签诗全本待按权威本逐签录入。' };
+    var r = guanyinByNo(n) || {};
+    r.签号 = n;
+    r.总签数 = GUANYIN_COUNT;
+    r.注 = r.签名 ? '按日期定签，同日同签。' : '签文数据未加载。';
+    return r;
   }
 
   // ============ 答案之书（随机文库，标非占卜）============
@@ -214,7 +238,8 @@
     tarotCard: tarotCard, tarotSpread: tarotSpread,
     DREAM: DREAM, dreamOf: dreamOf,
     astroDice: astroDice, DICE_PLANET: DICE_PLANET, DICE_SIGN: DICE_SIGN, DICE_HOUSE: DICE_HOUSE,
-    GUANYIN_COUNT: GUANYIN_COUNT, GUANYIN_SEED: GUANYIN_SEED, guanyinDraw: guanyinDraw,
+    GUANYIN_COUNT: GUANYIN_COUNT, guanyinDraw: guanyinDraw,
+    guanyinByNo: guanyinByNo, guanyinByName: guanyinByName, GUANYIN: GY ? GY.LIST : [],
     answerBook: answerBook, ANSWER_BOOK: ANSWER_BOOK,
     // v3.1.5：雷诺曼 36 + 如尼 24
     LENORMAND: LENORMAND, lenormandCard: lenormandCard,

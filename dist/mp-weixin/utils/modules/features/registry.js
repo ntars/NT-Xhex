@@ -130,6 +130,24 @@
   var CN_NUM = { 一: 1, 二: 2, 两: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9, 十: 10, 十一: 11, 十二: 12, 二十: 20, 三十: 30, 四十: 40, 五十: 50, 六十: 60 };
 
   /**
+   * 中文数字 → 阿拉伯数字（1–100，够签号 / 卦序用）。
+   * 为什么不直接用上面那张表：死表必然漏字（「一百」「二十三」「三十六」全会漏），
+   * 漏了就变成「查不出」而不是「查错了」，用户看不出问题在哪 —— 所以用规则算。
+   */
+  function numOf(s) {
+    var d = { 零: 0, 一: 1, 二: 2, 两: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9 };
+    var t = String(s || '').replace(/[第\s]/g, '').replace(/签|卦/g, '');
+    if (/^\d+$/.test(t)) return +t;
+    if (t === '百') return 100;
+    var m = t.match(/^([一二两三四五六七八九])?百(?:零?([一二三四五六七八九]))?$/);
+    if (m) return (m[1] ? d[m[1]] : 1) * 100 + (m[2] ? d[m[2]] : 0);
+    m = t.match(/^([一二两三四五六七八九])?十([一二三四五六七八九])?$/);
+    if (m) return (m[1] ? d[m[1]] : 1) * 10 + (m[2] ? d[m[2]] : 0);
+    if (d[t] != null) return d[t];
+    return CN_NUM[t] || 0;
+  }
+
+  /**
    * 功能定义表（单一真源）。顺序即 match() 优先级。
    *   触发词 = 搜索框命中即路由；run = 返回 { text } 或 { prompt }（缺料时追问）。
    */
@@ -362,41 +380,63 @@
       }
     },
     {
-      key: 'zhouyi', 名: '周易 64 卦查询',
+      key: 'zhouyi', 名: '周易 64 卦（卦辞·爻辞原文）',
       板块: '三式推演', 短名: '查卦辞',
-      触发词: ['查卦', '周易', '64卦', '六十四卦', '周易卦', '卦名', '卦序', '地天泰', '水天需', '山火贲'],
-      说明: '按卦名（如「地天泰」）或卦序（如「第11卦」）查 64 卦的上/下卦、五行与体用生克（C17 内核 64 卦全表）。',
+      触发词: ['查卦', '周易', '64卦', '六十四卦', '周易卦', '卦名', '卦序', '卦辞', '爻辞', '地天泰', '水天需', '山火贲'],
+      说明: '按卦名（如「地天泰」「泰」）或卦序（如「第11卦」）查该卦的卦辞、六条爻辞、大象与白话，附上下卦五行与体用生克；经文取《十三经》通行本。',
       run: function (ent, text) {
         var t = String(text || '');
         // 卦名（char）→ 先天数（1-8）反查
         var nameToNum = {};
         for (var n in ICE.BAGUA) nameToNum[ICE.BAGUA[n].名] = +n;
-        // 反查表：卦名全名 → [上卦名, 下卦名]
-        var byName = {};
-        Object.keys(ICE.HEX64).forEach(function (k) { byName[ICE.HEX64[k]] = [k.slice(0, 1), k.slice(1)]; });
+        // 反查表：卦全名 → HEX64 键（上卦名 + 下卦名）
+        var keyByName = {};
+        Object.keys(ICE.HEX64).forEach(function (k) { keyByName[ICE.HEX64[k]] = k; });
 
-        function render(key) { // key = 上卦名+下卦名
-          var up = key.slice(0, 1), dn = key.slice(1);
-          var yao = ICE.BAGUA[nameToNum[dn]].爻.concat(ICE.BAGUA[nameToNum[up]].爻); // 下卦 + 上卦
-          var ty = ICE.tiyong(yao, 0);
-          var out = ['【周易卦】「' + ICE.HEX64[key] + '」：'];
-          out.push('上卦' + up + '（' + ICE.BAGUA[nameToNum[up]].五行 + '）/ 下卦' + dn + '（' + ICE.BAGUA[nameToNum[dn]].五行 + '）。');
-          out.push('取体用（以初爻为动）：体「' + ty.体卦 + '」用「' + ty.用卦 + '」，' + ty.关系 + '。');
+        // 经文里的句读会打断排版（结果页按「。」「；」切段），故只在**展示时**把句内
+        // 句号/分号降为逗号、行末留一个句号；字句一个字都没改（见输出末行的说明）。
+        function oneLine(s) {
+          return String(s || '').replace(/[。；]+/g, '，').replace(/，$/, '。');
+        }
+
+        function render(order) {
+          var tx = ICE.textOf(order);
+          if (!tx) return { prompt: '没找到这一卦，请给卦名（如「地天泰」）或卦序（如「第11卦」）。' };
+          var k = keyByName[tx.全名] || '';
+          var up = k ? k.slice(0, 1) : '', dn = k ? k.slice(1) : '';
+          var out = ['【周易】第 ' + tx.序 + ' 卦「' + tx.全名 + '」' + (up ? '（上' + up + '下' + dn + '）' : '') + '。'];
+          out.push('卦辞：' + oneLine(tx.卦辞));
+          if (tx.象) out.push('大象：' + oneLine(tx.象));
+          // 六爻（乾坤多一条用九/用六）：一行一爻，「爻题 + 爻辞」
+          out.push('爻辞：' + tx.爻.map(function (y) { return y[0] + '　' + oneLine(y[1]); }).join('\n'));
+          // 体用（沿用原逻辑：以下卦 + 上卦叠六爻，以初爻为动）
+          if (up && dn) {
+            var yao = ICE.BAGUA[nameToNum[dn]].爻.concat(ICE.BAGUA[nameToNum[up]].爻);
+            var ty = ICE.tiyong(yao, 0);
+            out.push('体用（以初爻为动）：体「' + ty.体卦 + '」用「' + ty.用卦 + '」，' + ty.关系 + '。');
+          }
+          out.push('白话：' + oneLine(tx.白话));
+          out.push('注：卦辞爻辞取《十三经》通行本（南京博物院十三经本，与维基文库互校），标点按阅读节奏处理，字句未改，白话为本应用主旨概括，非古籍原文。');
           return { text: out.join('\n') };
         }
 
-        // ① 按卦序（第 N 卦，HEX64 键序 = 上乾行…上坤行 共 64 位，稳定）
+        // ① 按卦序（第 N 卦）—— 必须走通行卦序表 ORDER_BY_NAME，不能拿 HEX64 的键序当卦序
         var seq = t.match(/第\s*([0-9一二三四五六七八九十百]+)\s*卦/);
         if (seq) {
-          var num = parseInt(seq[1], 10);
-          if (isNaN(num)) num = CN_NUM[seq[1]] || 0; // 简单中文数字
-          var keys = Object.keys(ICE.HEX64);
-          if (num >= 1 && num <= 64) return render(keys[num - 1]);
+          var num = numOf(seq[1]);
+          if (num >= 1 && num <= 64) return render(num);
           return { prompt: '卦序须 1–64，请核对。' };
         }
-        // ② 按卦名
-        for (var bn in byName) if (t.indexOf(bn) >= 0) return render(byName[bn][0] + byName[bn][1]);
-        return { prompt: '请给卦名（如「地天泰」）或卦序（如「第11卦」）。' };
+        // ② 按卦全名（「地天泰」）查：走通行卦序表。
+        //    不能用 keyByName —— 它的值是 HEX64 的「上卦+下卦」键（如「乾乾」），不是卦名，传进 textOf 定不到。
+        for (var bn in ICE.ORDER_BY_NAME) if (t.indexOf(bn) >= 0) return render(ICE.ORDER_BY_NAME[bn]);
+        // ③ 按单名（「泰」「贲」）查：逐字试定位，定不到就继续试下一个字。
+        //    不用硬编码字表 —— 六十四卦单名有 60 来个，硬编码必然漏字（漏了就是静默答不出）。
+        for (var ci = 0; ci < t.length; ci++) {
+          var one = ICE.textOf(t.charAt(ci));
+          if (one) return render(one.序);
+        }
+        return { prompt: '请给卦名（如「地天泰」「泰」）或卦序（如「第11卦」）。' };
       }
     },
     {
@@ -903,14 +943,37 @@
     {
       key: 'qianwen', 名: '签文·解梦·塔罗·占星骰子',
       板块: '相术占验', 短名: '解灵签',
-      触发词: ['观音灵签', '灵签', '抽签', '解梦', '塔罗', '占星骰子', '答案之书', '雷诺曼', '如尼'],
-      说明: '签文/解梦/塔罗词库：观音灵签抽签(100签)、塔罗78张、解梦词典、占星骰子、答案之书（C21b 内核 §17）。',
+      触发词: ['观音灵签', '灵签', '抽签', '求签', '第几签', '签诗', '解梦', '塔罗', '占星骰子', '答案之书', '雷诺曼', '如尼'],
+      说明: '签文/解梦/塔罗词库：观音灵签 100 签全本（签诗四句·诗意·解曰·圣意，三源比对）、塔罗 78 张、解梦词典、占星骰子、答案之书（C21b 内核 §17）。',
       run: function (ent, text) {
         if (!QW) return { text: '【签文/塔罗】内核未加载。' };
         var t = String(text || '');
-        if (t.indexOf('观音') >= 0 || t.indexOf('灵签') >= 0 || t.indexOf('抽签') >= 0) {
-          var g = QW.guanyinDraw(ent && ent.date ? (ent.date.year + '-' + (ent.date.month || 1) + '-' + (ent.date.day || 1)) : undefined);
-          return { text: '【观音灵签】第 ' + g.签号 + ' 签 / 共 ' + g.总签数 + ' 签' + (g.签名 ? '（' + g.签名 + '·' + g.等级 + '）' : '') + '。\n' + (g.注 || '') };
+        if (t.indexOf('观音') >= 0 || t.indexOf('灵签') >= 0 || t.indexOf('抽签') >= 0 || t.indexOf('求签') >= 0) {
+          // ① 指定签号（「第11签」「第十一签」）→ 直接查那一签
+          // ② 指定签名（「观音 苏秦不第」）→ 按典故名查
+          // ③ 都没给 → 按日期抽（同日同签，不靠随机数）
+          var g = null, byNum = t.match(/第\s*([0-9一二三四五六七八九十百]+)\s*签/);
+          if (byNum) {
+            g = QW.guanyinByNo(numOf(byNum[1]));
+            if (!g) return { prompt: '观音灵签共 100 签，签号请给 1–100（如「第11签」「第一百签」）。' };
+            g.总签数 = QW.GUANYIN_COUNT;
+          } else {
+            g = QW.guanyinByName(t.replace(/观音|灵签|抽签|求签|签文|签|查|看看|一下|的|\s/g, ''));
+            if (g) g.总签数 = QW.GUANYIN_COUNT;
+          }
+          if (!g) {
+            g = QW.guanyinDraw(ent && ent.date ? (ent.date.year + '-' + (ent.date.month || 1) + '-' + (ent.date.day || 1)) : undefined);
+            if (!g || !g.签名) return { text: '【观音灵签】签文数据未加载。' };
+          }
+          // 签诗四句一行一句（结果页按换行分段，正好一句一行）
+          var poem = (g.签诗 || []).map(function (s, i) { return (i === 0 ? '签诗：' : '　　　') + s; }).join('\n');
+          var out = ['【观音灵签】第 ' + g.签号 + ' 签 / 共 ' + g.总签数 + ' 签「' + g.签名 + '」' + g.等级 + '签（' + g.宫位 + '·' + g.吉凶 + '）。'];
+          if (poem) out.push(poem);
+          if (g.诗意) out.push('诗意：' + g.诗意);
+          if (g.解曰) out.push('解曰：' + g.解曰);
+          if (g.圣意) out.push('圣意：' + g.圣意);
+          out.push('注：签文取《观音一百签》传统文本（天天灵签网 / 农历114 / 观音灵签解签 三源比对），标点按阅读节奏处理、字句未改，' + (g.注 || '') + '要查别的签，直接说「第 11 签」或「苏秦不第」。');
+          return { text: out.join('\n') };
         }
         if (t.indexOf('塔罗') >= 0) {
           return { text: '【塔罗】78 张：大阿尔克纳 22（' + QW.MAJOR.map(function (x) { return x[0]; }).join('、') + '…）+ 小阿尔克纳 56（权杖/圣杯/宝剑/星币 × A–10+侍者骑士王后国王）。可指定牌名查正逆位（如「塔罗 愚人」）。' };
