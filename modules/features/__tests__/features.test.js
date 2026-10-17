@@ -309,4 +309,16 @@ ok(jkV3.text.indexOf('古本原歌八句') >= 0, '有日期但缺地分时，回
 var jkV4 = R.run('jinkou', { date: null, time: null }, '金口诀 父母动');
 ok(jkV4.text.indexOf('三动古本无歌诀') >= 0, '三动照实说「古本无歌诀」，不冒充原歌');
 
+// ===== v3.1.19 金口诀四类生克 + 五合 =====
+console.log('== v3.1.19 四类生克与五合 ==');
+var jkS = R.run('jinkou', jkE, '金口诀 2026年2月9日10时 地分酉');
+ok(/四类生克（五动只管克，四类把生也补齐）：/.test(jkS.text), '出「四类生克」一行并说明与五动的关系');
+ok(jkS.text.indexOf('干生将（人元水 生 将神木') >= 0, '四类命中干生将');
+ok(jkS.text.indexOf('神生方（贵神土 生 地分金') >= 0, '四类命中神生方');
+ok(jkS.text.indexOf('方克将（地分金 克 将神木') >= 0, '四类命中方克将');
+ok(jkS.text.indexOf('五合：本课四位天干无相合') >= 0, '无合时明说无合，而不是留空');
+var jkS2 = R.run('jinkou', jkE, '金口诀 2026年2月9日10时 地分酉 原文');
+ok(jkS2.text.indexOf('又主伤妻，人欲出外失财') >= 0, '问「原文」时给全句（默认只取首句）');
+ok(jkS.text.indexOf('又主伤妻') < 0, '不问原文时只取首句，不铺满屏');
+
 if (fails === 0) { console.log('全部通过 ✓'); process.exit(0); } else { console.log(fails + ' 处失败'); process.exit(1); }

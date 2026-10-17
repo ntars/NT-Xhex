@@ -264,10 +264,55 @@ console.log('L. 五动爻诵（v3.1.18 收全原歌）');
   ok('verseOf 已收录返回 8 句', (J.verseOf('财动') || []).length === 8);
   ok('dongNamesIn 按文本取动名', J.dongNamesIn('问一下官动和财动').join(',') === '官动,财动',
     J.dongNamesIn('问一下官动和财动').join(','));
-  ok('三动有散文义且注明源间不一', ['父母动', '子孙动', '兄弟动'].every(function (n) {
-    return J.DONG3_NOTE[n] && J.DONG3_NOTE[n].indexOf('说') > 0;
+  ok('三动并列古本短注 + 诸家散文义', ['父母动', '子孙动', '兄弟动'].every(function (n) {
+    return J.DONG3_NOTE[n] && J.DONG3_NOTE[n].indexOf('古本作') >= 0 && J.DONG3_NOTE[n].indexOf('诸家散文义') > 0;
   }));
   ok('三动不塞进 DONG_VERSE（古本无歌诀，不冒充）', !J.DONG_VERSE.父母动 && !J.DONG_VERSE.兄弟动);
+})();
+
+console.log('M. 四类生克与五合（v3.1.19）');
+(function () {
+  ok('四类共 16 条（干类/神类/将类/方类 各 4）', J.SI_LEI.length === 16
+    && ['干类', '神类', '将类', '方类'].every(function (c) {
+      return J.SI_LEI.filter(function (d) { return d.类 === c; }).length === 4;
+    }));
+  ok('四类每条的「从/到」都在四位内', J.SI_LEI.every(function (d) {
+    return ['人元', '贵神', '将神', '地分'].indexOf(d.从) >= 0 && ['人元', '贵神', '将神', '地分'].indexOf(d.到) >= 0;
+  }));
+  // 逐条数：干类2生2克 / 神类3生1克 / 将类2生2克 / 方类2生2克 → 共 9 生 7 克
+  ok('四类共 9 生 7 克（不多不少凑满 16）', J.SI_LEI.filter(function (d) { return d.判 === '生'; }).length === 9
+    && J.SI_LEI.filter(function (d) { return d.判 === '克'; }).length === 7,
+    J.SI_LEI.filter(function (d) { return d.判 === '生'; }).length + '生/' + J.SI_LEI.filter(function (d) { return d.判 === '克'; }).length + '克');
+  ok('四类的生克方向与五行环一致（逐条复算）', J.SI_LEI.every(function (d) {
+    // 用「生/克」函数反查：关系名第 2 字是「生」还是「克」
+    var isKe = d.关系.charAt(1) === '克';
+    return isKe ? d.判 === '克' : d.判 === '生';
+  }));
+  ok('黄金盘四类命中三条：干生将 / 神生方 / 方克将', (function () {
+    var by = {}; r.四位.forEach(function (x) { by[x.位] = x; });
+    return J.siLei(r.四位).map(function (d) { return d.关系; }).sort().join(',') === '干生将,方克将,神生方';
+  })(), J.siLei(r.四位).map(function (d) { return d.关系; }).join(','));
+  // 五合：天干五合，同干不合
+  ok('天干五合 5 组全对（甲己/乙庚/丙辛/丁壬/戊癸）',
+    J.ganHe('甲', '己') && J.ganHe('乙', '庚') && J.ganHe('丙', '辛') && J.ganHe('丁', '壬') && J.ganHe('戊', '癸')
+    && J.ganHe('己', '甲') && J.ganHe('癸', '戊'));
+  ok('同干不作合（甲与甲不合）', J.ganHe('甲', '甲') === false);
+  ok('非合对不误判（甲与庚、丙与丁）', J.ganHe('甲', '庚') === false && J.ganHe('丙', '丁') === false);
+  ok('五合表 5 条齐备且各对接四类之外的那条路径', J.WU_HE.length === 5
+    && J.WU_HE.map(function (d) { return d.名; }).join(',') === '官合,正合,隔合,进合,鬼合');
+  ok('方与干合 → 鬼合（戊合癸）', (function () {
+    var w = [
+      { 位: '地分', 支: 'x', 干: '戊', 五行: '土', 阴阳: '阳' },
+      { 位: '将神', 支: 'y', 干: '丁', 五行: '木', 阴阳: '阴' },
+      { 位: '贵神', 支: 'z', 干: '丙', 五行: '火', 阴阳: '阳' },
+      { 位: '人元', 干: '癸', 五行: '水', 阴阳: '阴' }
+    ];
+    var h = J.wuHe(w);
+    return h.length === 1 && h[0].名 === '鬼合';
+  })());
+  ok('黄金盘五合为空（癸辛丁癸 无相合之对）', r.五合.length === 0);
+  ok('三动注改用古本原文（印绶 / 大吉）', J.DONG3_NOTE.父母动.indexOf('为印绶') >= 0
+    && J.DONG3_NOTE.父母动.indexOf('大吉') >= 0);
 })();
 
 console.log('-----');

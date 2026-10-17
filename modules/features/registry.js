@@ -954,6 +954,22 @@
           if (c.提示 && c.提示.length) L.push('用爻之力：' + c.提示.join('／'));
           L.push('五动：' + (c.五动.length ? c.五动.map(function (d) { return d.名 + '（' + d.构成 + '，主' + d.主 + '）'; }).join('、') : '本课四位无相克之动'));
           L.push('三动：' + (c.三动.length ? c.三动.map(function (d) { return d.名 + '（' + d.构成 + '，主' + d.主 + '）'; }).join('、') : '本课干方无相生比合'));
+          // v3.1.19：四类生克（16 条里真正成立的）+ 五合（天干五合）。
+          // 默认只取原文首句，问「原文 / 细目 / 详解」才铺全句，免得一屏塞满赋体。
+          var 要全文 = /原文|细目|详解|全句|原句/.test(T);
+          function 摘(s) { return 要全文 ? s : s.split(/[，。；]/)[0]; }
+          if (c.四类 && c.四类.length) {
+            L.push('四类生克（五动只管克，四类把生也补齐）：' + c.四类.map(function (d) {
+              return d.关系 + '（' + d.构成 + '，' + 摘(d.说) + '）';
+            }).join('、'));
+          }
+          if (c.五合 && c.五合.length) {
+            L.push('五合（天干五合）：' + c.五合.map(function (d) {
+              return d.名 + '（' + d.构成 + '，' + 摘(d.说) + '）';
+            }).join('、'));
+          } else {
+            L.push('五合：本课四位天干无相合（甲己、乙庚、丙辛、丁壬、戊癸）');
+          }
           var nw = c.课内旺衰;
           L.push('课内旺衰：' + nw.旺.map(function (k) { return k + '（' + nw.分[k] + ' 分）'; }).join('、') + ' 最旺，'
             + Object.keys(nw.分).map(function (k) { return k + ' ' + nw.分[k]; }).join('、'));
