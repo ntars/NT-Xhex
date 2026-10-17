@@ -45,7 +45,8 @@
       require('../CoreModule/ziwei-horoscope.js'),
       require('../CoreModule/astro-house.js'),
       require('../CoreModule/bazi-shensha.js'),
-      require('../CoreModule/ziwei-stars.js')
+      require('../CoreModule/ziwei-stars.js'),
+      require('../CoreModule/jinkou.js')
     );
   } else {
     root.NT = root.NT || {};
@@ -76,10 +77,11 @@
       root.NT.core && root.NT.core.ziweiHoroscope,
       root.NT.core && root.NT.core.astroHouse,
       root.NT.core && root.NT.core.baziShensha,
-      root.NT.core && root.NT.core.ziweiStars
+      root.NT.core && root.NT.core.ziweiStars,
+      root.NT.core && root.NT.core.jinkou
     );
   }
-})(typeof self !== 'undefined' ? self : this, function (FEI, NUM, NSTAR, ICE, BZH, XS, WX, N81, CORE, BAZI, ZD, ZW, ASTRO, QM, LR, LY, TY, YZ, XSH, QW, CZ, QF, BP, ZR, QG, LBF, LWS, ZHW, AH, BSS, ZWS) {
+})(typeof self !== 'undefined' ? self : this, function (FEI, NUM, NSTAR, ICE, BZH, XS, WX, N81, CORE, BAZI, ZD, ZW, ASTRO, QM, LR, LY, TY, YZ, XSH, QW, CZ, QF, BP, ZR, QG, LBF, LWS, ZHW, AH, BSS, ZWS, JK) {
 
   // 十二地支序（大六壬天地盘/天将逐一列用）
   function ZHI2() { return ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥']; }
@@ -869,6 +871,66 @@
           return { text: L.join('\n') };
         } catch (e) {
           return { text: '【太乙】起局失败：' + String(e && e.message ? e.message : e) };
+        }
+      }
+    },
+    {
+      key: 'jinkou', 名: '金口诀（四位课式·用爻·五动三动）',
+      板块: '三式推演', 短名: '排金口诀',
+      触发词: ['金口诀', '大六壬金口诀', '孙膑神课', '四位课式', '人元', '贵神', '将神', '地分',
+        '五动', '三动', '用爻', '妻动', '财动', '鬼动', '贼动', '官动', '父母动', '子孙动', '兄弟动'],
+      说明: '大六壬金口诀：立地分 → 月将加时起将神 → 日干起天将定贵神 → 五子遁元立人元；四位课式 + 定用爻 + 列五动三动 + 辨课内与四季旺衰。天乙贵人与十二天将复用六壬内核（同一份表），贵神五行按本家支取不按配干。',
+      run: function (ent, text) {
+        if (!JK || !JK.cast) return { text: '【金口诀】内核未加载，暂不可用。' };
+        if (!ent || !ent.date || !ent.date.year) return { prompt: '金口诀要先定起课时刻和地分，例如「金口诀 2026年2月9日10时 地分酉」（地分可给地支、四正方位「地分正北」，或报数「地分 37」）。' };
+        try {
+          var c = JK.cast({
+            y: ent.date.year, m: ent.date.month || 1, d: ent.date.day || 1,
+            h: ent.time ? ent.time.hour : 12, text: String(text || '')
+          });
+          if (c.err) {
+            var bad = '【金口诀】' + c.err + '。';
+            if (c.需) bad += '可任选一种给法：' + c.需.join('／') + '。';
+            return { prompt: bad };
+          }
+          var by = {};
+          c.四位.forEach(function (x) { by[x.位] = x; });
+          // 爻面写法：人元只有干，其余「遁干+支」；贵神另带天将名
+          function face(x) {
+            var s = x.位 === '人元' ? x.干 : ((x.干 || '') + (x.支 || ''));
+            if (x.神名) s += ' ' + x.神名;
+            else if (x.将名) s += ' ' + x.将名;
+            return s;
+          }
+          var L = ['【金口诀】' + c.时刻 + '（四位课式·月将加时）：'];
+          L.push('四柱 ' + c.四柱.年 + ' ' + c.四柱.月 + ' ' + c.四柱.日 + ' ' + c.四柱.时
+            + '，月建' + c.月建 + '（当令' + c.当令 + '），占时' + c.占时 + '，地分' + c.地分.支 + '（' + c.地分.来源 + '）');
+          var mj = '月将 ' + (c.月将.名 || '') + '（' + c.月将.支 + '），口径 ' + c.月将.口径;
+          if (c.月将.六壬口径 && c.月将.六壬口径.indexOf('(' + c.月将.支 + ')') < 0) {
+            mj += '，同一天大六壬（中气口径）仍是 ' + c.月将.六壬口径 + ' —— 换将时刻流派不同，非错盘';
+          }
+          L.push(mj);
+          L.push('课式（自上而下）：');
+          ['人元', '贵神', '将神', '地分'].forEach(function (n) {
+            var x = by[n];
+            if (!x) return;
+            L.push('　' + n + '　' + face(x) + '（' + x.五行 + '·' + x.阴阳 + '·' + x.季节态 + '）　' + x.取象);
+          });
+          L.push('贵神起法：' + c.贵神.昼夜 + '占，' + c.四柱.日.charAt(0) + '日贵人在' + c.贵神.贵人 + '，' + c.贵神.顺逆 + '布至' + c.地分.支 + '，落 ' + c.贵神.名 + '（本家' + c.贵神.支 + '）');
+          if (c.用爻 && c.用爻.爻) {
+            L.push('用爻：' + c.用爻.序 + ' → ' + c.用爻.爻.位 + ' ' + face(c.用爻.爻) + '（' + c.用爻.爻.五行 + '），' + c.用爻.象);
+          }
+          if (c.提示 && c.提示.length) L.push('用爻之力：' + c.提示.join('／'));
+          L.push('五动：' + (c.五动.length ? c.五动.map(function (d) { return d.名 + '（' + d.构成 + '，主' + d.主 + '）'; }).join('、') : '本课四位无相克之动'));
+          L.push('三动：' + (c.三动.length ? c.三动.map(function (d) { return d.名 + '（' + d.构成 + '，主' + d.主 + '）'; }).join('、') : '本课干方无相生比合'));
+          var nw = c.课内旺衰;
+          L.push('课内旺衰：' + nw.旺.map(function (k) { return k + '（' + nw.分[k] + ' 分）'; }).join('、') + ' 最旺，'
+            + Object.keys(nw.分).map(function (k) { return k + ' ' + nw.分[k]; }).join('、'));
+          L.push('（口径：' + c.说明 + '）');
+          c.缺口.forEach(function (g) { L.push('· 缺口 ' + g); });
+          return { text: L.join('\n') };
+        } catch (e) {
+          return { text: '【金口诀】起课失败：' + String(e && e.message ? e.message : e) + '（内核暂不可用，不影响其他功能）。' };
         }
       }
     },
@@ -1799,7 +1861,7 @@
    */
   var BANKS = [
     { 名: '命理排盘', 说明: '拿一个出生时间，排四柱与紫微，再断格局、神煞、大运与合婚。' },
-    { 名: '三式推演', 说明: '奇门、六壬、太乙三式，加六爻、梅花、周易，专看某一件事的成败。' },
+    { 名: '三式推演', 说明: '奇门、六壬、太乙三式，加金口诀、六爻、梅花、周易，专看某一件事的成败。' },
     { 名: '占星天文', 说明: '黄经落座落宿、宫位四轴、相位推运与合盘，星历均可核对。' },
     { 名: '黄历择日', 说明: '按日子挑吉时吉日，附每日穿衣五行与公农历换算。' },
     { 名: '姓名测字', 说明: '五格数理、起名补益、拆字会意，全以康熙笔画为底。' },

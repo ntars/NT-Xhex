@@ -275,4 +275,24 @@ ok(lyB.text.indexOf('背 3 1 2 0 3 2') >= 0 || lyB.text.indexOf('水泽节') >= 
 var lyN = R.run('liuyao', lyE, '六爻 摇一卦');
 ok(lyN.text.indexOf('分门断语：要按《黄金策》用神体系断') >= 0, '没说所问之事时提示可选的六门');
 
+// ===== v3.1.17 金口诀（四位课式 · 用爻 · 五动三动）=====
+console.log('== v3.1.17 金口诀 ==');
+var jkE = ent(2026, 2, 9, 10);
+var jkO = R.run('jinkou', jkE, '金口诀 2026年2月9日10时 地分酉');
+ok(jkO && jkO.text && jkO.text.indexOf('【金口诀】') >= 0, '金口诀有料出标题');
+ok(jkO.text.indexOf('四柱 乙巳 庚寅 甲寅 己巳') >= 0, '首行给四柱与月建');
+ok(jkO.text.indexOf('人元　癸') >= 0 && jkO.text.indexOf('贵神　辛未 太常') >= 0
+  && jkO.text.indexOf('将神　丁卯 太冲') >= 0 && jkO.text.indexOf('地分　癸酉') >= 0,
+  '四位课式逐位对上外部黄金盘（癸 / 辛未太常 / 丁卯太冲 / 酉）');
+ok(jkO.text.indexOf('四位纯阴，反阳以将为用') >= 0, '用爻：纯阴取将');
+ok(jkO.text.indexOf('官动') >= 0 && jkO.text.indexOf('财动') >= 0, '五动：官动 + 财动');
+ok(jkO.text.indexOf('父母动') >= 0, '三动：父母动（方生干）');
+ok(jkO.text.indexOf('换将时刻流派不同，非错盘') >= 0, '换将口径差异如实标注（不掩盖）');
+ok(jkO.text.indexOf('不作吉凶断言') >= 0, '明说五动三动只作结构定位、不断吉凶');
+var jkF = R.run('jinkou', jkE, '金口诀 2026年2月9日10时 地分正北');
+ok(jkF && jkF.text && jkF.text.indexOf('地分　') >= 0 && jkF.text.indexOf('方位「正北」') >= 0, '四正方位给地分（正北 → 子）');
+var jkN = R.run('jinkou', jkE, '金口诀 排一卦');
+ok(jkN && jkN.prompt && jkN.prompt.indexOf('缺地分') >= 0, '缺地分时给提示而不是瞎编地盘');
+ok(jkN.prompt.indexOf('四隅方位') >= 0, '提示里交代四隅不猜');
+
 if (fails === 0) { console.log('全部通过 ✓'); process.exit(0); } else { console.log(fails + ' 处失败'); process.exit(1); }
