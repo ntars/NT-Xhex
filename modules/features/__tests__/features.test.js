@@ -245,4 +245,18 @@ ok(byO.text.indexOf('流月（') < 0, '没问流月时不铺十二个月（不�
 var byLr = R.run('dayun', ent(1990, 8, 15, 14, 'male'), '流日 2026年10月17日 男');
 ok(/流日（2026-10-17 起 30 天/.test(byLr.text) && /10-17『甲子』（食神）/.test(byLr.text), '流日从指定日起 30 天并标十神');
 
+// ===== v3.1.15 解梦词库扩容（14 类 161 条 + 真检索）=====
+console.log('== v3.1.15 解梦 ==');
+var dmO = R.run('qianwen', ent(), '梦到蛇');
+ok(dmO && dmO.text && dmO.text.indexOf('【解梦】梦见「蛇」（动物类）') >= 0, '梦到蛇 给出词条（动物类）');
+ok(dmO.text.indexOf('传统向：') >= 0 && dmO.text.indexOf('心理向：') >= 0, '传统向 + 心理向双栏并列');
+ok(dmO.text.indexOf('口径：传统向取民间《周公解梦》') >= 0, '标注口径（无权威定本，不作断言）');
+var dmO2 = R.run('qianwen', ent(), '梦见掉牙了');
+ok(dmO2 && dmO2.text.indexOf('「掉牙」（身体类）') >= 0, '长词优先：梦见掉牙 → 掉牙（非「牙」）');
+var dmO3 = R.run('qianwen', ent(), '解梦 动物');
+ok(dmO3 && dmO3.text.indexOf('动物类共 20 条') >= 0, '按类别列举：动物类 20 条');
+var dmO4 = R.run('qianwen', ent(), '梦到独角兽跳舞');
+ok(dmO4 && dmO4.text.indexOf('词库现有 161 条 / 14 类') >= 0, '未收录给总览并明说不硬编');
+ok(dmO4.text.indexOf('暂未收录') >= 0, '未收录明确说「暂未收录」');
+
 if (fails === 0) { console.log('全部通过 ✓'); process.exit(0); } else { console.log(fails + ' 处失败'); process.exit(1); }

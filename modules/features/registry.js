@@ -1092,8 +1092,8 @@
     {
       key: 'qianwen', 名: '签文·解梦·塔罗·占星骰子',
       板块: '相术占验', 短名: '解灵签',
-      触发词: ['观音灵签', '灵签', '抽签', '求签', '第几签', '签诗', '解梦', '塔罗', '占星骰子', '答案之书', '雷诺曼', '如尼'],
-      说明: '签文/解梦/塔罗词库：观音灵签 100 签全本（签诗四句·诗意·解曰·圣意，三源比对）、塔罗 78 张、解梦词典、占星骰子、答案之书（C21b 内核 §17）。',
+      触发词: ['观音灵签', '灵签', '抽签', '求签', '第几签', '签诗', '解梦', '梦到', '梦见', '做梦', '塔罗', '占星骰子', '答案之书', '雷诺曼', '如尼'],
+      说明: '签文/解梦/塔罗词库：观音灵签 100 签全本（签诗四句·诗意·解曰·圣意，三源比对）、塔罗 78 张、解梦词典（14 类 161 条，传统向 + 心理向双栏并列）、占星骰子、答案之书（C21b 内核 §17）。',
       run: function (ent, text) {
         if (!QW) return { text: '【签文/塔罗】内核未加载。' };
         var t = String(text || '');
@@ -1127,8 +1127,38 @@
         if (t.indexOf('塔罗') >= 0) {
           return { text: '【塔罗】78 张：大阿尔克纳 22（' + QW.MAJOR.map(function (x) { return x[0]; }).join('、') + '…）+ 小阿尔克纳 56（权杖/圣杯/宝剑/星币 × A–10+侍者骑士王后国王）。可指定牌名查正逆位（如「塔罗 愚人」）。' };
         }
-        if (t.indexOf('解梦') >= 0) {
-          return { text: '【解梦】支持分类检索（人物/动物/自然/身体/钱财/出行/鬼神/居所…），如「梦到蛇」「梦到水」「梦到飞」。' };
+        if (t.indexOf('解梦') >= 0 || /梦到|梦见|做梦|梦里/.test(t)) {
+          if (!QW.dreamMatch) return { text: '【解梦】词库未加载。' };
+          var 梦词 = t.replace(/解梦/g, ' ');
+          var hitD = QW.dreamMatch(梦词);
+          // ① 指定了分类（「解梦 动物」「解梦里有哪些动物」）→ 列该类全部词条
+          var catHit = null;
+          QW.DREAM_CATS.forEach(function (c) { if (梦词.indexOf(c) >= 0) catHit = c; });
+          if (hitD && !(catHit && hitD.词.length < 2)) {
+            var L = ['【解梦】梦见「' + hitD.词 + '」（' + hitD.类别 + '类）：'];
+            L.push('传统向：' + hitD.传统 + '。');
+            L.push('心理向：' + hitD.心理 + '。');
+            var same = QW.dreamList(hitD.类别).map(function (x) { return x.词; }).filter(function (w) { return w !== hitD.词; });
+            L.push('同类可查（' + hitD.类别 + '，共 ' + (same.length + 1) + ' 条）：' + same.slice(0, 12).join('、') + (same.length > 12 ? '…' : '') + '。');
+            L.push('口径：传统向取民间《周公解梦》一系通行说法（此书无权威定本，各辑本互有出入），措辞为「旧说/民间谓」不作断言；心理向为现代释梦通识归纳，属一种读法。两栏并列，本应用不裁谁对。');
+            return { text: L.join('\n') };
+          }
+          if (catHit) {
+            var lst = QW.dreamList(catHit);
+            return {
+              text: '【解梦】' + catHit + '类共 ' + lst.length + ' 条：' + lst.map(function (x) { return x.词; }).join('、')
+                + '。\n说具体梦象即可（如「梦到蛇」），会给传统向 + 心理向两栏。'
+            };
+          }
+          if (!hitD) {
+            var cats = QW.dreamCats();
+            return {
+              text: '【解梦】词库现有 ' + QW.dreamCount() + ' 条 / ' + cats.length + ' 类：'
+                + cats.map(function (x) { return x.类别 + '(' + x.词数 + ')'; }).join('、')
+                + '。\n这个梦象暂未收录 —— 不硬编一个解释给你。可换个说法（如「梦到蛇」「梦见掉牙」），或按类别查（「解梦 动物」）。'
+            };
+          }
+          return { text: '【解梦】词库未加载。' };
         }
         if (t.indexOf('占星骰子') >= 0) {
           var d = QW.astroDice(0, 0, 0);
