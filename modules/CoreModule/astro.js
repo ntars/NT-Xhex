@@ -178,11 +178,131 @@
     };
   }
 
+  // ============ §8.2–8.5 补全：相位 / 推运 / 合盘 / 印占（Vedic）============
+  // 主相位 + 小相位 配置（容许度 orb 取占星通用值）
+  var ASPECTS = [
+    { 名: '合', 角: 0, orb: 8 }, { 名: '六合', 角: 60, orb: 4 }, { 名: '刑', 角: 90, orb: 6 },
+    { 名: '拱', 角: 120, orb: 8 }, { 名: '冲', 角: 180, orb: 8 },
+    { 名: '半六合', 角: 30, orb: 2 }, { 名: '半刑', 角: 45, orb: 2 },
+    { 名: '补八分', 角: 135, orb: 2 }, { 名: '十二分之五', 角: 150, orb: 2 }
+  ];
+  function angleDiff(a, b) { var d = Math.abs(mod360(a) - mod360(b)) % 360; return d > 180 ? 360 - d : d; }
+
+  // 两组长经 → 两两相位列表（names 为参与比较的星键）
+  function aspectBetween(lonsA, lonsB, names) {
+    var out = [];
+    for (var i = 0; i < names.length; i++) {
+      for (var j = (lonsA === lonsB ? i + 1 : 0); j < names.length; j++) {
+        if (lonsA[names[i]] == null || lonsB[names[j]] == null) continue;
+        var ang = angleDiff(lonsA[names[i]], lonsB[names[j]]);
+        for (var k = 0; k < ASPECTS.length; k++) {
+          var asp = ASPECTS[k];
+          var dd = asp.角 === 0 ? Math.min(ang, 360 - ang) : Math.abs(ang - asp.角);
+          if (dd <= asp.orb) {
+            out.push({ a: names[i], b: (lonsA === lonsB ? names[j] : names[j]), 类型: asp.名, 夹角: +ang.toFixed(1), 容许: +dd.toFixed(2), 精准: dd < asp.orb * 0.3 });
+            break;
+          }
+        }
+      }
+    }
+    return out;
+  }
+  // 取一个有值星键列表
+  function liveKeys(lons) { var ks = []; Object.keys(lons).forEach(function (k) { if (lons[k] != null) ks.push(k); }); return ks; }
+
+  /** §8.2 相位：本命盘内 10 曜两两相位 */
+  function aspects(inp) {
+    var p = positions(inp); if (p.err) return p;
+    var ks = liveKeys(p.黄经);
+    return { 时刻: p.时刻, 参与: ks, 相位: aspectBetween(p.黄经, p.黄经, ks) };
+  }
+
+  // 日期 +N 天（次限：1 天 = 1 年）
+  function dateAddDays(y, m, d, h, days) {
+    var t = new Date(Date.UTC(y, m - 1, d, h || 0)); t.setUTCDate(t.getUTCDate() + Math.round(days));
+    return { y: t.getUTCFullYear(), m: t.getUTCMonth() + 1, d: t.getUTCDate(), h: t.getUTCHours() };
+  }
+
+  /** §8.3 次限推运（Secondary Progression：1 天 = 1 年）→ 行运 Age 岁时次限盘 + 与本命相位 */
+  function progressions(inp, age) {
+    var p = positions(inp); if (p.err) return p;
+    if (!A) return { err: '次限需 astronomy 星历内核（vendor/astronomy.js）', _nat: p };
+    var tgt = dateAddDays(inp.y, inp.m, inp.d, inp.h || 0, (age || 1) * 365.25);
+    var pp = positions(tgt); if (pp.err) return pp;
+    var ks = liveKeys(p.黄经);
+    return {
+      本命时刻: p.时刻, 次限基准: tgt.y + '年' + tgt.m + '月' + tgt.d + '日（本命+' + (age || 1) + '天≈' + (age || 1) + '岁）',
+      本命黄经: p.黄经, 次限黄经: pp.黄经,
+      次限相位: aspectBetween(pp.黄经, p.黄经, ks) // 次限星 对本命星
+    };
+  }
+
+  /** §8.3 行运（Transit）：当日天象 vs 本命 → 行运相位 */
+  function transits(inp, tInp) {
+    var p = positions(inp); if (p.err) return p;
+    var tp = positions(tInp); if (tp.err) return tp;
+    var ks = liveKeys(p.黄经);
+    return { 本命: p.时刻, 行运日: tp.时刻, 行运相位: aspectBetween(tp.黄经, p.黄经, ks) };
+  }
+
+  /** §8.4 合盘（Synastry）：A 盘行星 vs B 盘行星 相位 */
+  function synastry(inpA, inpB) {
+    var pA = positions(inpA); if (pA.err) return { err: 'A 盘：' + pA.err };
+    var pB = positions(inpB); if (pB.err) return { err: 'B 盘：' + pB.err };
+    var ksA = liveKeys(pA.黄经), ksB = liveKeys(pB.黄经);
+    // 两盘都有的星才比
+    var common = ksA.filter(function (k) { return ksB.indexOf(k) >= 0; });
+    return { A: pA.时刻, B: pB.时刻, 合盘相位: aspectBetween(pA.黄经, pB.黄经, common) };
+  }
+
+  // §8.5 印占（Vedic）：恒星黄道 + Nakshatra + Vimshottari 大限
+  var NAK27 = ['Ashwini', 'Bharani', 'Krittika', 'Rohini', 'Mrigashira', 'Ardra', 'Punarvasu', 'Pushya', 'Ashlesha',
+    'Magha', 'PurvaPhalguni', 'UttaraPhalguni', 'Hasta', 'Chitra', 'Swati', 'Vishakha', 'Anuradha', 'Jyeshtha',
+    'Mula', 'PurvaAshadha', 'UttaraAshadha', 'Shravana', 'Dhanishta', 'Shatabhisha', 'PurvaBhadra', 'UttaraBhadra', 'Revati'];
+  // 27 宿 → 守护星（印占标准，计都/罗睺为月交点，木星/土星等）
+  var NAK_LORD = ['计都', '金星', '太阳', '月亮', '火星', '罗睺', '木星', '土星', '水星', '计都', '金星', '太阳', '月亮', '火星', '罗睺', '木星', '土星', '水星', '计都', '金星', '太阳', '月亮', '火星', '罗睺', '木星', '土星', '水星'];
+  // Vimshottari 大限序（守护星 + 年限，合计 120 年）
+  var VIMS = [['计都', 7], ['金星', 20], ['太阳', 6], ['月亮', 10], ['火星', 7], ['罗睺', 18], ['木星', 16], ['土星', 19], ['水星', 17]];
+
+  // Lahiri 岁差（近似）：J2000 基准 23.85° + ~0.01397°/年（50.29″/年）。标【近似，待权威星历校准】
+  function ayanamsa(y) { return 23.85 + (y - 2000) * 0.013968; }
+
+  /** §8.5 印占盘：恒星黄经 + 二十七宿 + Vimshottari 起限（以月亮宿为起） */
+  function vedicPositions(inp) {
+    var p = positions(inp); if (p.err) return p;
+    var ay = ayanamsa(inp.y + (inp.m - 1) / 12);
+    var sidereal = {}, nak = {};
+    Object.keys(p.黄经).forEach(function (k) {
+      if (p.黄经[k] == null) return;
+      var sid = mod360(p.黄经[k] - ay);
+      sidereal[k] = +sid.toFixed(3);
+      var span = 360 / 27, n = Math.floor(sid / span), deg = sid % span;
+      nak[k] = { 宿序: n, 宿名: NAK27[n], 守护星: NAK_LORD[n], 入度: +deg.toFixed(2) };
+    });
+    // Vimshottari 起限：以月亮所在宿的守护星为首，列出大限序与年限
+    var moonNak = nak['太阴'];
+    var startLord = moonNak ? moonNak.守护星 : null;
+    var si = startLord ? VIMS.map(function (x) { return x; }) : [];
+    // 把起始星提到首位
+    if (startLord) { var idx = VIMS.map(function (x) { return x[0]; }).indexOf(startLord); if (idx > 0) si = VIMS.slice(idx).concat(VIMS.slice(0, idx)); }
+    return {
+      时刻: p.时刻, ayanamsa: +ay.toFixed(3) + '°（Lahiri 近似）',
+      回归黄经: p.黄经, 恒星黄经: sidereal, 二十七宿: nak,
+      月亮宿: moonNak ? (moonNak.宿名 + '·' + moonNak.守护星) : null,
+      Vimshottari: { 起限星: startLord, 大限序: si.map(function (x) { return x[0] + x[1] + '年'; }), 总年: 120 },
+      缺料: 'Vedic 岁差(Lahiri)为线性近似；Nakshatra/Vimshottari 取印占标准 27 宿与 9 曜大限序，精确岁差与分盘(Default/Bhava)待权威星历校准。'
+    };
+  }
+
   return {
     positions: positions, signOf: signOf, threeRemainders: threeRemainders,
     suiXiuOf: suiXiuOf, maowangOf: maowangOf,
     SIGN_NAMES: SIGN_NAMES, SIGNS: SIGNS,
     SUIXIU: SUIXIU, MAOWANG: MAOWANG, STAR_AB: STAR_AB, ZHI_OF_SIGN: ZHI_OF_SIGN,
+    // §8.2–8.5
+    aspects: aspects, progressions: progressions, transits: transits, synastry: synastry,
+    vedicPositions: vedicPositions, ayanamsa: ayanamsa,
+    NAK27: NAK27, NAK_LORD: NAK_LORD, VIMS: VIMS, ASPECTS: ASPECTS,
     _vendorOk: !!(A && A.Body && A.Ecliptic)
   };
 });

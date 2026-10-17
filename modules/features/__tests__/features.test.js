@@ -45,7 +45,16 @@ var expectKey = {
   '阴遁 阳遁 定局 2024年8月15日': 'qimen',
   '大六壬 1990年8月15日 14时': 'liuren',
   '六壬 四课三传 1990年8月15日': 'liuren',
-  '月将加占时 2024年8月15日': 'liuren'
+  '月将加占时 2024年8月15日': 'liuren',
+  '太乙神数 2026': 'taiyi',
+  '六爻 2026年8月15日': 'liuyao',
+  '相位 1990年8月15日': 'astro-xiangwei',
+  '推运 1990年8月15日 30岁': 'astro-tuiyun',
+  '合盘 1990年8月15日': 'astro-hepan',
+  '印占 1990年8月15日': 'astro-vedic',
+  '阳宅 厨房在正南': 'yangzhai',
+  '相术 面相': 'xiangshu',
+  '观音灵签 抽签': 'qianwen'
 };
 for (var tx in expectKey) {
   var f = R.match(tx);
@@ -78,7 +87,15 @@ var have = [
   ['xiaoshu', '小六壬 2000年5月6日', ent(2000, 5, 6, 2)],
   ['astro', '占星 星盘 1990年8月15日 14时', ent(1990, 8, 15, 14)],
   ['qimen', '奇门遁甲 1990年8月15日 14时', ent(1990, 8, 15, 14)],
-  ['liuren', '大六壬 1990年8月15日 14时', ent(1990, 8, 15, 14)]
+  ['liuren', '大六壬 1990年8月15日 14时', ent(1990, 8, 15, 14)],
+  ['taiyi', '太乙神数 2026', ent(2026)],
+  ['liuyao', '六爻 2026年8月15日 14时', ent(2026, 8, 15, 14)],
+  ['astro-xiangwei', '相位 1990年8月15日', ent(1990, 8, 15, 14)],
+  ['astro-tuiyun', '推运 1990年8月15日 30岁', ent(1990, 8, 15, 14)],
+  ['astro-vedic', '印占 1990年8月15日', ent(1990, 8, 15, 14)],
+  ['yangzhai', '阳宅 厨房在正南 缺西北', ent()],
+  ['xiangshu', '相术 面相', ent()],
+  ['qianwen', '观音灵签 抽签', ent(2026, 8, 15)]
 ];
 have.forEach(function (c) {
   var out = R.run(c[0], c[2], c[1]);
@@ -112,5 +129,25 @@ ok(lOut && lOut.text && lOut.text.indexOf('三传') >= 0, '大六壬给出发用
 ok(lOut && lOut.text && lOut.text.indexOf('十二天将') >= 0, '大六壬给出十二天将（贵人昼夜+顺逆布将）');
 ok(lOut && lOut.text && lOut.text.indexOf('旬空') >= 0 && lOut.text.indexOf('驿马') >= 0, '大六壬给出旬空与驿马');
 ok(R.run('liuren', ent(), '六壬 看看').prompt, '大六壬无日期 → 追问');
+
+// ===== v3.1.5 新增 9 块功能锁定（三式补全 + 新增内核）=====
+console.log('== v3.1.5 新增 9 块（有料/缺料不崩、出标题）==');
+var tO = R.run('taiyi', ent(2026), '太乙神数 2026');
+ok(tO && tO.text && tO.text.indexOf('【太乙神数】') >= 0, '太乙神数有料出标题');
+var lO = R.run('liuyao', ent(2026, 8, 15, 14), '六爻 2026年8月15日 14时');
+ok(lO && lO.text && lO.text.indexOf('【六爻纳甲】') >= 0, '六爻纳甲有料出标题（本卦/变卦/六亲/六神）');
+var axO = R.run('astro-xiangwei', ent(1990, 8, 15, 14), '相位 1990年8月15日');
+ok(axO && axO.text && axO.text.indexOf('【占星·相位】') >= 0, '占星相位有料出标题');
+var atO = R.run('astro-tuiyun', ent(1990, 8, 15, 14), '推运 1990年8月15日 30岁');
+ok(atO && atO.text && atO.text.indexOf('【占星·推运】') >= 0, '占星推运有料出标题');
+ok(R.run('astro-hepan', ent(1990, 8, 15, 14), '合盘 1990年8月15日').prompt, '占星合盘缺双人 → 追问');
+var avO = R.run('astro-vedic', ent(1990, 8, 15, 14), '印占 1990年8月15日');
+ok(avO && avO.text && avO.text.indexOf('【印占 Vedic】') >= 0, '印占有料出标题（岁差/Ayanamsa/二十七宿/Vimshottari）');
+var yzO = R.run('yangzhai', ent(), '阳宅 厨房在正南 缺西北');
+ok(yzO && yzO.text && yzO.text.indexOf('【阳宅风水】') >= 0, '阳宅风水有料出标题（厨厕/缺角/门对门/楼层）');
+var xsO = R.run('xiangshu', ent(), '相术 面相');
+ok(xsO && xsO.text && xsO.text.indexOf('【相术·') >= 0, '相术有料出标题（面相/手相/痣相/骨相）');
+var qwO = R.run('qianwen', ent(2026, 8, 15), '观音灵签 抽签');
+ok(qwO && qwO.text && qwO.text.indexOf('【观音灵签】') >= 0, '签文有料出标题（观音灵签 deterministic）');
 
 if (fails === 0) { console.log('全部通过 ✓'); process.exit(0); } else { console.log(fails + ' 处失败'); process.exit(1); }

@@ -29,7 +29,12 @@
       require('../CoreModule/ziwei.js'),
       require('../CoreModule/astro.js'),
       require('../CoreModule/qimen.js'),
-      require('../CoreModule/liuren.js')
+      require('../CoreModule/liuren.js'),
+      require('../CoreModule/liuyao.js'),
+      require('../CoreModule/taiyi.js'),
+      require('../CoreModule/yangzhai.js'),
+      require('../CoreModule/xiangshu.js'),
+      require('../CoreModule/qianwen.js')
     );
   } else {
     root.NT = root.NT || {};
@@ -44,10 +49,15 @@
       root.NT.core && root.NT.core.ziwei,
       root.NT.core && root.NT.core.astro,
       root.NT.core && root.NT.core.qimen,
-      root.NT.core && root.NT.core.liuren
+      root.NT.core && root.NT.core.liuren,
+      root.NT.core && root.NT.core.liuyao,
+      root.NT.core && root.NT.core.taiyi,
+      root.NT.core && root.NT.core.yangzhai,
+      root.NT.core && root.NT.core.xiangshu,
+      root.NT.core && root.NT.core.qianwen
     );
   }
-})(typeof self !== 'undefined' ? self : this, function (FEI, NUM, NSTAR, ICE, BZH, XS, WX, N81, CORE, BAZI, ZD, ZW, ASTRO, QM, LR) {
+})(typeof self !== 'undefined' ? self : this, function (FEI, NUM, NSTAR, ICE, BZH, XS, WX, N81, CORE, BAZI, ZD, ZW, ASTRO, QM, LR, LY, TY, YZ, XSH, QW) {
 
   // 十二地支序（大六壬天地盘/天将逐一列用）
   function ZHI2() { return ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥']; }
@@ -285,7 +295,7 @@
     },
     {
       key: 'iching', 名: '易经起卦',
-      触发词: ['易经', '六爻', '铜钱起卦', '铜钱卦', '起卦', '卦象', '大衍'],
+      触发词: ['易经', '铜钱起卦', '铜钱卦', '起卦', '卦象', '大衍'],
       说明: '以「易经」铜钱 / 大衍（带数字 seed）起卦，得本卦/互卦/动爻与体用生克。',
       run: function (ent, text) {
         var num = pullNumber(text);
@@ -656,6 +666,211 @@
         } catch (e) {
           return { text: '【大六壬】起课失败：' + String(e && e.message ? e.message : e) + '（内核暂不可用，不影响其他功能）。' };
         }
+      }
+    },
+    {
+      key: 'taiyi', 名: '太乙神数',
+      触发词: ['太乙', '太乙神数', '太乙式', '十六神', '文昌', '计神', '始击', '天目', '阳九百六'],
+      说明: '某年太乙岁计局：积年/入局/元阴阳遁/十六神/天目(文昌)/计神/客目(始击)/太乙落宫（C17 内核，落宫与主客算标待黄金盘验证）。',
+      run: function (ent, text) {
+        var y = yearOf(ent, text);
+        if (!TY || !TY.chart) return { text: '【太乙】内核未加载，暂不可用。' };
+        try {
+          var c = TY.chart({ y: y });
+          if (c.err) return { prompt: c.err };
+          var L = ['【太乙神数】' + y + ' 年（岁计）：'];
+          L.push('积年 ' + c.积年 + '；入局数 ' + c.入局数 + '（入纪元数 ' + c.入纪元数 + '）；' + c.元 + '·' + c.阴阳遁 + '。');
+          L.push('天目(文昌)：' + c.天目文昌 + '；计神：' + c.计神 + '；客目(始击)：' + c.客目始击 + '。');
+          L.push('太乙落宫：' + c.太乙落宫 + '。');
+          L.push('（' + c.缺料 + '）');
+          return { text: L.join('\n') };
+        } catch (e) {
+          return { text: '【太乙】起局失败：' + String(e && e.message ? e.message : e) };
+        }
+      }
+    },
+    {
+      key: 'liuyao', 名: '六爻纳甲',
+      触发词: ['六爻', '纳甲', '摇卦', '铜钱卦', '爻', '世应', '六亲', '卦象详解'],
+      说明: '铜钱起卦（指定 6 次背数或自动）→ 本卦/变卦/八宫纳甲/安世应/六亲/六神/旬空月破（C18 内核，京房纳甲）。',
+      run: function (ent, text) {
+        if (!LY || !LY.cast) return { text: '【六爻】内核未加载，暂不可用。' };
+        try {
+          var inp = {};
+          // 尝试从文本解析 6 次背数（如「背 3 1 2 0 3 2」）
+          var m = String(text || '').match(/背\s*([0-3\s,，、]+)/);
+          if (m) {
+            var bs = m[1].replace(/[^\d]/g, '').split('').map(Number).filter(function (x) { return x >= 0 && x <= 3; });
+            if (bs.length === 6) inp.backs = bs;
+          }
+          if (ent && ent.date) { inp.y = ent.date.year; inp.m = ent.date.month || 1; inp.d = ent.date.day || 1; inp.h = ent.time ? ent.time.hour : 12; }
+          // 测事 → 用神
+          var 事m = String(text || '').match(/测([财运|事业|婚姻|感情|学业|考试|求财|疾病|出行|子嗣|官司]+)/);
+          if (事m) inp.事 = 事m[1];
+          var c = LY.cast(inp);
+          if (c.err) return { prompt: c.err };
+          var L = ['【六爻纳甲】本卦「' + c.本卦 + '」' + (c.变卦 ? '→ 变卦「' + c.变卦 + '」' : '') + '（' + c.宫 + '，世' + c.世 + ' 应' + c.应 + '）。'];
+          L.push('上下卦：' + c.上下卦 + (c.动爻.length ? '；动爻：第 ' + c.动爻.join('、') + ' 爻' : '；无动爻'));
+          L.push('六爻（自下而上）：');
+          c.爻线.forEach(function (x) {
+            L.push('  ' + x.爻 + '爻 ' + (x.阴阳 === '阴' ? '--' : '—') + ' ' + x.干支 + ' ' + x.六亲 + (x.六神 ? ' ' + x.六神 : '') + (x.世应 ? '【' + x.世应 + '】' : '') + (x.标记 ? ' ' + x.标记 : ''));
+          });
+          if (c.用神) L.push('用神：' + c.用神 + '。');
+          if (c.日干) L.push('日干 ' + c.日干 + '，旬空 ' + (c.旬空.join('') || '无') + '，月建 ' + (c.月建 || '—') + '。');
+          if (c.缺料) L.push('（' + c.缺料 + '）');
+          return { text: L.join('\n') };
+        } catch (e) {
+          return { text: '【六爻】起卦失败：' + String(e && e.message ? e.message : e) };
+        }
+      }
+    },
+    {
+      key: 'astro-xiangwei', 名: '占星·相位',
+      触发词: ['相位', '星盘相位', '合相', '冲相', '拱相', '刑相'],
+      说明: '本命盘 10 曜两两相位（合/六合/刑/拱/冲 + 小相位，含容许度，C19 内核 §8.2）。',
+      run: function (ent, text) {
+        if (!ent || !ent.date || !ent.date.year) return { prompt: '占星相位需要出生年月日，例如「1990年8月15日 相位」。' };
+        if (!ASTRO || !ASTRO.aspects) return { text: '【占星相位】内核未加载。' };
+        var y = ent.date.year, m = ent.date.month || 1, d = ent.date.day || 1, h = ent.time ? ent.time.hour : 12;
+        var a = ASTRO.aspects({ y: y, m: m, d: d, h: h });
+        if (a.err) return { prompt: a.err };
+        var L = ['【占星·相位】' + a.时刻 + '（参与 ' + a.参与.length + ' 曜）：'];
+        L.push(a.相位.length ? a.相位.map(function (x) { return x.a + ' ' + x.类型 + ' ' + x.b + '(' + x.夹角 + '°/容许' + x.容许 + ')'; }).join('；') : '无明显相位。');
+        return { text: L.join('\n') };
+      }
+    },
+    {
+      key: 'astro-tuiyun', 名: '占星·推运（次限/行运）',
+      触发词: ['推运', '次限', '行运', '三限', '太阳返照', '月亮返照', '法达'],
+      说明: '次限推运（1 天=1 年，本命+岁数）/ 行运（当日天象对本命），输出相位（C19 内核 §8.3）。',
+      run: function (ent, text) {
+        if (!ent || !ent.date || !ent.date.year) return { prompt: '推运需要出生年月日，例如「1990年8月15日 推运 30岁」。' };
+        if (!ASTRO || !ASTRO.progressions) return { text: '【推运】内核未加载。' };
+        var y = ent.date.year, m = ent.date.month || 1, d = ent.date.day || 1, h = ent.time ? ent.time.hour : 12;
+        var ageM = String(text || '').match(/(\d+)\s*岁/);
+        var age = ageM ? +ageM[1] : 1;
+        var p = ASTRO.progressions({ y: y, m: m, d: d, h: h }, age);
+        if (p.err) return { prompt: p.err };
+        var L = ['【占星·推运】本命 ' + p.本命时刻 + '，次限 ' + p.次限基准 + '：'];
+        L.push('次限相位（次限星对本命星）：' + (p.次限相位.length ? p.次限相位.map(function (x) { return x.a + ' ' + x.类型 + ' ' + x.b; }).join('；') : '无显著相位。'));
+        L.push('（行运 Transit：给「某日 行运」可算当日天象对本命相位；太阳/月亮返照、法达等详见功能圣经 §8.3。）');
+        return { text: L.join('\n') };
+      }
+    },
+    {
+      key: 'astro-hepan', 名: '占星·合盘',
+      触发词: ['合盘', '双人合盘', 'Synastry', '比较盘', '双人星盘'],
+      说明: '双人本命盘行星相位比较（Synastry），需两人出生时间（C19 内核 §8.4）。',
+      run: function (ent, text) {
+        if (!ASTRO || !ASTRO.synastry) return { text: '【合盘】内核未加载。' };
+        return { prompt: '双人合盘需要两位的出生年月日，例如「1990年8月15日 与 1988年3月20日 合盘」（可含时辰）。' };
+      }
+    },
+    {
+      key: 'astro-vedic', 名: '占星·印占（Vedic）',
+      触发词: ['印占', 'Vedic', '吠陀', '恒星黄道', '二十七宿', 'Nakshatra', 'Vimshottari', '罗睺'],
+      说明: '印占盘：恒星黄经（Lahiri 岁差近似）+ 二十七宿 + Vimshottari 大限（以月亮宿起限，C19 内核 §8.5）。',
+      run: function (ent, text) {
+        if (!ent || !ent.date || !ent.date.year) return { prompt: '印占需要出生年月日，例如「1990年8月15日 印占」。' };
+        if (!ASTRO || !ASTRO.vedicPositions) return { text: '【印占】内核未加载。' };
+        var y = ent.date.year, m = ent.date.month || 1, d = ent.date.day || 1, h = ent.time ? ent.time.hour : 12;
+        var v = ASTRO.vedicPositions({ y: y, m: m, d: d, h: h });
+        if (v.err) return { prompt: v.err };
+        var L = ['【印占 Vedic】' + v.时刻 + '：岁差 Ayanamsa ' + v.ayanamsa + '。'];
+        L.push('月亮宿：' + v.月亮宿 + '；Vimshottari 起限「' + v.Vimshottari.起限星 + '」，大限序 ' + v.Vimshottari.大限序.join('→') + '（共 ' + v.Vimshottari.总年 + ' 年）。');
+        L.push('（' + v.缺料 + '）');
+        return { text: L.join('\n') };
+      }
+    },
+    {
+      key: 'yangzhai', 名: '阳宅风水',
+      触发词: ['阳宅', '厨厕', '门对门', '缺角', '凸角', '户型', '楼层五行', '八宫', '家居风水'],
+      说明: '阳宅布局规则引擎：八宫人事映射/厨房厕所方位化解/门对门/缺角补角/楼层五行生肖匹配（C20 内核 §15）。',
+      run: function (ent, text) {
+        if (!YZ || !YZ.analyze) return { text: '【阳宅风水】内核未加载。' };
+        var t = String(text || '');
+        var inp = {};
+        // 缺角（「缺西北 缺东南」）
+        var miss = (t.match(/缺([西北|西南|东南|东北|正北|正南|正东|正西|中]+)/g) || []).map(function (x) { return x.replace('缺', ''); });
+        if (miss.length) inp.缺角 = miss;
+        // 厨房/厕所方位
+        var k = t.match(/厨房在([西北|西南|东南|东北|正北|正南|正东|正西|中]+)/); if (k) inp.厨房 = k[1];
+        var to = t.match(/厕所(在|位于)([西北|西南|东南|东北|正北|正南|正东|正西|中]+)/); if (to) inp.厕所 = to[2];
+        // 门对门
+        for (var dp in YZ.DOOR_PAIRS) if (t.indexOf(dp.replace('对', '对')) >= 0 || t.indexOf(dp) >= 0) { inp.门对门 = dp; break; }
+        // 楼层 + 生肖
+        var fl = t.match(/(\d+)\s*楼/); if (fl) inp.楼层 = +fl[1];
+        var zs = t.match(/属([鼠牛虎兔龙蛇马羊猴鸡狗猪])/); if (zs) inp.生肖 = zs[1];
+        if (!inp.缺角 && !inp.厨房 && !inp.厕所 && !inp.门对门 && !inp.楼层) {
+          return { prompt: '请描述户型，例如「厨房在正南、缺西北、入户对电梯、8 楼属虎」或「阳宅八宫映射」。' };
+        }
+        var a = YZ.analyze(inp);
+        var L = ['【阳宅风水】'];
+        if (a.厨厕.length) a.厨厕.forEach(function (x) { L.push('·' + x.类型 + (x.方位 ? '(' + x.方位 + ')' : '') + (x.吉凶 ? '【' + x.吉凶 + '】' : '') + (x.危害 ? '：' + x.危害 : '') + (x.化解 ? '；化解：' + x.化解 : '')); });
+        if (a.门对门.length) a.门对门.forEach(function (x) { L.push('·门对门(' + x.类型 + ')：' + x.化解); });
+        if (a.缺角.length) a.缺角.forEach(function (x) { L.push('·缺' + x.方位 + '：' + x.危害 + '；补角：' + x.补角 + (x.严重 ? ' ⚠' + x.严重 : '')); });
+        if (a.楼层) L.push('·楼层' + inp.楼层 + '：五行' + a.楼层.楼层五行 + (a.楼层.生肖五行 ? ('，生肖' + inp.生肖 + '五行' + a.楼层.生肖五行 + '，' + a.楼层.匹配) : ''));
+        L.push('（' + a.缺口 + '）');
+        return { text: L.join('\n') };
+      }
+    },
+    {
+      key: 'xiangshu', 名: '相术（面相/手相/痣相/骨相）',
+      触发词: ['相术', '面相', '手相', '痣相', '骨相', '十二宫面相', '三停', '看相'],
+      说明: '相术词库检索：面相十二宫/三停/五岳/五官断、手相线纹手型五行、痣相、骨相九骨（C21a 内核 §16）。',
+      run: function (ent, text) {
+        if (!XSH || !XSH.lookup) return { text: '【相术】内核未加载。' };
+        var t = String(text || '');
+        var cat = null;
+        if (t.indexOf('手相') >= 0) cat = (t.indexOf('手型') >= 0 || t.indexOf('金形') >= 0 || t.indexOf('木形') >= 0) ? '手型' : '手相线';
+        else if (t.indexOf('痣') >= 0) cat = '痣相';
+        else if (t.indexOf('骨') >= 0) cat = '骨相';
+        else if (t.indexOf('三停') >= 0 || t.indexOf('五岳') >= 0) cat = (t.indexOf('三停') >= 0) ? '三停' : '五岳';
+        else if (t.indexOf('五官') >= 0) cat = '五官';
+        else cat = '面相十二宫';
+        if (t.indexOf('面相') >= 0 && t.indexOf('十二宫') < 0) cat = '面相十二宫';
+        var L = ['【相术·' + cat + '】'];
+        if (cat === '面相十二宫') {
+          for (var g in XSH.MIAN_12) { var o = XSH.MIAN_12[g]; L.push('·' + g + '（' + o.部位 + '）：' + o.主 + '；' + o.吉); }
+        } else if (cat === '骨相') {
+          L.push('九骨：' + XSH.JIU_GU.join('、'));
+        } else if (cat === '痣相') {
+          L.push(XSH.ZHI_XIANG.通论);
+          for (var b in XSH.ZHI_XIANG.部位) L.push('·' + b + '：' + XSH.ZHI_XIANG.部位[b]);
+        } else {
+          var data = XSH.lookup(cat);
+          for (var k in data) L.push('·' + k + '：' + (typeof data[k] === 'string' ? data[k] : JSON.stringify(data[k])));
+        }
+        L.push('（相术为部位义与通论，非绝对命断；真人相需结合照片轮廓点选。）');
+        return { text: L.join('\n') };
+      }
+    },
+    {
+      key: 'qianwen', 名: '签文·解梦·塔罗·占星骰子',
+      触发词: ['观音灵签', '灵签', '抽签', '解梦', '塔罗', '占星骰子', '答案之书', '雷诺曼', '如尼'],
+      说明: '签文/解梦/塔罗词库：观音灵签抽签(100签)、塔罗78张、解梦词典、占星骰子、答案之书（C21b 内核 §17）。',
+      run: function (ent, text) {
+        if (!QW) return { text: '【签文/塔罗】内核未加载。' };
+        var t = String(text || '');
+        if (t.indexOf('观音') >= 0 || t.indexOf('灵签') >= 0 || t.indexOf('抽签') >= 0) {
+          var g = QW.guanyinDraw(ent && ent.date ? (ent.date.year + '-' + (ent.date.month || 1) + '-' + (ent.date.day || 1)) : undefined);
+          return { text: '【观音灵签】第 ' + g.签号 + ' 签 / 共 ' + g.总签数 + ' 签' + (g.签名 ? '（' + g.签名 + '·' + g.等级 + '）' : '') + '。\n' + (g.注 || '') };
+        }
+        if (t.indexOf('塔罗') >= 0) {
+          return { text: '【塔罗】78 张：大阿尔克纳 22（' + QW.MAJOR.map(function (x) { return x[0]; }).join('、') + '…）+ 小阿尔克纳 56（权杖/圣杯/宝剑/星币 × A–10+侍者骑士王后国王）。可指定牌名查正逆位（如「塔罗 愚人」）。' };
+        }
+        if (t.indexOf('解梦') >= 0) {
+          return { text: '【解梦】支持分类检索（人物/动物/自然/身体/钱财/出行/鬼神/居所…），如「梦到蛇」「梦到水」「梦到飞」。' };
+        }
+        if (t.indexOf('占星骰子') >= 0) {
+          var d = QW.astroDice(0, 0, 0);
+          return { text: '【占星骰子】组合 = 行星(做什么)·星座(怎样)·宫位(在哪)，共 10×12×12=1440 类。示例：' + d.行星 + '在' + d.星座 + '于' + d.宫位 + ' → ' + d.解读 + '。' };
+        }
+        if (t.indexOf('答案') >= 0) {
+          var a = QW.answerBook();
+          return { text: '【答案之书】' + a.句 + '\n' + a.注 };
+        }
+        return { prompt: '请指明：观音灵签 / 塔罗 / 解梦 / 占星骰子 / 答案之书（如「抽观音灵签」「塔罗 愚人」「梦到蛇」）。' };
       }
     }
   ];
