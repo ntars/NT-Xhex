@@ -105,6 +105,12 @@
     }
     return pick;
   }
+  // 取文本里显式写的年份（流年/流月/流日的起点用）；没写就返回 0，由调用方决定默认值
+  function pullYear(text) {
+    var m = String(text || '').match(/(19|20)\d{2}/);
+    return m ? +m[0] : 0;
+  }
+
   // 取年份（用于紫微/八宅命卦；无则取当前年）
   function yearOf(ent, text) {
     if (ent && ent.date && ent.date.year) return ent.date.year;
@@ -177,19 +183,54 @@
       }
     },
     {
-      key: 'dayun', 名: '八字大运流年',
-      板块: '命理排盘', 短名: '排大运',
-      触发词: ['大运', '流年', '走运', '运程', '起运'],
-      说明: '按「阳男阴女顺排、阴男阳女逆排」推十年大运（C07 内核，含起运岁数）。',
+      key: 'dayun', 名: '八字运程（大运·小运·流年流月流日）',
+      板块: '命理排盘', 短名: '排运程',
+      触发词: ['大运', '流年', '走运', '运程', '起运', '小运', '行年', '流月', '流日', '排运程'],
+      说明: '按「阳男阴女顺排、阴男阳女逆排」推十年大运（C07 内核，含起运岁数）+ 小运（起运前逐年，自时柱后/前一位起）+ 近十年流年干支与十神；问「流月」给该流年十二节气月的月柱（五虎遁由底座换算，含交节日期），问「流日」给指定日起逐日干支与十神。',
       run: function (ent, text) {
-        if (!ent || !ent.date || !ent.date.year) return { prompt: '推大运需要出生年月日，例如「1990年8月1日」。' };
+        if (!ent || !ent.date || !ent.date.year) return { prompt: '推运程需要出生年月日，例如「1990年8月1日」。' };
         var g = zhGender(ent);
-        if (!g) return { prompt: '推大运需出生性别（男/女，定顺逆），请补充。' };
+        if (!g) return { prompt: '推运程需出生性别（男/女，定顺逆），请补充。' };
+        var t = String(text || '');
         var y = ent.date.year, m = ent.date.month || 1, d = ent.date.day || 1, h = ent.time ? ent.time.hour : 14;
         var c = BAZI.chart({ y: y, m: m, d: d, h: h, gender: g, name: ent.name || '命主' });
+        var dm = c.dayMaster.干, P = c.pillars;
         var dy = c.大运;
-        var lines = ['【大运】' + g + '命，' + dy.顺逆 + '，' + dy.起运 + '。'];
-        lines.push('大运：' + (dy.列表.length ? dy.列表.map(function (x) { return x.年龄 + '岁『' + x.干支 + '』（' + x.开始年 + '起）'; }).join('、') : '（未推出，请核对生辰）'));
+        var lines = ['【八字运程】' + P.年.干支 + '年 ' + P.月.干支 + '月 ' + P.日.干支 + '日 ' + P.时.干支 + '时，日主' + dm + '（' + c.dayMaster.五行 + '），' + g + '命，' + dy.顺逆 + '，' + dy.起运 + '。'];
+        lines.push('大运：' + (dy.列表.length ? dy.列表.map(function (x) { return x.年龄 + '岁『' + x.干支 + '』（' + x.开始年 + '起）'; }).join('、') : '（未推出，请核对生辰）') + '。');
+        // 小运（起运前逐年）：传统只用起运前，这里给前 12 位，并明说是哪一端起的
+        if (BAZI.xiaoyun) {
+          var xy = BAZI.xiaoyun(c._ec, g, 12);
+          if (xy.列表.length) {
+            lines.push('小运（自时柱『' + xy.起点 + '』' + xy.顺逆 + '，一位一年）：' + xy.列表.map(function (x) { return x.年龄 + '岁『' + x.干支 + '』'; }).join('、') + '。');
+          }
+        }
+        // 流年：默认从今年起十年；文本里显式写了「流年/流月/流日 + 年份」则以该年为首
+        // 注意别把生辰那一年当流年起点（问「大运 1990年8月15日」时 1990 是生日，不是流年）
+        var py = pullYear(t);
+        var y0 = (py && (py !== y || /流年|流月|流日/.test(t))) ? py : new Date().getFullYear();
+        var ln = [];
+        for (var i = 0; i < 10; i++) {
+          var yy = y0 + i, gz = BAZI.GANZHI60[((yy - 4) % 60 + 60) % 60];
+          ln.push(yy + '『' + gz + '』' + (BAZI.shishen(dm, gz.charAt(0)) ? '（' + BAZI.shishen(dm, gz.charAt(0)) + '）' : ''));
+        }
+        lines.push('流年（' + y0 + ' 起十年，年干支 + 对日主的十神）：' + ln.join('、') + '。');
+        // 流月：问「流月」才铺十二个月，否则不占地
+        if (/流月|每月|月运|逐月/.test(t) && BAZI.liuyue) {
+          var lm = BAZI.liuyue(y0, dm);
+          if (!lm.err) {
+            lines.push('流月（' + y0 + '，按节气月，起于交节当日）：' + lm.月.map(function (x) { return x.月支 + '月（' + x.节 + ' ' + x.起 + '）『' + x.干支 + '』' + (x.十神 ? '（' + x.十神 + '）' : ''); }).join('、') + '。');
+          }
+        }
+        // 流日：问「流日」给逐日干支，默认从出生日往后 30 天；文本带日期则从该日起
+        if (/流日|每日|日运|逐日/.test(t) && BAZI.liuri) {
+          var sy = pullYear(t) || y, sm = (ent.date && ent.date.month) || m, sd = (ent.date && ent.date.day) || d;
+          var mm2 = t.match(/(\d{1,2})\s*月\s*(\d{1,2})\s*日/);
+          if (mm2) { sm = +mm2[1]; sd = +mm2[2]; }
+          var lr = BAZI.liuri(sy, sm, sd, 30, dm);
+          lines.push('流日（' + lr.起 + ' 起 30 天，日干支 + 对日主的十神）：' + lr.日.map(function (x) { return x.日期.slice(5) + '『' + x.干支 + '』' + (x.十神 ? '（' + x.十神 + '）' : ''); }).join('、') + '。');
+        }
+        lines.push('口径：大运起于月柱、小运起于时柱（醉醒子法，「男起丙寅/女起壬申」的古人法未采用），一位一年、以立春换柱；流月按节气月由底座的五虎遁换算，流日按日柱顺排。');
         return { text: lines.join('\n') };
       }
     },

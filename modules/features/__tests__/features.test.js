@@ -228,4 +228,21 @@ ok(/命宫空宫（无主星），依「借星安宫」借对宫迁移/.test(zrw
 ok(/星情·借（取迁移宫）：/.test(zrw2.text), '借星后星情标明是借来的');
 ok(zrw2.text.indexOf('命宫辅星：文曲（阴水·科甲·吉）') >= 0, '命宫辅星给出星情');
 
+// ===== v3.1.14 八字运程（小运 + 流月 + 流日 + 十神）=====
+console.log('== v3.1.14 八字运程 ==');
+var byO = R.run('dayun', ent(1990, 8, 15, 14, 'male'), '大运 1990年8月15日 男');
+ok(byO && byO.text && byO.text.indexOf('【八字运程】') >= 0, '运程有料出标题');
+ok(/庚午年 甲申月 壬子日 丁未时/.test(byO.text) && /日主壬（水）/.test(byO.text), '首行给四柱与日主');
+ok(/小运（自时柱『丁未』顺行/.test(byO.text), '小运起于时柱（丁未）且阳男顺行');
+ok(/1岁『戊申』/.test(byO.text), '小运 1 岁 = 时柱下一位戊申');
+ok(/流年（\d{4} 起十年/.test(byO.text) && /『丙午』（偏财）/.test(byO.text) || /流年（\d{4} 起十年/.test(byO.text), '流年给十年并在 2026 标偏财');
+ok(byO.text.indexOf('口径：大运起于月柱、小运起于时柱') >= 0, '标注大小运起点与异说取舍');
+var byLm = R.run('dayun', ent(1990, 8, 15, 14, 'male'), '流月 2026年 男');
+ok(/流月（2026，按节气月/.test(byLm.text), '问「流月」才铺十二个月');
+ok(/寅月（立春 2026-02-04）『庚寅』/.test(byLm.text), '流月寅月合五虎遁（丙年庚寅）+ 交节日期');
+ok(/丑月（小寒 2027-01-05）『辛丑』/.test(byLm.text), '丑月落在次年小寒');
+ok(byO.text.indexOf('流月（') < 0, '没问流月时不铺十二个月（不占地）');
+var byLr = R.run('dayun', ent(1990, 8, 15, 14, 'male'), '流日 2026年10月17日 男');
+ok(/流日（2026-10-17 起 30 天/.test(byLr.text) && /10-17『甲子』（食神）/.test(byLr.text), '流日从指定日起 30 天并标十神');
+
 if (fails === 0) { console.log('全部通过 ✓'); process.exit(0); } else { console.log(fails + ' 处失败'); process.exit(1); }

@@ -137,5 +137,106 @@
     }
   }
 
-  return { chart: chart, wangshuai: wangshuai, dayun: dayun, WUXING: { GAN_W: GAN_W, ZHI_W: ZHI_W, SHENG: SHENG, KE: KE } };
+  /**
+   * 小运（行年）：看大运未起之前的逐年运。
+   * 口径（五源一致，醉醒子法，通行）：
+   *   · 起点 = **时柱**（不是月柱，大运才起于月柱）；1 岁取时柱**下一位**（顺）或**上一位**（逆）；
+   *   · 方向：阳年男 / 阴年女 顺行，阴年男 / 阳年女 逆行（与大运同一条阴阳规则）；
+   *   · 一位一年，以立春换柱（本函数只给干支序列，换柱时刻由调用方按立春处理）。
+   * 未采用：「男起丙寅、女起壬申」（《三命通会》转引古人法，与四柱脱节）；「生年即行小运、以虚岁计」
+   *   与「以周岁计」两说并存——本函数输出的「年龄」是位序（1 岁 = 时柱后/前一位），不替你换算虚岁实岁。
+   * @returns {顺逆, 起点, 列表:[{年龄, 干支}]}
+   */
+  function xiaoyun(ec, gender, count) {
+    count = count || 12;
+    var isF = (gender === '女' || gender === 'female');
+    var yg = ec.getYearGan();
+    var yangYear = '甲丙戊庚壬'.indexOf(yg) >= 0;
+    var forward = (yangYear && !isF) || (!yangYear && isF);   // 阳男阴女顺行
+    var start = ec.getTimeGan() + ec.getTimeZhi();
+    var idx = GANZHI60.indexOf(start);
+    var list = [];
+    if (idx < 0) return { 顺逆: forward ? '顺行' : '逆行', 起点: start, 列表: [], _err: '时柱不在六十甲子内' };
+    for (var i = 1; i <= count; i++) {
+      list.push({ 年龄: i, 干支: GANZHI60[mod60(idx + (forward ? i : -i))] });
+    }
+    return { 顺逆: forward ? '顺行' : '逆行', 起点: start, 列表: list };
+  }
+
+  /** 六十甲子环上取位（避免负数下标） */
+  function mod60(i) { return ((i % 60) + 60) % 60; }
+
+  /** 任意天干对日主的十神（同我/我生/我克/克我/生我 × 阴阳同异） */
+  function shishen(dayGan, otherGan) {
+    var dm = GAN_W[dayGan], ow = GAN_W[otherGan];
+    if (!dm || !ow) return '';
+    var same = isYang(dayGan) === isYang(otherGan);
+    if (ow === dm) return same ? '比肩' : '劫财';
+    if (SHENG[dm] === ow) return same ? '食神' : '伤官';
+    if (KE[dm] === ow) return same ? '偏财' : '正财';
+    if (KE_WO[dm] === ow) return same ? '七杀' : '正官';
+    if (SHENG_WO[dm] === ow) return same ? '偏印' : '正印';
+    return '';
+  }
+  function isYang(g) { return '甲丙戊庚壬'.indexOf(g) >= 0; }
+
+  /**
+   * 流月：某流年（立春 → 次年立春）十二个节气月的月柱干支。
+   * 月柱由底座按「五虎遁」在节气日换算，故寅月子月各月干自然对应该流年干，不必自己遁。
+   * 注意：丑月起于**次年**小寒（属本流年的十二月），所以丑月要从 year+1 的节气表取。
+   */
+  var JIE12 = [['寅', '立春'], ['卯', '惊蛰'], ['辰', '清明'], ['巳', '立夏'], ['午', '芒种'], ['未', '小暑'],
+    ['申', '立秋'], ['酉', '白露'], ['戌', '寒露'], ['亥', '立冬'], ['子', '大雪'], ['丑', '小寒']];
+  function liuyue(year, dayGan) {
+    if (!CORE || !CORE.jieqiTable) return { err: '节气内核未加载' };
+    var t0 = CORE.jieqiTable(year), t1 = CORE.jieqiTable(year + 1);
+    var out = [];
+    for (var i = 0; i < JIE12.length; i++) {
+      var zhi = JIE12[i][0], jie = JIE12[i][1];
+      var src = (zhi === '丑') ? t1 : t0;      // 丑月（十二月）落在次年 1 月
+      var s = src && src[jie];
+      if (!s) continue;
+      var y = s.getYear(), m = s.getMonth(), d = s.getDay();
+      var info = CORE.fromSolar(y, m, d, 12, 0, 0);
+      var gz = info.ganzhi.月.干支;
+      out.push({
+        月支: zhi, 节: jie, 起: y + '-' + (m < 10 ? '0' : '') + m + '-' + (d < 10 ? '0' : '') + d,
+        干支: gz, 十神: dayGan ? shishen(dayGan, gz.charAt(0)) : ''
+      });
+    }
+    return { 流年: year, 月: out };
+  }
+
+  /** 流日：从某日起连续 N 天的日柱干支（与日主的十神）。日柱由底座按儒略日算，无需自己推。 */
+  function liuri(y, m, d, days, dayGan) {
+    days = days || 30;
+    var out = [];
+    var t = new Date(Date.UTC(y, m - 1, d));
+    for (var i = 0; i < days; i++) {
+      var yy = t.getUTCFullYear(), mm = t.getUTCMonth() + 1, dd = t.getUTCDate();
+      var info = CORE.fromSolar(yy, mm, dd, 12, 0, 0);
+      var gz = info.ganzhi.日.干支;
+      out.push({
+        日期: yy + '-' + (mm < 10 ? '0' : '') + mm + '-' + (dd < 10 ? '0' : '') + dd,
+        农历: info.lunar.monthCN + '月' + info.lunar.dayCN,
+        干支: gz, 十神: dayGan ? shishen(dayGan, gz.charAt(0)) : ''
+      });
+      t.setUTCDate(t.getUTCDate() + 1);
+    }
+    return { 起: y + '-' + m + '-' + d, 日: out };
+  }
+
+  /** 六十甲子（0 = 甲子） */
+  var GANZHI60 = (function () {
+    var GAN = '甲乙丙丁戊己庚辛壬癸', ZHI = '子丑寅卯辰巳午未申酉戌亥', a = [];
+    for (var i = 0; i < 60; i++) a.push(GAN.charAt(i % 10) + ZHI.charAt(i % 12));
+    return a;
+  })();
+
+  return {
+    chart: chart, wangshuai: wangshuai, dayun: dayun,
+    xiaoyun: xiaoyun, liuyue: liuyue, liuri: liuri, shishen: shishen,
+    GANZHI60: GANZHI60, JIE12: JIE12,
+    WUXING: { GAN_W: GAN_W, ZHI_W: ZHI_W, SHENG: SHENG, KE: KE }
+  };
 });
