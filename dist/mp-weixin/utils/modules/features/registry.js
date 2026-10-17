@@ -699,16 +699,21 @@
     {
       key: 'qimen', 名: '奇门遁甲（时家转盘·拆补）',
       板块: '三式推演', 短名: '排奇门',
-      触发词: ['奇门', '奇门遁甲', '遁甲', '值符', '值使', '阴遁', '阳遁', '转盘法', '拆补法', '九星八门'],
-      说明: '某时刻完整奇门局（时家·转盘·拆补定局）：四柱/阴阳遁/局数/元/旬首/值符值使/地盘/天盘九星/八门/八神。',
+      触发词: ['奇门', '奇门遁甲', '遁甲', '值符', '值使', '阴遁', '阳遁', '转盘法', '拆补法', '九星八门', '刻家奇门', '日家奇门', '年家奇门', '月家奇门'],
+      说明: '某时刻完整奇门局（**只做时家**·转盘·拆补定局）：四柱/阴阳遁/局数/元/旬首/值符值使/地盘/天盘九星/八门/八神。年家/月家/日家/刻家四种另局本版未实现，问到时明说、不拿时家属局冒充。',
       run: function (ent, text) {
         if (!ent || !ent.date || !ent.date.year) return { prompt: '奇门遁甲需要起局年月日，例如「1990年8月15日」（尽量给到时辰，时家奇门以时辰起局）。' };
+        // 家数守门：本版只有时家。年被问到时必须先说清楚，否则用户会把时家属局当年家局用（那是错盘）。
+        var famM = String(text || '').match(/(年家|月家|日家|刻家)/);
+        var famWarn = famM ? ('⚠️ 本版只实现**时家**奇门（以时辰定局）。你问的是「' + famM[1] + '奇门」，属另一套定局体系，本版未实现 —— 下面给的是**同一时刻的时家属局**，只能当参考，不能当' + famM[1] + '局使用。') : null;
         var y = ent.date.year, m = ent.date.month || 1, d = ent.date.day || 1, h = ent.time ? ent.time.hour : 0;
         if (!QM || !QM.chart) return { text: '【奇门】奇门内核未加载，暂不可用。' };
         try {
           var c = QM.chart({ y: y, m: m, d: d, h: h });
           if (c.err) return { prompt: c.err };
-          var L = ['【奇门遁甲】' + y + '年' + m + '月' + d + '日' + h + '时（时家·转盘·拆补）：'];
+          var L = [];
+          if (famWarn) L.push(famWarn);
+          L.push('【奇门遁甲】' + y + '年' + m + '月' + d + '日' + h + '时（时家·转盘·拆补）：');
           L.push('四柱 ' + c.四柱.年 + ' ' + c.四柱.月 + ' ' + c.四柱.日 + ' ' + c.四柱.时 + '；' + c.阴阳遁 + c.局数 + '局（' + c.节气 + c.元 + '元），旬首' + c.旬首 + '，值符「' + c.值符星 + '」、值使「' + c.值使门 + '」。');
           var GONG = [1, 8, 3, 4, 9, 2, 7, 6]; // 洛书地理顺时针环（展示顺序）
           L.push('地盘布仪：' + GONG.map(function (p) { return '宫' + p + c.地盘[p]; }).join(' ') + '（中五寄坤二）；');
@@ -830,22 +835,76 @@
       }
     },
     {
-      key: 'astro-tuiyun', 名: '占星·推运（次限/行运）',
+      key: 'astro-tuiyun', 名: '占星·推运（次限/行运/返照/法达）',
       板块: '占星天文', 短名: '排推运',
-      触发词: ['推运', '次限', '行运', '三限', '太阳返照', '月亮返照', '法达'],
-      说明: '次限推运（1 天=1 年，本命+岁数）/ 行运（当日天象对本命），输出相位（C19 内核 §8.3）。',
+      触发词: ['推运', '次限', '行运', '三限', '太阳返照', '月亮返照', '法达', '星限'],
+      说明: '次限推运（1 天=1 年，本命+岁数）/ 行运（指定日天象对本命相位）/ 太阳返照盘（太阳回到本命黄经那一刻起盘）/ 法达星限（日夜盘九期 + 七等分副运，C19 内核 §8.3/§8.6/§8.7）。',
       run: function (ent, text) {
-        if (!ent || !ent.date || !ent.date.year) return { prompt: '推运需要出生年月日，例如「1990年8月15日 推运 30岁」。' };
-        if (!ASTRO || !ASTRO.progressions) return { text: '【推运】内核未加载。' };
+        if (!ent || !ent.date || !ent.date.year) return { prompt: '推运需要出生年月日，例如「1990年8月15日 推运 30岁」「1990年8月15日 法达」。「行运」另给目标日期，如「1990年8月15日 2026年10月17日 行运」。' };
+        if (!ASTRO) return { text: '【推运】内核未加载。' };
+        var t = String(text || '');
         var y = ent.date.year, m = ent.date.month || 1, d = ent.date.day || 1, h = ent.time ? ent.time.hour : 12;
-        var ageM = String(text || '').match(/(\d+)\s*岁/);
-        var age = ageM ? +ageM[1] : 1;
-        var p = ASTRO.progressions({ y: y, m: m, d: d, h: h, tz: 8 }, age);
+        var nat = { y: y, m: m, d: d, h: h, tz: 8 };
+        var ageM = t.match(/(\d+)\s*岁/);
+        var age = ageM ? +ageM[1] : (new Date().getFullYear() - y);
+        var more = '（「行运」加日期看行运、「太阳返照」看年度返照盘、「法达」看时段主星。）';
+
+        // ① 法达星限（纯时段体系，不依赖星历）
+        if (t.indexOf('法达') >= 0 || t.indexOf('星限') >= 0) {
+          if (!ASTRO.firdaria) return { text: '【法达】内核未加载。' };
+          var f = ASTRO.firdaria(nat, { age: age });
+          if (f.err) return { prompt: f.err };
+          var L = ['【占星·推运】法达星限：' + f.盘别 + '，' + f.判定 + '。'];
+          L.push('当前 ' + (f.年龄 != null ? f.年龄 + ' 岁：' : '') + '大运「' + f.当前大运 + '」，副运「' + f.当前副运 + '」。');
+          L.push('九期（合计 ' + f.周期总年 + ' 年，满期从首期重新起算）：' + f.大运.map(function (r) { return r.主星 + ' ' + r.起 + '–' + r.止 + '岁'; }).join('，'));
+          if (f.副运表) L.push('本大运七副运：' + f.副运表.map(function (s) { return s.副星 + ' ' + s.起 + '–' + s.止 + '岁'; }).join('，'));
+          L.push('注：' + f.缺口);
+          return { text: L.join('\n') };
+        }
+        // ② 太阳返照盘
+        if (t.indexOf('返照') >= 0) {
+          if (t.indexOf('月亮返照') >= 0) {
+            return { prompt: '月亮返照（每月一次返照盘）本版未实现，不拿别的盘冒充。现有可算：太阳返照（说「太阳返照」）、次限、行运、法达。' };
+          }
+          if (!ASTRO.solarReturn) return { text: '【返照】内核未加载。' };
+          var yrM = t.match(/(19|20)\d{2}/g);
+          var yr = yrM && yrM.length ? +yrM[yrM.length - 1] : new Date().getFullYear();
+          var sr = ASTRO.solarReturn(nat, yr);
+          if (sr.err) return { prompt: sr.err };
+          var S = ['【占星·推运】太阳返照 ' + yr + ' 年：太阳回到本命黄经（' + sr.返照黄经['太阳'].toFixed(2) + '°）的时刻 = ' + sr.返照时刻本地 + '。'];
+          // 星座是 {星座,符号,度数} 对象，别直接拼（会打出 [object Object]）
+          var fmtSign = function (k) { var g = sr.返照星座[k]; return g ? (g.星座 + g.度数.toFixed(1) + '°') : ''; };
+          S.push('返照盘（上升未定则只列行星）：' + ['太阳', '太阴', '水星', '金星', '火星', '木星', '土星'].filter(function (k) { return sr.返照黄经[k] != null; }).map(function (k) { return k + ' ' + sr.返照黄经[k].toFixed(2) + '°（' + fmtSign(k) + '）'; }).join('，'));
+          S.push('返照对本命相位：' + (sr.与本命相位.length ? sr.与本命相位.filter(function (x) { return x.精准; }).map(function (x) { return x.a + '　' + x.类型 + '　' + x.b; }).join('，') || '无（取精准相位；全部 ' + sr.与本命相位.length + ' 条）' : '无显著相位'));
+          S.push('注：返照盘取「太阳回照那一刻」，不按生日当天零点/正午取整，取整即是另一张盘。' + more);
+          return { text: S.join('\n') };
+        }
+        // ③ 行运（可指定日期；不给则按今天）
+        if (t.indexOf('行运') >= 0) {
+          if (!ASTRO.transits) return { text: '【行运】内核未加载。' };
+          var dm = t.match(/((?:19|20)\d{2})\s*[年\-./]\s*(\d{1,2})\s*[月\-./]\s*(\d{1,2})/);
+          var today = new Date();
+          var tgt = dm ? { y: +dm[1], m: +dm[2], d: +dm[3], h: 12, tz: 8 }
+            : { y: today.getFullYear(), m: today.getMonth() + 1, d: today.getDate(), h: 12, tz: 8 };
+          var tr = ASTRO.transits(nat, tgt);
+          if (tr.err) return { prompt: tr.err };
+          var hit = tr.行运相位.filter(function (x) { return x.精准; });
+          var T = ['【占星·推运】行运：本命 ' + tr.本命 + ' ← ' + tr.行运日 + '：'];
+          T.push('精准行运相位（容许度内）：' + (hit.length ? hit.map(function (x) { return x.a + '　' + x.类型 + '　' + x.b; }).join('，') : '无'));
+          T.push('全部行运相位 ' + tr.行运相位.length + ' 条，取前 8 条：' + tr.行运相位.slice(0, 8).map(function (x) { return x.a + x.类型 + x.b; }).join('，'));
+          T.push('注：行运星＝该日实际天象，对本命盘取相位（容许度按主/小相位各自 orb）；想换日期就把日期写进问题。' + more);
+          return { text: T.join('\n') };
+        }
+        // ④ 默认：次限推运
+        var p = ASTRO.progressions(nat, age);
         if (p.err) return { prompt: p.err };
-        var L = ['【占星·推运】本命 ' + p.本命时刻 + '，次限 ' + p.次限基准 + '：'];
-        L.push('次限相位（次限星对本命星）：' + (p.次限相位.length ? p.次限相位.map(function (x) { return x.a + ' ' + x.类型 + ' ' + x.b; }).join('；') : '无显著相位。'));
-        L.push('（行运 Transit：给「某日 行运」可算当日天象对本命相位；太阳/月亮返照、法达等详见功能圣经 §8.3。）');
-        return { text: L.join('\n') };
+        var L2 = ['【占星·推运】次限（1 天 = 1 年）：本命 ' + p.本命时刻 + '，' + age + ' 岁次限 ' + p.次限基准 + '：'];
+        // 相位可能几十条，全铺一屏没人看得下去：先给容许度内的「精准」相位，再报总数
+        var ph = p.次限相位 || [], tight = ph.filter(function (x) { return x.精准; });
+        L2.push('次限精准相位（容许度内）：' + (tight.length ? tight.map(function (x) { return x.a + '　' + x.类型 + '　' + x.b; }).join('，') : '无'));
+        if (ph.length > tight.length) L2.push('（另有容许度边缘的 ' + (ph.length - tight.length) + ' 条，共 ' + ph.length + ' 条；只为不漏，不逐一铺开。）');
+        L2.push('注：次限按「出生后 1 天 = 1 年」推进。' + more.replace('（', '（另有'));
+        return { text: L2.join('\n') };
       }
     },
     {

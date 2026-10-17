@@ -336,7 +336,110 @@
     var p = positions(inp); if (p.err) return p;
     var tp = positions(tInp); if (tp.err) return tp;
     var ks = liveKeys(p.黄经);
-    return { 本命: p.时刻, 行运日: tp.时刻, 行运相位: aspectBetween(tp.黄经, p.黄经, ks) };
+    return { 本命: p.时刻, 行运日: tp.时刻, 行运黄经: tp.黄经, 行运相位: aspectBetween(tp.黄经, p.黄经, ks) };
+  }
+
+  /** §8.6 太阳返照盘（Solar Return）：太阳黄经回到本命太阳黄经的那一刻 → 该时刻的整盘 */
+  /**
+   * 口径说明：返照盘取「太阳回到本命黄经」的精确时刻起盘（不是生日当天零点、也不是生日当天正午）。
+   * 检索直接用星历内核的 SearchSunLongitude（太阳一年只回照一次，从生日前 6 天起搜 20 天窗口足够）。
+   * 返照时刻按世界时给出并换算回本地时（东八区），不做「整点取整」——取整就是另一张盘了。
+   */
+  function solarReturn(inp, year) {
+    var natal = positions(inp); if (natal.err) return natal;
+    if (!A || !A.SearchSunLongitude || !A.MakeTime) return { err: '返照需 astronomy 星历内核（vendor/astronomy.js）' };
+    var y = +year || new Date().getUTCFullYear();
+    var lon = natal.黄经['太阳'];
+    var start = A.MakeTime(new Date(Date.UTC(y, (inp.m || 1) - 1, (inp.d || 1) - 6)));
+    var t = A.SearchSunLongitude(lon, start, 20);
+    if (!t) return { err: '太阳返照检索失败（' + y + ' 年）' };
+    var dt = t.date; // UTC
+    var ret = positions({ y: dt.getUTCFullYear(), m: dt.getUTCMonth() + 1, d: dt.getUTCDate(), h: dt.getUTCHours() + dt.getUTCMinutes() / 60, tz: 0 });
+    if (ret.err) return ret;
+    var ks = liveKeys(ret.黄经);
+    // 北京时间 = UTC+8（本项目其余占星功能同用 +8）
+    var bj = new Date(dt.getTime() + 8 * 3600 * 1000);
+    return {
+      类型: '太阳返照', 年: y, 本命时刻: natal.时刻,
+      返照时刻UTC: dt.toISOString().replace('T', ' ').slice(0, 19) + ' UT',
+      返照时刻本地: bj.toISOString().replace('T', ' ').slice(0, 16) + '（UTC+8）',
+      返照黄经: ret.黄经, 返照星座: ret.星座,
+      与本命相位: aspectBetween(ret.黄经, natal.黄经, ks)
+    };
+  }
+
+  /** §8.7 法达星限（Firdaria）：中世纪波斯/阿拉伯「时段主星」体系 */
+  /**
+   * 五源核对一致（astrodoor 繁/简、traditional-astrology、yourhearth、astrostarcheck）：
+   *   日生顺序：太阳 10 → 金星 8 → 水星 13 → 月亮 9 → 土星 11 → 木星 12 → 火星 7 → 北交 3 → 南交 2（合 75 年）
+   *   夜生顺序：月亮 9 → 土星 11 → 木星 12 → 火星 7 → 太阳 10 → 金星 8 → 水星 13 → 北交 3 → 南交 2
+   *   副运：主期 7 等分，第一份是主星本人，其后按「同一循环顺序」接着排
+   *         （上面这套顺序本身就是迦勒底序 土→木→火→日→金→水→月 从该盘「光体」起算，故两说在此等价）
+   *   分歧（如实标注，不合并）：北交/南交两期是否再切 7 份，各家不一 —— 本实现按「不分」（astrodoor 明确不分）。
+   */
+  var FIRDARIA = {
+    日: [['太阳', 10], ['金星', 8], ['水星', 13], ['月亮', 9], ['土星', 11], ['木星', 12], ['火星', 7], ['北交', 3], ['南交', 2]],
+    夜: [['月亮', 9], ['土星', 11], ['木星', 12], ['火星', 7], ['太阳', 10], ['金星', 8], ['水星', 13], ['北交', 3], ['南交', 2]]
+  };
+  /**
+   * 判日/夜盘：看太阳在地平线上还是下（altitude > 0 = 日盘）。
+   * 需要出生地经纬度；未给则按北京（39.9N / 116.4E）近似，并在结果里写明这个假设 ——
+   * 日夜盘判错的后果是整条时间轴平移好几年（法达最忌），所以不能悄悄默认。
+   */
+  function sunAltitude(inp, lat, lon) {
+    if (!A || !A.Horizon || !A.Observer || !A.Equator) return null;
+    var tz = (inp.tz == null ? 8 : +inp.tz);
+    var U = toUTC(inp.y, inp.m, inp.d, inp.h == null ? 12 : inp.h, tz);
+    var ms = Date.UTC(U.y, U.m - 1, U.d, Math.floor(U.h), Math.round((U.h % 1) * 60));
+    var time = A.MakeTime(new Date(ms));
+    var obs = new A.Observer(lat, lon, 0);
+    var eq = A.Equator(A.Body.Sun, time, obs, true, true);
+    return A.Horizon(time, obs, eq.ra, eq.dec, 'normal').altitude;
+  }
+
+  function firdaria(inp, opts) {
+    var p = positions(inp); if (p.err) return p;
+    opts = opts || {};
+    var lat = opts.lat == null ? 39.9 : +opts.lat;
+    var lon = opts.lon == null ? 116.4 : +opts.lon;
+    var alt = sunAltitude(inp, lat, lon);
+    var sect = (alt == null) ? (opts.sect || '日') : (alt > 0 ? '日' : '夜');
+    var seq = FIRDARIA[sect];
+    // 大运表：年龄区间（0 岁起算）
+    var rows = [], acc = 0;
+    seq.forEach(function (r) { rows.push({ 主星: r[0], 年数: r[1], 起: acc, 止: acc + r[1] }); acc += r[1]; });
+    var out = {
+      盘别: sect + '生盘',
+      判定: alt == null ? '未能算太阳高度角，按入参指定' : ('出生时太阳高度角 ' + (alt > 0 ? '+' : '') + alt.toFixed(1) + '°（' + (alt > 0 ? '地平线上=日盘' : '地平线下=夜盘') + '，经纬度 ' + lat + 'N / ' + lon + 'E' + (opts.lat == null ? '·未给出生地，按北京近似' : '') + '）'),
+      周期总年: acc,
+      大运: rows,
+      缺口: '北交/南交两期是否再切 7 份各家不一，本实现按「不分」（astrodoor 口径），法达无天文计算，边界只随日夜盘与生日而定，边界处呈渐变、不宜当事件日读。'
+    };
+    var age = opts.age;
+    if (age == null || isNaN(+age)) age = null; else age = +age;
+    if (age != null) {
+      var a = age % acc; // 满 75 年重新起算
+      var cur = rows.filter(function (r) { return a >= r.起 && a < r.止; })[0] || rows[0];
+      out.年龄 = age;
+      out.当前大运 = cur.主星 + '（' + cur.年数 + ' 年：' + cur.起 + '–' + cur.止 + ' 岁）';
+      // 副运：七政期 7 等分，从主星本人起、按本盘顺序循环；交点期不分
+      if (['北交', '南交'].indexOf(cur.主星) < 0) {
+        var cyc = seq.slice(0, 7).map(function (r) { return r[0]; });
+        var idx = cyc.indexOf(cur.主星);
+        if (idx < 0) idx = 0;
+        var span = cur.年数 / 7, subs = [];
+        for (var i = 0; i < 7; i++) {
+          var lord = cyc[(idx + i) % 7];
+          subs.push({ 副星: lord, 起: +(cur.起 + span * i).toFixed(2), 止: +(cur.起 + span * (i + 1)).toFixed(2) });
+        }
+        out.副运表 = subs;
+        var hit = subs.filter(function (s) { return a >= s.起 && a < s.止; })[0];
+        if (hit) out.当前副运 = hit.副星 + '（' + hit.起 + '–' + hit.止 + ' 岁）';
+      } else {
+        out.当前副运 = '（交点期不细分）';
+      }
+    }
+    return out;
   }
 
   /** §8.4 合盘（Synastry）：A 盘行星 vs B 盘行星 相位 */
@@ -397,6 +500,8 @@
     SUIXIU: SUIXIU, MAOWANG: MAOWANG, STAR_AB: STAR_AB, ZHI_OF_SIGN: ZHI_OF_SIGN,
     // §8.2–8.5
     aspects: aspects, progressions: progressions, transits: transits, synastry: synastry,
+    // v3.1.11：返照盘 + 法达星限（原本只有触发词、没有实现，本次补真算法）
+    solarReturn: solarReturn, firdaria: firdaria, FIRDARIA: FIRDARIA, sunAltitude: sunAltitude,
     vedicPositions: vedicPositions, ayanamsa: ayanamsa,
     NAK27: NAK27, NAK_LORD: NAK_LORD, VIMS: VIMS, ASPECTS: ASPECTS,
     // v3.1.8：时区换算 + 坐标/恒星时基元（供宫位、卜卦、择时复用，单一真源）
