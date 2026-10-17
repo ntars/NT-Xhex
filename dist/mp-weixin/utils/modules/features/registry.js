@@ -28,7 +28,8 @@
       require('../CoreModule/zodiac-rel.js'),
       require('../CoreModule/ziwei.js'),
       require('../CoreModule/astro.js'),
-      require('../CoreModule/qimen.js')
+      require('../CoreModule/qimen.js'),
+      require('../CoreModule/liuren.js')
     );
   } else {
     root.NT = root.NT || {};
@@ -42,10 +43,14 @@
       root.NT.core && root.NT.core.zodiacRel,
       root.NT.core && root.NT.core.ziwei,
       root.NT.core && root.NT.core.astro,
-      root.NT.core && root.NT.core.qimen
+      root.NT.core && root.NT.core.qimen,
+      root.NT.core && root.NT.core.liuren
     );
   }
-})(typeof self !== 'undefined' ? self : this, function (FEI, NUM, NSTAR, ICE, BZH, XS, WX, N81, CORE, BAZI, ZD, ZW, ASTRO, QM) {
+})(typeof self !== 'undefined' ? self : this, function (FEI, NUM, NSTAR, ICE, BZH, XS, WX, N81, CORE, BAZI, ZD, ZW, ASTRO, QM, LR) {
+
+  // 十二地支序（大六壬天地盘/天将逐一列用）
+  function ZHI2() { return ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥']; }
 
   // 从文本里抽取连续数字串（号码八星用；字母 A–Z 由内核转 1–9）
   function pullNumber(text) {
@@ -620,6 +625,36 @@
           return { text: L.join('\n') };
         } catch (e) {
           return { text: '【奇门】排局失败：' + String(e && e.message ? e.message : e) + '（内核暂不可用，不影响其他功能）。' };
+        }
+      }
+    },
+    {
+      key: 'liuren', 名: '大六壬（时家·月将加占时·四课三传·十二天将）',
+      触发词: ['大六壬', '六壬', '月将加时', '月将加占时', '四课', '三传', '十二天将', '天乙贵人', '贵人', '伏吟', '返吟', '涉害', '蒿矢', '弹射', '遥克', '重审', '元首'],
+      说明: '某时刻完整六壬课（时家·月将加占时）：四柱/月将/占时/天地盘/四课/九宗门发用/三传/十二天将（贵人昼夜+顺逆布将）/旬空/驿马/三传遁干。权威规则多源核对（零臆造）。',
+      run: function (ent, text) {
+        if (!ent || !ent.date || !ent.date.year) return { prompt: '大六壬需要起课时辰年月日，例如「1990年8月15日14时」（可只给日期，占时另说）。' };
+        var y = ent.date.year, m = ent.date.month || 1, d = ent.date.day || 1, h = ent.time ? ent.time.hour : 0;
+        if (!LR || !LR.chart) return { text: '【大六壬】内核未加载，暂不可用。' };
+        try {
+          var c = LR.chart({ y: y, m: m, d: d, h: h });
+          if (c.err) return { prompt: c.err };
+          var L = ['【大六壬】' + y + '年' + m + '月' + d + '日' + h + '时（时家·月将加占时）：'];
+          L.push('四柱 ' + c.四柱.年 + ' ' + c.四柱.月 + ' ' + c.四柱.日 + ' ' + c.四柱.时 + '；月将' + c.月将 + '（' + c.中气 + '后）、占时' + c.占时 + '。');
+          // 天地盘（十二支逐一列）
+          L.push('天地盘：' + ZHI2().map(function (z) { return z + '上' + c.天地盘.天盘[z]; }).join(' ') + '（地盘恒为本身）。');
+          // 四课
+          L.push('四课：①' + c.四课[0].位 + '上' + c.四课[0].上 + ' ②' + c.四课[1].位 + '上' + c.四课[1].上 + ' ③' + c.四课[2].位 + '上' + c.四课[2].上 + ' ④' + c.四课[3].位 + '上' + c.四课[3].上 + '。');
+          // 三传 + 发用
+          L.push('发用 ' + c.发用.方法 + '，三传：初' + c.发用.三传[0] + ' → 中' + c.发用.三传[1] + ' → 末' + c.发用.三传[2] + '（遁干 ' + c.三传遁干.join(' ') + '）。');
+          // 十二天将
+          L.push('十二天将（' + c.十二天将.贵人 + '贵·' + c.十二天将.昼夜 + '·' + c.十二天将.顺逆 + '布）：' + ZHI2().map(function (z) { return z + c.十二天将.将[z]; }).join(' '));
+          // 旬空 / 驿马
+          L.push('旬空（空亡）' + (c.旬空.join('') || '无') + '；驿马' + (c.驿马 || '无') + '。');
+          L.push('（' + c.发用.说明 + ' 涉害深计数/伏吟返吟中末/金口诀顺逆异说/夜子日柱 等细分项内核已如实标注待黄金盘验证，不假报已锁。）');
+          return { text: L.join('\n') };
+        } catch (e) {
+          return { text: '【大六壬】起课失败：' + String(e && e.message ? e.message : e) + '（内核暂不可用，不影响其他功能）。' };
         }
       }
     }

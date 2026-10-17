@@ -1,4 +1,4 @@
-# 玄玖灵犀 NT-Xhex v3.1.3
+# 玄玖灵犀 NT-Xhex v3.1.4
 
 > 算法演乾坤，一问知天命，以数据重现千年术数。（演乾坤·知天命）  
 > 无后端 / 无网络 / 无登录 · 一套代码自动切换多形态  
@@ -344,6 +344,7 @@ NT-Xhex/
    │  ├─ vendor/astronomy.js # 占星/七政权威星历（astronomy-engine@cosinekitty，MIT，JPL 级，构建期内嵌、运行时不联网，116KB）
    │  ├─ astro.js           # 占星·七政四余 C18/C19 适配层（7 政走 astronomy-engine 回归黄经 + 3 余走 Meeus 均值 + 落十二星座 + 落二十八宿（等宫近似·《淮南子》宿度）+ 七政庙旺（《果老星宗卷一》查表）；仅紫炁定义待裁定不输出）
    │  ├─ qimen.js           # 奇门遁甲 C14（时家·转盘·拆补定局：四柱/阴阳遁/局数/元/旬首/值符值使/地盘/天盘九星/八门/八神；权威数据多源核对，值使走宫/八神顺逆标最易错待交叉验证）
+   │  ├─ liuren.js          # 大六壬 C16（时家·月将加占时：四柱/月将(中气换将)/占时/天地盘/四课(日干寄宫+日支)/九宗门发用/三传/十二天将(贵人昼夜+顺逆布将)/旬空/驿马/三传遁干；权威数据 5 源核对，涉害深计数/伏吟返吟中末/金口诀顺逆异说标待黄金盘验证）
    │  ├─ kangxi-strokes.js  # 姓名学·康熙笔画【数据】通用规范汉字 3500 字（TDEM 康熙部首计数 + opencc 简繁生成，主流五格口径，见 tools/gen-kangxi.js）
    │  ├─ name81.js          # 五格剖象 + 81 数理（接 kangxi-strokes）
    │  └─ zodiac-rel.js      # 十二生肖关系【数据】六合/三合/六冲/六害/六破/相刑/犯太岁（5 源核对，民俗关系表）
@@ -452,6 +453,7 @@ node modules/CoreModule/__tests__/cores.test.js    # 内核 C01–C06 验收
 node modules/CoreModule/__tests__/cores2.test.js   # 内核 C08–C20 验收
 node modules/CoreModule/__tests__/astro.test.js    # 占星·七政 C18/C19（7 政对 JPL + 3 余 Meeus 均值 + 落座 + 落二十八宿(等宫近似·淮南子宿度) + 七政庙旺(果老查表)）
 node modules/CoreModule/__tests__/qimen.test.js    # 奇门 C14（时家转盘拆补；确定性权威 + 结构自洽，值使走宫/八神留 REA 锁）
+node modules/CoreModule/__tests__/liuren.test.js   # 大六壬 C16（月将加占时；天地盘/四课/三传/天将/旬空/驿马/遁干 确定性断言 45 项）
 node modules/features/__tests__/features.test.js    # 扩展功能触发词路由 + 有料/缺料 验收
 node tools/sync-mp.js --check      # dist 与 modules 一致性 + WXML <template is> 是否漏传 data
 # 占星 7 政对拍基准（ephem 自带 JPL 级 ephemeris，装在隔离 venv；改 astro 内核后重跑刷新 tools/astro-check.js 的 REF）：
@@ -465,6 +467,13 @@ node tools/sync-mp.js --check      # dist 与 modules 一致性 + WXML <template
 ---
 
 ## 九、更新日志
+
+- **v3.1.4**（大六壬 C16 内核 + 搜索框接线，三式补齐其二：奇门 C14 + 六壬 C16）：
+  ① **新增 `CoreModule/liuren.js`（大六壬 C16，时家·月将加占时）**：纯自研权威规则，零 vendor、依赖 `NT.core.lunar`+`NT.core.ganzhi` 出四柱/节气/干支。算**四柱 / 月将（中气换将·5源一致）/ 占时 / 天地盘（对《心印赋》「亥加午、子加未」手算核验）/ 四课（日干寄宫+日支）/ 九宗门发用 / 三传 / 十二天将（贵人昼夜·5源一致 + 顺逆布将）/ 旬空 / 驿马 / 三传遁干**。
+  ② **权威数据多源核对（守零臆造）**：月将表（雨水亥…大寒子）、贵人昼夜诀（甲戊庚牛羊…·5 源逐字一致）、日干寄宫（心印赋）、十二天将序、旬空、驿马、三合局——均逐字核对；天地盘公式 `(x+M−T)mod12` 对《心印赋》反推验证。
+  ③ **九宗门发用**：贼克(元首/重审)→比用/知一→遥克(蒿矢/弹射)→昴星→伏吟/返吟，初传确定性已锁；中末传 贼克/比用/遥克/昴星 走「顺数」主规（三传 中=天盘[初]、末=天盘[中]）。
+  ④ **如实标注待黄金盘验证项（不假报已锁）**：涉害深计数（多克比用仍多时暂用「干上优先」近似）、伏吟/返吟 中末传（走日支三合 vs 异说）、金口诀对壬癸辛「顺逆反转」异说、夜子日柱口径——内核 `缺口` 字段逐项标注，待黄金盘交叉验证。
+  ⑤ 接搜索框：`liuren` 功能（触发词「大六壬/六壬/月将加时/四课/三传/十二天将/天乙贵人/伏吟/返吟/重审/元首…」，自带 try/catch）；`features` 触发词功能 **24 → 25 个**；自测 `CoreModule/__tests__/liuren.test.js`（天地盘/四课/三传/天将/旬空/驿马/遁干 确定性断言，**45 项全绿**）；三端接线（platform-modules 两清单 + PWA `<script>`：liuren.js 在 qimen.js 后、registry 前；小程序 require + sync-mp 生成）。
 
 - **v3.1.3**（占星 astro 补「落二十八宿 + 七政庙旺」缺口，消掉 astro 内核两大缺口标注）：
   ① **落二十八宿（等宫近似）**：`CoreModule/astro.js` 新增 `SUIXIU`（二十八宿·宿度《淮南子·天文训》，搜狐/头条/淮河早报/腾讯 4 源逐字一致、整数和 365·余 0.25 即"四分度之一"）+ `suiXiuOf()`（回归黄经→宿主+入度，角初度对齐春分 0°、按宿度占比铺满 360°；果老/周敦颐「不等宫·地支跨宿」为流派差异，如实标注未锁）。

@@ -42,7 +42,10 @@ var expectKey = {
   '罗睺 月孛': 'astro',
   '奇门遁甲 1990年8月15日 14时': 'qimen',
   '值符 值使 1990年8月15日': 'qimen',
-  '阴遁 阳遁 定局 2024年8月15日': 'qimen'
+  '阴遁 阳遁 定局 2024年8月15日': 'qimen',
+  '大六壬 1990年8月15日 14时': 'liuren',
+  '六壬 四课三传 1990年8月15日': 'liuren',
+  '月将加占时 2024年8月15日': 'liuren'
 };
 for (var tx in expectKey) {
   var f = R.match(tx);
@@ -74,7 +77,8 @@ var have = [
   ['wuxing', '木 相生相克', ent()],
   ['xiaoshu', '小六壬 2000年5月6日', ent(2000, 5, 6, 2)],
   ['astro', '占星 星盘 1990年8月15日 14时', ent(1990, 8, 15, 14)],
-  ['qimen', '奇门遁甲 1990年8月15日 14时', ent(1990, 8, 15, 14)]
+  ['qimen', '奇门遁甲 1990年8月15日 14时', ent(1990, 8, 15, 14)],
+  ['liuren', '大六壬 1990年8月15日 14时', ent(1990, 8, 15, 14)]
 ];
 have.forEach(function (c) {
   var out = R.run(c[0], c[2], c[1]);
@@ -100,5 +104,13 @@ ok(qOut && qOut.text && qOut.text.indexOf('【奇门遁甲】') >= 0, '奇门有
 ok(qOut && qOut.text && qOut.text.indexOf('阴遁2局') >= 0, '奇门给出局数（阴遁2局·已手算核验）');
 ok(qOut && qOut.text && qOut.text.indexOf('飞布几何') >= 0, '奇门标注飞布锁定状态（阴阳遁双盘已锁·拆补法无置闰，不假报）');
 ok(R.run('qimen', ent(), '奇门 看看').prompt, '奇门无日期 → 追问');
+
+// liuren 内容锁定：完整课 + 发用/三传 + 待黄金盘验证缺口如实标注（不假报已锁）
+var lOut = R.run('liuren', ent(1990, 8, 15, 14), '大六壬 1990年8月15日 14时');
+ok(lOut && lOut.text && lOut.text.indexOf('【大六壬】') >= 0, '大六壬有料出标题');
+ok(lOut && lOut.text && lOut.text.indexOf('三传') >= 0, '大六壬给出发用与三传');
+ok(lOut && lOut.text && lOut.text.indexOf('十二天将') >= 0, '大六壬给出十二天将（贵人昼夜+顺逆布将）');
+ok(lOut && lOut.text && lOut.text.indexOf('旬空') >= 0 && lOut.text.indexOf('驿马') >= 0, '大六壬给出旬空与驿马');
+ok(R.run('liuren', ent(), '六壬 看看').prompt, '大六壬无日期 → 追问');
 
 if (fails === 0) { console.log('全部通过 ✓'); process.exit(0); } else { console.log(fails + ' 处失败'); process.exit(1); }
