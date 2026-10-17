@@ -232,6 +232,44 @@ console.log('K. 输出可切段（结果页按 [。；\\n] 切，不得出现双
   ok('缺口至少 4 项且逐项非空', r2.缺口.length >= 4 && r2.缺口.every(function (s) { return !!s; }));
 })();
 
+console.log('L. 五动爻诵（v3.1.18 收全原歌）');
+(function () {
+  var names = ['妻动', '官动', '贼动', '财动', '鬼动'];
+  ok('五动齐备且与 DONG5 一一对应',
+    Object.keys(J.DONG_VERSE).length === 5
+    && names.every(function (n) { return J.DONG5.some(function (d) { return d.名 === n; }); }));
+  ok('每动恰好八句', names.every(function (n) { return J.DONG_VERSE[n].length === 8; }),
+    names.map(function (n) { return n + '=' + J.DONG_VERSE[n].length; }).join(' '));
+  ok('每句都带古人自注（括号）', names.every(function (n) {
+    return J.DONG_VERSE[n].every(function (s) { return /（.+）$/.test(s); });
+  }));
+  // 首句逐字核对（4 源共本）
+  var first = { 妻动: '妻动于妻妾（占事主于妻妾）', 官动: '官动利求官（官禄爻动，官职大利，若逢驿马，必然迁官转职）' };
+  ok('妻动首句原文无误', J.DONG_VERSE.妻动[0] === first.妻动, J.DONG_VERSE.妻动[0]);
+  ok('官动首句原文无误', J.DONG_VERSE.官动[0] === first.官动, J.DONG_VERSE.官动[0]);
+  ok('贼动/财动/鬼动首句各就位',
+    J.DONG_VERSE.贼动[0].indexOf('贼动内贼生') === 0
+    && J.DONG_VERSE.财动[0].indexOf('财动利求财') === 0
+    && J.DONG_VERSE.鬼动[0].indexOf('鬼动忧灾怪') === 0);
+  // OCR 劣本的错字一个都不许混进来（4 源共本才是正）
+  var all = names.map(function (n) { return J.DONG_VERSE[n].join(''); }).join('');
+  var 劣本错字 = ['访人人不见', '外分来索取', '舍得官中物', '架构奸私', '卦父终暗昧', '卑偷尊', '疫病物仰合'];
+  ok('劣本 OCR 错字未混入（' + 劣本错字.length + ' 个一律不采）',
+    劣本错字.every(function (w) { return all.indexOf(w) < 0; }),
+    劣本错字.filter(function (w) { return all.indexOf(w) >= 0; }).join(','));
+  ok('正字在位：访人人不悦 / 外边来索取 / 合得官中物 / 架媾 / 卦爻 / 卑逾尊',
+    all.indexOf('访人人不悦') >= 0 && all.indexOf('外边来索取') >= 0 && all.indexOf('合得官中物') >= 0
+    && all.indexOf('架媾奸私意') >= 0 && all.indexOf('卦爻终暗昧') >= 0 && all.indexOf('卑逾尊') >= 0);
+  ok('verseOf 未收录返回 null（不瞎凑）', J.verseOf('父母动') === null && J.verseOf('乱动') === null);
+  ok('verseOf 已收录返回 8 句', (J.verseOf('财动') || []).length === 8);
+  ok('dongNamesIn 按文本取动名', J.dongNamesIn('问一下官动和财动').join(',') === '官动,财动',
+    J.dongNamesIn('问一下官动和财动').join(','));
+  ok('三动有散文义且注明源间不一', ['父母动', '子孙动', '兄弟动'].every(function (n) {
+    return J.DONG3_NOTE[n] && J.DONG3_NOTE[n].indexOf('说') > 0;
+  }));
+  ok('三动不塞进 DONG_VERSE（古本无歌诀，不冒充）', !J.DONG_VERSE.父母动 && !J.DONG_VERSE.兄弟动);
+})();
+
 console.log('-----');
 console.log('通过 ' + pass + ' 项，失败 ' + fail + ' 项');
 process.exit(fail ? 1 : 0);

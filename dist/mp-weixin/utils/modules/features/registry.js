@@ -882,13 +882,44 @@
       说明: '大六壬金口诀：立地分 → 月将加时起将神 → 日干起天将定贵神 → 五子遁元立人元；四位课式 + 定用爻 + 列五动三动 + 辨课内与四季旺衰。天乙贵人与十二天将复用六壬内核（同一份表），贵神五行按本家支取不按配干。',
       run: function (ent, text) {
         if (!JK || !JK.cast) return { text: '【金口诀】内核未加载，暂不可用。' };
-        if (!ent || !ent.date || !ent.date.year) return { prompt: '金口诀要先定起课时刻和地分，例如「金口诀 2026年2月9日10时 地分酉」（地分可给地支、四正方位「地分正北」，或报数「地分 37」）。' };
+        var T = String(text || '');
+        // v3.1.18：五动爻诵是「静态知识」，不依赖起课 —— 没给时刻/地分也能查
+        var 问歌 = /歌诀|歌曰|爻诵|断辞|原文/.test(T);
+        var 点名动 = JK.dongNamesIn ? JK.dongNamesIn(T) : [];        // 五动（有原歌）
+        var 点名三动 = ['父母动', '子孙动', '兄弟动'].filter(function (n) { return T.indexOf(n) >= 0; });
+        if (!ent || !ent.date || !ent.date.year) {
+          if (点名动.length || 点名三动.length || 问歌) return { text: verseAnswer(点名动) };
+          return { prompt: '金口诀要先定起课时刻和地分，例如「金口诀 2026年2月9日10时 地分酉」（地分可给地支、四正方位「地分正北」，或报数「地分 37」）；只想看某一动的古本原歌，直接问「金口诀 官动 歌诀」即可。' };
+        }
+        // 静态歌诀答复：只列指定的动；什么都没指定就列出五个可选（不一次铺 40 行）
+        function verseAnswer(names) {
+          var one3 = ['父母动', '子孙动', '兄弟动'].filter(function (n) { return T.indexOf(n) >= 0; });
+          var L0 = [];
+          if (!names.length && !one3.length) {
+            L0.push('【金口诀·五动爻诵】古本原歌共五动，每动八句：' + Object.keys(JK.DONG_VERSE).join('、'));
+            L0.push('要展开哪一动，问「金口诀 某动 歌诀」（例：金口诀 官动 歌诀）。');
+            L0.push('（原歌出明·适适子《六壬神课金口诀》，5 源逐字一致；只作旧说并列，不据此代断吉凶。）');
+            return L0.join('\n');
+          }
+          names.forEach(function (n) {
+            var d5 = JK.DONG5.filter(function (d) { return d.名 === n; })[0] || {};
+            L0.push('【金口诀·' + n + '】' + (d5.诀 || '') + '，古本原歌八句：');
+            JK.DONG_VERSE[n].forEach(function (s, i) { L0.push('　' + (i + 1) + '、' + s); });
+          });
+          one3.forEach(function (n) {
+            L0.push('【金口诀·' + n + '】' + (JK.DONG3_NOTE[n] || '') + '（三动古本无歌诀，此系诸家散文义）');
+          });
+          L0.push('（口径：原歌是「旧说」，同一动在不同占事下结论可相反（官动利求官却伤财），本应用并列而不代断。）');
+          return L0.join('\n');
+        }
         try {
           var c = JK.cast({
             y: ent.date.year, m: ent.date.month || 1, d: ent.date.day || 1,
             h: ent.time ? ent.time.hour : 12, text: String(text || '')
           });
           if (c.err) {
+            // 有日期但缺地分时，若其实是在问某一动的歌诀，就回落给歌诀，不拿「缺地分」挡人
+            if (点名动.length || 点名三动.length || 问歌) return { text: verseAnswer(点名动) };
             var bad = '【金口诀】' + c.err + '。';
             if (c.需) bad += '可任选一种给法：' + c.需.join('／') + '。';
             return { prompt: bad };
@@ -927,6 +958,8 @@
           L.push('课内旺衰：' + nw.旺.map(function (k) { return k + '（' + nw.分[k] + ' 分）'; }).join('、') + ' 最旺，'
             + Object.keys(nw.分).map(function (k) { return k + ' ' + nw.分[k]; }).join('、'));
           L.push('（口径：' + c.说明 + '）');
+          // 若点名了某一动（「金口诀 官动 …」），起完课再附该动的古本原歌
+          if (点名动.length) verseAnswer(点名动).split('\n').forEach(function (s) { L.push(s); });
           c.缺口.forEach(function (g) { L.push('· 缺口 ' + g); });
           return { text: L.join('\n') };
         } catch (e) {

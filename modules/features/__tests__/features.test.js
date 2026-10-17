@@ -295,4 +295,18 @@ var jkN = R.run('jinkou', jkE, '金口诀 排一卦');
 ok(jkN && jkN.prompt && jkN.prompt.indexOf('缺地分') >= 0, '缺地分时给提示而不是瞎编地盘');
 ok(jkN.prompt.indexOf('四隅方位') >= 0, '提示里交代四隅不猜');
 
+// ===== v3.1.18 金口诀五动爻诵（古本原歌，静态知识不起课也能查）=====
+console.log('== v3.1.18 五动爻诵 ==');
+var jkV = R.run('jinkou', { date: null, time: null }, '金口诀 官动 歌诀');
+ok(jkV && jkV.text && jkV.text.indexOf('【金口诀·官动】神克干为官动') >= 0, '点名官动给原歌标题');
+ok(jkV.text.indexOf('官动利求官（官禄爻动，官职大利，若逢驿马，必然迁官转职）') >= 0, '原歌首句逐字对上');
+ok((jkV.text.match(/、/g) || []).length >= 8, '八句齐出');
+ok(jkV.text.indexOf('不据此代断吉凶') >= 0 || jkV.text.indexOf('并列而不代断') >= 0, '明说只作旧说并列、不代断');
+var jkV2 = R.run('jinkou', { date: null, time: null }, '金口诀 歌诀');
+ok(jkV2.text.indexOf('古本原歌共五动') >= 0 && jkV2.text.indexOf('官动 歌诀') >= 0, '只说「歌诀」时列出五动并给用法');
+var jkV3 = R.run('jinkou', jkE, '金口诀 官动 歌诀');
+ok(jkV3.text.indexOf('古本原歌八句') >= 0, '有日期但缺地分时，回落给歌诀而非「缺地分」挡人');
+var jkV4 = R.run('jinkou', { date: null, time: null }, '金口诀 父母动');
+ok(jkV4.text.indexOf('三动古本无歌诀') >= 0, '三动照实说「古本无歌诀」，不冒充原歌');
+
 if (fails === 0) { console.log('全部通过 ✓'); process.exit(0); } else { console.log(fails + ' 处失败'); process.exit(1); }
