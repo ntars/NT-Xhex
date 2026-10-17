@@ -297,6 +297,9 @@
 
     // 纳甲干支
     var gz = yaGanZhi(info.下, info.上);
+    // v3.1.8 补：变卦纳甲（化进化退 / 化回头生克 / 化墓化绝 / 伏吟反吟 均需此数据）
+    var bianInfo = bianName ? GUA_INDEX[bianName] : null;
+    var bianGz = bianInfo ? yaGanZhi(bianInfo.下, bianInfo.上) : null;
 
     // 日干（六神）/ 月建·日辰（旺衰/旬空/月破）
     var dayGan = null, 月支 = null, 日支 = null, 日干支 = null;
@@ -333,6 +336,8 @@
       本卦: benName, 变卦: bianName, 动爻: 动爻,
       宫: info.宫 + '宫(' + info.宫五行 + ')', 世: info.世, 应: info.应,
       上下卦: '下' + info.下 + ' 上' + info.上,
+      本卦纳甲: gz, 变卦纳甲: bianGz,
+      变卦宫: bianInfo ? (bianInfo.宫 + '宫(' + bianInfo.宫五行 + ')') : null,
       爻线: lines,
       伏飞神: fh,
       断语: 断语,

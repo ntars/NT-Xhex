@@ -4,7 +4,7 @@
    CACHE 名内嵌版本号（改静态资源后由 tools/sync-version.js 统一更新，见 version.json）。 */
 importScripts('modules/UIModule/sw-core.js');
 self.__SWCore.run({
-  cache: 'nt-xhex-v3.1.7',
+  cache: 'nt-xhex-v3.1.8',
   core: ['.', 'index.html', 'manifest.json', 'sw.js'],
   fallback: 'index.html'
 });

@@ -36,7 +36,15 @@
       require('../CoreModule/xiangshu.js'),
       require('../CoreModule/qianwen.js'),
       require('../CoreModule/cezi.js'),
-      require('../CoreModule/qimen-fei.js')
+      require('../CoreModule/qimen-fei.js'),
+      require('../CoreModule/bazi-pattern.js'),
+      require('../CoreModule/zeri.js'),
+      require('../CoreModule/qimen-ge.js'),
+      require('../CoreModule/liuren-bifa.js'),
+      require('../CoreModule/liuyao-wangshuai.js'),
+      require('../CoreModule/ziwei-horoscope.js'),
+      require('../CoreModule/astro-house.js'),
+      require('../CoreModule/bazi-shensha.js')
     );
   } else {
     root.NT = root.NT || {};
@@ -58,10 +66,18 @@
       root.NT.core && root.NT.core.xiangshu,
       root.NT.core && root.NT.core.qianwen,
       root.NT.core && root.NT.core.cezi,
-      root.NT.core && root.NT.core.qimenFei
+      root.NT.core && root.NT.core.qimenFei,
+      root.NT.core && root.NT.core.baziPattern,
+      root.NT.core && root.NT.core.zeri,
+      root.NT.core && root.NT.core.qimenGe,
+      root.NT.core && root.NT.core.liurenBifa,
+      root.NT.core && root.NT.core.liuyaoWangshuai,
+      root.NT.core && root.NT.core.ziweiHoroscope,
+      root.NT.core && root.NT.core.astroHouse,
+      root.NT.core && root.NT.core.baziShensha
     );
   }
-})(typeof self !== 'undefined' ? self : this, function (FEI, NUM, NSTAR, ICE, BZH, XS, WX, N81, CORE, BAZI, ZD, ZW, ASTRO, QM, LR, LY, TY, YZ, XSH, QW, CZ, QF) {
+})(typeof self !== 'undefined' ? self : this, function (FEI, NUM, NSTAR, ICE, BZH, XS, WX, N81, CORE, BAZI, ZD, ZW, ASTRO, QM, LR, LY, TY, YZ, XSH, QW, CZ, QF, BP, ZR, QG, LBF, LWS, ZHW, AH, BSS) {
 
   // 十二地支序（大六壬天地盘/天将逐一列用）
   function ZHI2() { return ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥']; }
@@ -228,7 +244,7 @@
     },
     {
       key: 'feixing', 名: '九宫飞星（年·月·时）',
-      触发词: ['飞星', '九宫飞星', '紫微飞星', '紫微', '入中星', '紫白', '玄空', '运程飞星', '月飞星', '时飞星', '日飞星'],
+      触发词: ['飞星', '九宫飞星', '紫微飞星', '飞星紫微', '入中星', '紫白', '玄空', '运程飞星', '月飞星', '时飞星', '日飞星'],
       说明: '玄空九宫飞星（年紫白 / 月紫白 / 时紫白）入中星与九宫飞布；年飞星最有力、月次之、日时效力有限（供参考）。',
       run: function (ent, text) {
         var y = yearOf(ent, text);
@@ -276,7 +292,7 @@
     },
     {
       key: 'ziwei', 名: '紫微斗数',
-      触发词: ['紫微斗数', '紫微排盘', '斗数', '排紫微', '紫微盘'],
+      触发词: ['紫微斗数', '紫微排盘', '斗数', '排紫微', '紫微盘', '紫微'],
       说明: '紫微斗数命盘（内嵌 iztro 权威引擎）：命宫主星/身宫主星/五行局 + 十二宫主辅星 + 四化 + 大限岁数。',
       run: function (ent, text) {
         var y = yearOf(ent, text);
@@ -481,7 +497,7 @@
     },
     {
       key: 'fengshui', 名: '八宅风水（八等婚·坐向）',
-      触发词: ['八等婚', '八宅婚', '合婚', '坐向', '宅卦', '东四西四', '大游年'],
+      触发词: ['八等婚', '八宅婚', '八宅合婚', '宅婚', '坐向', '宅卦', '东四西四', '大游年'],
       说明: '八宅法：两造命卦推「八等婚」（天医/生气/延年…绝命）+ 坐向八星吉凶（C08 内核）。',
       run: function (ent, text) {
         var t = String(text || '');
@@ -594,9 +610,9 @@
         var y = ent.date.year, m = ent.date.month || 1, d = ent.date.day || 1, h = ent.time ? ent.time.hour : 12;
         if (!ASTRO || !ASTRO.positions) return { text: '【占星】星历内核未加载（vendor/astronomy.js 缺失），暂不可用。' };
         try {
-          var p = ASTRO.positions({ y: y, m: m, d: d, h: h });
+          var p = ASTRO.positions({ y: y, m: m, d: d, h: h, tz: 8 });   // 输入为北京时间
           if (p.err) return { prompt: p.err };
-          var lines = ['【占星·七政四余】' + y + '年' + m + '月' + d + '日' + h + '时（UTC 口径）各曜落座：'];
+          var lines = ['【占星·七政四余】' + y + '年' + m + '月' + d + '日' + h + '时（北京时间 UTC+8）各曜落座：'];
           var order = ['太阳', '太阴', '水星', '金星', '火星', '木星', '土星', '罗睺', '计都', '月孛'];
           lines.push(order.map(function (k) {
             var s = p.星座[k];
@@ -738,7 +754,7 @@
         if (!ent || !ent.date || !ent.date.year) return { prompt: '占星相位需要出生年月日，例如「1990年8月15日 相位」。' };
         if (!ASTRO || !ASTRO.aspects) return { text: '【占星相位】内核未加载。' };
         var y = ent.date.year, m = ent.date.month || 1, d = ent.date.day || 1, h = ent.time ? ent.time.hour : 12;
-        var a = ASTRO.aspects({ y: y, m: m, d: d, h: h });
+        var a = ASTRO.aspects({ y: y, m: m, d: d, h: h, tz: 8 });
         if (a.err) return { prompt: a.err };
         var L = ['【占星·相位】' + a.时刻 + '（参与 ' + a.参与.length + ' 曜）：'];
         L.push(a.相位.length ? a.相位.map(function (x) { return x.a + ' ' + x.类型 + ' ' + x.b + '(' + x.夹角 + '°/容许' + x.容许 + ')'; }).join('；') : '无明显相位。');
@@ -755,7 +771,7 @@
         var y = ent.date.year, m = ent.date.month || 1, d = ent.date.day || 1, h = ent.time ? ent.time.hour : 12;
         var ageM = String(text || '').match(/(\d+)\s*岁/);
         var age = ageM ? +ageM[1] : 1;
-        var p = ASTRO.progressions({ y: y, m: m, d: d, h: h }, age);
+        var p = ASTRO.progressions({ y: y, m: m, d: d, h: h, tz: 8 }, age);
         if (p.err) return { prompt: p.err };
         var L = ['【占星·推运】本命 ' + p.本命时刻 + '，次限 ' + p.次限基准 + '：'];
         L.push('次限相位（次限星对本命星）：' + (p.次限相位.length ? p.次限相位.map(function (x) { return x.a + ' ' + x.类型 + ' ' + x.b; }).join('；') : '无显著相位。'));
@@ -780,7 +796,7 @@
         if (!ent || !ent.date || !ent.date.year) return { prompt: '印占需要出生年月日，例如「1990年8月15日 印占」。' };
         if (!ASTRO || !ASTRO.vedicPositions) return { text: '【印占】内核未加载。' };
         var y = ent.date.year, m = ent.date.month || 1, d = ent.date.day || 1, h = ent.time ? ent.time.hour : 12;
-        var v = ASTRO.vedicPositions({ y: y, m: m, d: d, h: h });
+        var v = ASTRO.vedicPositions({ y: y, m: m, d: d, h: h, tz: 8 });
         if (v.err) return { prompt: v.err };
         var L = ['【印占 Vedic】' + v.时刻 + '：岁差 Ayanamsa ' + v.ayanamsa + '。'];
         L.push('月亮宿：' + v.月亮宿 + '；Vimshottari 起限「' + v.Vimshottari.起限星 + '」，大限序 ' + v.Vimshottari.大限序.join('→') + '（共 ' + v.Vimshottari.总年 + ' 年）。');
@@ -960,8 +976,510 @@
             + r._飞布验证
         };
       }
+    },
+    {
+      key: 'bazi-pattern', 名: '八字格局·喜用神',
+      触发词: ['八字格局', '格局取用', '格局成败', '喜用神', '用神喜忌', '调候用神', '通关用神', '身强弱', '日主强弱', '取格', '什么格'],
+      说明: '八字格局·用神 C25：在 C07 八字排盘之上补「断」的最后一公里——《子平真诠》八格取法四步（本气透干 → 藏干透干 → 本气 → 禄刃归外格：阳干帝旺称阳刃、阴干帝旺称月劫）+ 八格/外格成败 +《穷通宝鉴》十干十二月调候表（120 项）+ 通关 + 扶抑，三路用神并列给出并标注冲突，不合并成单一断言。',
+      run: function (ent, text) {
+        if (!BP || !BP.analyze) return { text: '【八字格局·用神】内核未加载。' };
+        if (!ent || !ent.date || !ent.date.year) return { prompt: '看格局需要出生年月日，例如「1990年8月15日14时 看格局」（时辰缺失按 14 时补）。' };
+        var y = ent.date.year, m = ent.date.month || 1, d = ent.date.day || 1, h = ent.time ? ent.time.hour : 14;
+        var g = zhGender(ent) || '男';
+        var r = BP.analyze({ y: y, m: m, d: d, h: h, gender: g, name: ent.name || '命主' });
+        if (r.err) return { text: '【八字格局·用神】' + r.err };
+        var ge = r.格局;
+        var L = ['【八字格局·用神】' + (ent.name || '命主') + '（' + g + '）' + y + '年' + m + '月' + d + '日' + h + '时。'];
+        L.push('四柱：年' + r.四柱.年 + ' 月' + r.四柱.月 + ' 日' + r.四柱.日 + ' 时' + r.四柱.时 + '。');
+        L.push('日主：' + r.日主 + '；月令：' + r.月令 + '。');
+        L.push('格局：' + ge.名 + '（' + ge.类别 + (ge.禄刃 ? '·' + ge.禄刃 + '位' : '') + '）' + (ge.透干 ? '，透干' + ge.透干 : '') + '。');
+        L.push('取格依据：' + ge.依据);
+        L.push('成格要：' + r.格局成败.成格要);
+        L.push('破格忌：' + r.格局成败.破格忌);
+        L.push('身强弱：' + r.身强弱.判 + '（加权' + r.身强弱.加权分 + '分，得令' + (r.身强弱.得令 ? '是' : '否') + '，得地' + r.身强弱.得地 + '，得势' + r.身强弱.得势 + '）。');
+        L.push('调候：' + (r.调候.第一用神 ? (r.调候.全表次第.join('、') + '（首项为主）；' + r.调候.说明) : r.调候.说明));
+        L.push('通关：' + (r.通关.length ? r.通关.map(function (t) { return t.说明; }).join('；') : '全局无两行并旺相战，无需通关。'));
+        L.push('用神：扶抑取' + r.用神.扶抑 + '、调候取' + (r.用神.调候 || '—') + '、通关取' + (r.用神.通关 || '—') + '，综合主用' + r.用神.综合主用 + '。');
+        if (r.用神.冲突提示) L.push('冲突：' + r.用神.冲突提示);
+        L.push('喜忌：' + r.喜忌.参考);
+        if (r.外格提示.length) L.push('外格：' + r.外格提示.join('；'));
+        L.push('标注：' + r.缺口.replace(/\n/g, '；'));
+        return { text: L.join('\n') };
+      }
+    },
+    {
+      key: 'zeri', 名: '择日学（主动择吉）',
+      触发词: ['择日', '择吉', '吉日', '黄道吉日', '选日子', '选个日子', '选个好日子', '挑日子', '哪天适合', '吉时', '日课', '好日子'],
+      说明: '择日学 C24：给定「事项 + 日期范围（+ 命主属相）」逐日算日课并评分排序。日课全程复用 lunar.js 底座（通书宜忌 getDayYi/Ji、二十八宿 getXiu/XiuLuck、彭祖百忌、日冲生肖）+ 建除十二神（日支−节气月建支）黄黑道口诀；吉时走「起青龙诀 (2×日支序+8)%12」+ 五不遇时 + 天乙贵人（古籍《金函玉镜》卷六原文）。评分权重透明列出，如实标注「不等于专业日师完整日课」。',
+      run: function (ent, text) {
+        if (!ZR || !ZR.select) return { text: '【择日·黄道吉日】内核未加载。' };
+        var t = String(text || '');
+        // 起始日：优先 ent.date，缺省今天
+        var now = new Date();
+        var y = (ent && ent.date && ent.date.year) || now.getFullYear();
+        var m = (ent && ent.date && ent.date.month) || (now.getMonth() + 1);
+        var d = (ent && ent.date && ent.date.day) || now.getDate();
+        // 天数：文本里「N 天/日」「一周/两周」「一个月」→ 对应；缺省 30 天
+        var days = 30;
+        // 只认「N 天」或「未来/接下来/近/后 N 日」，避免把「11月1日」的「1日」当天数
+        var md = t.match(/([0-9一二三四五六七八九十]+)\s*天/) || t.match(/(?:未来|接下来|近|后)\s*([0-9一二三四五六七八九十]+)\s*日/);
+        if (md) days = cnNum(md[1]);
+        if (/一周|一个星期|近七天|未来七天/.test(t)) days = 7;
+        if (/两周|半个月/.test(t)) days = 15;
+        if (/一个月|三十天/.test(t)) days = 30;
+        if (days > 90) days = 90;                   // 上限 90 天（避免长图过长）
+        // 属相：ent.zodiac 或文本里的生肖字
+        var sx = (ent && ent.zodiac) || pullZodiac(t) || '';
+        var r = ZR.select({ 事项: t, 起: { y: y, m: m, d: d }, 天数: days, 属相: sx });
+        if (r.err) return { prompt: '【择日·黄道吉日】' + (r.提示 || r.err) + '例如「结婚择日 2026年11月1日起30天，属鸡」。' };
+        var L = ['【择日·黄道吉日】事项：' + r.事项 + '，范围 ' + r.范围 + (r.属相 ? '，命主属相' + r.属相 : '') + '。'];
+        L.push('权重：' + r.权重说明);
+        for (var i = 0; i < r.推荐.length; i++) {
+          var x = r.推荐[i];
+          var tag = ['首选', '次选', '备选'][i];
+          L.push('推荐' + tag + '：' + x.公历 + '（' + x.农历 + '·' + x.星期 + '）' + x.干支 + '，' + x.建除 + '日（' + x.吉凶档 + '·' + x.道 + '道）。');
+          L.push('宜忌：宜' + x.宜.slice(0, 8).join('、') + '；忌' + x.忌.slice(0, 8).join('、') + '。');
+          L.push('宿神：' + x.二十八宿 + '宿' + x.宿吉凶 + '；冲' + x.冲 + (x.冲命主 ? '（冲命主属相，减分）' : '') + '；煞' + x.煞 + '。');
+          L.push('吉时：' + (x.吉时.吉时.length ? x.吉时.吉时.map(function (h) { return h.时干支 + '（' + h.神 + '·' + h.时段 + '时）'; }).join('、') : '当日无黄道吉时') + '，青龙起' + x.吉时.起青龙 + '时。');
+          L.push('得分：' + x.分 + '分 —— ' + x.评分明细.join('；') + '。');
+        }
+        if (r.最忌) L.push('最忌：' + r.最忌.公历 + '（' + r.最忌.建除 + '日·' + r.最忌.吉凶档 + '，' + r.最忌.分 + '分），宜避开。');
+        L.push('标注：' + r.缺口.replace(/\n/g, '；'));
+        return { text: L.join('\n') };
+      }
+    },
+    {
+      key: 'qimen-ge', 名: '奇门吉凶格局库',
+      触发词: ['奇门格局', '吉凶格局', '奇门吉凶', '十干克应', '九遁', '三奇得使', '玉女守门', '青龙返首', '飞鸟跌穴', '五不遇时', '六仪击刑', '三奇入墓'],
+      说明: '奇门吉凶格局库 C26：在 qimen.js 盘面之上判格局——十干克应 81 格（天盘干+地盘干，易德轩 81 格全表）+ 吉格（九遁/三奇得使/玉女守门/三奇升殿/天显时/三诈/五假/交泰/奇仪相合）+ 凶格（五不遇时/六仪击刑/三奇入墓/三奇受制/门迫/庚格岁·月·日·时/伏吟）。异名（如庚丁「金屋藏娇/亭亭之格/玉女刑杀」）并列标注；吉格须合门星神旺衰，破格提示如实给出。',
+      run: function (ent, text) {
+        if (!QG || !QG.analyze) return { text: '【奇门吉凶格局】内核未加载。' };
+        if (!ent || !ent.date || !ent.date.year) return { prompt: '判格局需要用事时刻，例如「奇门格局 2026年10月20日14时」。' };
+        var y = ent.date.year, m = ent.date.month || 1, d = ent.date.day || 1, h = ent.time ? ent.time.hour : 12;
+        var r = QG.analyze({ y: y, m: m, d: d, h: h });
+        if (r.err) return { text: '【奇门吉凶格局】' + r.err };
+        var G = ['（中五无实宫）', '坎一', '坤二', '震三', '巽四', '中五', '乾六', '兑七', '艮八', '离九'];
+        var L = ['【奇门吉凶格局】' + y + '年' + m + '月' + d + '日' + h + '时，' + r.阴阳遁 + r.局数 + '局，旬首' + r.旬首 + '，四柱 ' + r.四柱.年 + ' ' + r.四柱.月 + ' ' + r.四柱.日 + ' ' + r.四柱.时 + '。'];
+        L.push('克应：' + r.十干克应.map(function (x) {
+          return G[x.宫] + '宫【' + x.天盘干 + '+' + x.地盘干 + '】' + x.格名 + '（' + x.吉凶 + '）' + (x.异名 ? '·异名' + x.异名 : '') + '，' + x.门 + '门' + x.星 + x.神;
+        }).join('；'));
+        L.push('吉格：' + (r.吉格.length ? r.吉格.map(function (x) { return x.名 + (x.宫 ? '（' + G[x.宫] + '宫）' : '') + '：' + x.义; }).join('；') : '本局未检出吉格。'));
+        L.push('凶格：' + (r.凶格.length ? r.凶格.map(function (x) { return x.名 + (x.宫 ? '（' + G[x.宫] + '宫）' : '') + '：' + x.义; }).join('；') : '本局未检出凶格。'));
+        L.push('总评：' + r.总评 + '（吉格 ' + r.吉格数 + ' 条 / 凶格 ' + r.凶格数 + ' 条）。');
+        L.push('破格：' + r.破格提示);
+        L.push('标注：' + r.缺口.replace(/\n/g, '；'));
+        return { text: L.join('\n') };
+      }
+    },
+    {
+      key: 'liuren-bifa', 名: '大六壬·毕法赋断课',
+      触发词: ['毕法赋', '毕法', '六壬毕法', '毕法断课', '一百法', '毕法目录', '天将类象', '六壬类象'],
+      说明: '大六壬《毕法赋》断课 + 十二天将类象 C27：一百法目录（四库《六壬大全》卷九上 1–70 / 卷十一下 71–100，凌福之撰；原书「51→53」跳号已重编）+ **18 条可机器判定的条目**逐条检出（六阳数足/六阴相继/支传干·干传支/金日逢丁·水日逢丁/传财化鬼·传鬼化财/三传递生·互克/干支皆败/魁度天门/罡塞鬼户/华盖覆日/干支值绝/传墓入墓/三六合/旬内空亡）+ 十二天将类象。其余 82 条只列目录、不做自动判定（如实标注）。',
+      run: function (ent, text) {
+        if (!LBF || !LBF.analyze) return { text: '【毕法赋断课】内核未加载。' };
+        var t = String(text || '');
+        // 只要目录（不占课时）：「毕法目录 / 一百法全表」
+        if (/目录|全表|一百法/.test(t) && !ent.date) {
+          var L0 = ['【毕法赋·一百法目录】（四库《六壬大全》卷九上 1–70 / 卷十一下 71–100，凌福之撰）'];
+          var 上 = [], 下 = [];
+          LBF.BIFA.forEach(function (x) { (x[2] === '上' ? 上 : 下).push(x[0] + '·' + x[1]); });
+          L0.push('上卷：' + 上.join('、') + '。');
+          L0.push('下卷：' + 下.join('、') + '。');
+          L0.push('覆盖：' + LBF.BIFA.length + ' 条；本内核对 18 条做机器判定（5/6/23/24/25/26/27/28/31/32/36/51/52/59/79/81/83/96），其余只列目录。');
+          return { text: L0.join('\n') };
+        }
+        if (!ent || !ent.date || !ent.date.year) return { prompt: '断课需要占问时刻，例如「毕法赋 2026年10月20日14时」（只要目录可说「毕法赋目录」）。' };
+        var y = ent.date.year, m = ent.date.month || 1, d = ent.date.day || 1, h = ent.time ? ent.time.hour : 12;
+        var r = LBF.analyze({ y: y, m: m, d: d, h: h });
+        if (r.err) return { text: '【毕法赋断课】' + r.err };
+        var L = ['【毕法赋断课】' + y + '年' + m + '月' + d + '日' + h + '时，月将' + r.月将 + '，占时' + r.占时 + '，日干支' + r.四柱.日 + '。'];
+        L.push('四课：' + r.四课.map(function (k, i) { return ['干上', '干阴', '支上', '支阴'][i] + k.位 + '乘' + k.上; }).join('；') + '。');
+        L.push('三传：' + r.三传.join(' → ') + '（初' + r.三传[0] + ' 中' + r.三传[1] + ' 末' + r.三传[2] + '），遁干' + (r.三传遁干 || []).join('') + '，旬空' + (r.旬空 || []).join('') + '。');
+        L.push('毕法：' + (r.命中.length ? r.命中.map(function (x) { return '第' + x.序 + '法「' + x.名 + '」（' + x.卷 + '卷）：' + x.说明; }).join('；') : '本課未命中可自动判定之毕法条目（18 条判据内）。'));
+        L.push('类象：' + r.类象.map(function (x) { return x.位 + x.支 + '乘' + x.将 + '——' + x.象意; }).join('；'));
+        L.push('覆盖：' + r.判定覆盖);
+        L.push('标注：' + r.缺口.replace(/\n/g, '；'));
+        return { text: L.join('\n') };
+      }
+    },
+    {
+      key: 'liuyao-wangshuai', 名: '六爻旺衰进阶',
+      触发词: ['六爻旺衰', '爻旺衰', '旺衰进阶', '生旺墓绝', '暗动', '日破', '月破', '化进神', '化退神', '回头生', '回头克', '六爻三合局', '爻三合', '六冲卦', '六合卦', '爻伏吟', '爻反吟', '化墓', '化绝'],
+      说明: '六爻旺衰进阶 C28：在装卦（纳甲/世应/六亲/六神/飞伏）之上补旺衰一层——① 五行生旺墓绝（金巳酉丑寅、木亥卯未申、火寅午戌亥、水土申子辰巳，《卜筮正宗》原文）② 月建日辰旺衰档（《增删卜易》日月权衡表：旺上加旺/旺有根/得时得地/休囚有救/休囚无救/衰败已极）③ 日冲判暗动·日破·冲散 ④ 动爻化变八象（回头生克/化进神退神/化墓化绝/化空化破/爻伏吟反吟）⑤ 三合局成局四法与虚一待用 ⑥ 六冲卦十·六合卦八·游魂归魂·内外卦伏吟反吟 ⑦ 用神·原神·忌神·仇神定位。流派分歧（土长生申/寅、月冲临日是否作暗动、戌化丑是否进神）如实并列标注，不合并。',
+      run: function (ent, text) {
+        if (!LWS || !LWS.analyze) return { text: '【六爻旺衰】内核未加载。' };
+        function 净(x) {
+          return String(x == null ? '' : x)
+            .replace(/[。；]/g, '，')
+            .replace(/，{2,}/g, '，')
+            .replace(/^，+|，+$/g, '');
+        }
+        var t = String(text || '');
+        // ① 背数起卦：文本里 6 个连续的 0–3（如「起卦 1 2 3 0 1 2」）
+        var backs = null;
+        var m6 = t.match(/[0-3](?:[\s,，、]{0,2}[0-3]){5}/);
+        if (m6) backs = (m6[0].match(/[0-3]/g) || []).map(Number);
+        // ② 测事：命中用神表最长词
+        var 事 = null, 事长 = 0;
+        if (LY && LY.YONG) {
+          Object.keys(LY.YONG).forEach(function (k) {
+            if (t.indexOf(k) >= 0 && k.length > 事长) { 事 = k; 事长 = k.length; }
+          });
+        }
+        if (!ent || !ent.date || !ent.date.year) {
+          return { prompt: '六爻需占卦时刻（定月建/日辰/旬空/六神），例如「六爻旺衰 求财 2026年10月20日14时」，要指定手摇结果可加六个数「1 2 3 0 1 2」（每爻背数 0–3）。' };
+        }
+        var y = ent.date.year, m = ent.date.month || 1, d = ent.date.day || 1;
+        var h = (ent.time && ent.time.hour != null) ? ent.time.hour : 12;
+        var r = LWS.analyze({ y: y, m: m, d: d, h: h, backs: backs || undefined, 事: 事 });
+        if (r.err) return { text: '【六爻旺衰】' + r.err };
+
+        var L = ['【六爻旺衰进阶】' + y + '年' + m + '月' + d + '日' + h + '时' + (backs ? '，按手摇背数 ' + backs.join('') + ' 起卦' : '，即时起卦')
+          + '，得「' + r.本卦 + '」' + (r.变卦 ? '之「' + r.变卦 + '」（动爻 ' + r.动爻.join('、') + '）' : '（六爻安静，无变卦）')
+          + '，' + r.宫 + '，世' + r.世 + '应' + r.应 + '。'];
+        L.push('月建日辰：月建' + r.月建 + '，日辰' + r.日辰 + '（日干' + r.日干 + '），旬空' + ((r.旬空 && r.旬空.length) ? r.旬空.join('') : '无') + '，月建司一月之权为提纲，日辰司一日之权为主宰。');
+
+        L.push('卦象：' + (r.卦象.项.length
+          ? r.卦象.项.map(function (x) { return x.名 + '（' + 净(x.断) + '）'; }).join('，')
+          : '常卦（非六冲六合、非游魂归魂，内外卦亦无伏吟反吟）。'));
+
+        // 用神
+        if (r.用神) {
+          if (r.用神爻 && r.用神爻.length) {
+            L.push('用神：' + r.用神 + '（' + r.用神五行 + '）现于' + r.用神爻.map(function (x) {
+              return '第' + x.爻 + '爻' + x.干支 + '，' + x.旺衰 + (x.空亡 ? '·旬空' : '') + (x.月破 ? '·月破' : '');
+            }).join('，') + '。');
+          } else if (r.用神伏神 && r.用神伏神.length) {
+            L.push('用神：' + r.用神 + '（' + r.用神五行 + '）不上卦，' + r.用神伏神.map(function (f) {
+              return '伏于第' + f.爻 + '爻（伏神' + f.干支 + '，飞神' + f.飞神.干支 + '·' + f.飞神.六亲 + '，' + f.飞伏关系 + '，' + f.旺衰 + '）';
+            }).join('，') + '，须待伏神出伏透出方可论吉凶。');
+          } else {
+            L.push('用神：' + r.用神 + '（' + r.用神五行 + '）本卦与本宫纯卦皆无，此事无缘或难成之象。');
+          }
+        } else {
+          L.push('用神：未指定测事，未取用神（说「求财/事业/婚姻/疾病/学业…」即可取用神）。');
+        }
+
+        // 逐爻旺衰
+        L.push('逐爻：' + r.爻.map(function (x) {
+          var s = '第' + x.爻 + '爻' + x.干支 + x.五行 + '·' + x.六亲 + (x.六神 ? '·' + x.六神 : '') + (x.世应 ? '·' + x.世应 : '') + (x.动 ? '·动' : '') + '，' + x.旺衰;
+          if (x.空亡) s += '·旬空';
+          if (x.月破) s += '·月破';
+          if (x.冲判) s += '·' + x.冲判;
+          if (x.变) s += ' → 化' + x.变.变支 + x.变.变五行 + '（' + x.变.项.map(function (tt) { return tt.名; }).join('/') + '）';
+          return s;
+        }).join('，') + '。');
+
+        // 世爻
+        if (r.世爻) {
+          L.push('世爻：第' + r.世爻.爻 + '爻' + r.世爻.干支 + r.世爻.五行 + '·' + r.世爻.六亲 + '，' + r.世爻.旺衰
+            + (r.世爻.空亡 ? '·旬空' : '') + (r.世爻.月破 ? '·月破' : '') + (r.世爻.冲判 ? '·' + r.世爻.冲判 : '')
+            + (r.世爻.变 ? '，' + 净(r.世爻.变.主判.断) : '') + '。');
+        }
+
+        // 原神 / 忌神 / 仇神
+        if (r.元忌仇) {
+          var Y = r.元忌仇;
+          function seg(名, o) {
+            return 名 + '（' + o.六亲 + '·' + o.五行 + '）' + (o.爻.length
+              ? o.爻.map(function (x) { return '第' + x.爻 + '爻' + x.旺衰 + (x.空亡 ? '·空' : '') + (x.月破 ? '·破' : ''); }).join('，')
+              : '不上卦');
+          }
+          L.push('元忌仇：' + seg('原神', Y.原神) + '，' + seg('忌神', Y.忌神) + '，' + seg('仇神', Y.仇神) + '。');
+        }
+
+        // 动变
+        var 动列 = r.爻.filter(function (x) { return x.变; });
+        L.push('动变：' + (动列.length ? 动列.map(function (x) {
+          return '第' + x.爻 + '爻' + x.支 + '→' + x.变.变支 + '，' + x.变.项.map(function (tt) {
+            return tt.名 + (tt.注 ? '（' + 净(tt.注) + '）' : '');
+          }).join('，') + '，主判：' + 净(x.变.主判.断);
+        }).join('，') : '六爻安静，无动变（以日月旺衰与合冲论）。'));
+
+        // 三合局
+        L.push('合局：' + (r.合局.length ? r.合局.map(function (x) { return 净(x.说明).replace(/；/g, '，'); }).join('，') : '未检出三合局（静爻不能成合，须三爻齐动或动爻与日月凑局）。'));
+
+        // 断要（通用法则定性，不作绝对断言）
+        var 用强 = (r.用神爻 && r.用神爻.length) ? r.用神爻[0].强弱 : (r.用神伏神 && r.用神伏神[0] ? r.用神伏神[0].强弱 : null);
+        var 判;
+        if (用强 === '旺') 判 = '用神旺相有根，事有可成之基，宜乘时而动。';
+        else if (用强 === '相') 判 = '用神得气，事可为，成中须借日月扶助。';
+        else if (用强 === '暗动（力增）') 判 = '用神受日冲而暗动，静中带动，事有意外之转机。';
+        else if (用强 === '平') 判 = '用神平平，力不专，须待值日值月或动爻生扶方成。';
+        else if (用强 === '弱有救') 判 = '用神弱而有救，事虽可为而成中带阻，宜耐心待时。';
+        else if (用强 === '衰') 判 = '用神无气（旬空、月破、日破或受克），事难成，旺相有气之日月方是应期。';
+        else 判 = '用神旺衰未定（缺月建日辰），须补占卦日期。';
+        var 忌强 = (r.元忌仇 && r.元忌仇.忌神.爻.length) ? r.元忌仇.忌神.爻[0].强弱 : null;
+        if (忌强 === '旺' || 忌强 === '相' || 忌强 === '暗动（力增）') 判 += '忌神（' + r.元忌仇.忌神.六亲 + '）有力，为事之阻力，须看有无制化。';
+        var 合局成立 = r.合局.filter(function (x) { return x.成立; });
+        if (合局成立.length) 判 += '三合' + 合局成立[0].局 + '已成立，' + (合局成立[0].空破.length ? '然局中有空破待解，' : '') + '事势聚合，力量专一。';
+        L.push('断要：' + 净(判) + '（通用法则定性，不作绝对断言，具体应期须结合值日值月、冲合填实另断）');
+
+        L.push('标注：' + r.注.map(净).join('，') + (r.缺料 ? '，' + 净(r.缺料) : '') + '。');
+        return { text: L.join('\n') };
+      }
+    },
+    {
+      key: 'ziwei-sihua', 名: '紫微四化·流年流月流日',
+      触发词: ['紫微四化', '生年四化', '四化流年', '流年四化', '流月四化', '流日四化', '大限四化', '紫微流年', '紫微流月', '紫微流日', '紫微小限', '紫微大限', '三方四正', '四化表', '化禄', '化权', '化科', '化忌'],
+      说明: '紫微四化 · 六层流运 C29：十天干四化表（中州派陆斌兆口径，已与内嵌 iztro 2.6.2 逐干反推核对 10/10 全等）+ 生年四化落宫 + 大限/小限/流年/流月/流日/流时六层流运四化与落宫 + 流年十二宫映射 + 四化落宫断语（四化性质×宫位领域合成，已标注非古籍逐条）+ 三方四正标记。流派分歧（戊干右弼/天机化科、壬干左辅/天府化科）如实并列，不合并。',
+      run: function (ent, text) {
+        if (!ZHW || !ZHW.analyze) return { text: '【紫微四化】内核未加载。' };
+        function 净(x) {
+          return String(x == null ? '' : x)
+            .replace(/[。；]/g, '，').replace(/，{2,}/g, '，').replace(/^，+|，+$/g, '');
+        }
+        var t = String(text || '');
+        var y = yearOf(ent, text);
+        var m = ent && ent.date && ent.date.month ? ent.date.month : 1;
+        var d = ent && ent.date && ent.date.day ? ent.date.day : 1;
+        var h = (ent && ent.time && ent.time.hour != null) ? ent.time.hour : 14;
+        var g = ent && ent.gender ? ((ent.gender === 'female' || ent.gender === '女') ? '女' : '男') : null;
+        if (!g) return { prompt: '紫微斗数需出生性别（定阴阳顺逆与大限方向），请补「男」或「女」。' };
+        if (!y) return { prompt: '紫微四化需出生年月日，例如「紫微四化 1990年8月15日14时 男 看2026年流年」。' };
+
+        // 目标日期：支持 2026-10-20 / 流年2026年10月20日 / 只给年 / 明年去年；缺省取今日
+        var now = new Date();
+        var ty = now.getFullYear(), tm = now.getMonth() + 1, td = now.getDate();
+        var m1 = t.match(/(20\d{2}|19\d{2})\s*[-\/.]\s*(\d{1,2})\s*[-\/.]\s*(\d{1,2})/);
+        var m2 = t.match(/流(?:年|月|日)[^\d]{0,4}(\d{4})\s*年\s*(\d{1,2})\s*月(?:\s*(\d{1,2})\s*[日号])?/);
+        if (m1) { ty = +m1[1]; tm = +m1[2]; td = +m1[3]; }
+        else if (m2) { ty = +m2[1]; tm = +m2[2]; if (m2[3]) td = +m2[3]; }
+        else {
+          var all = t.match(/(20\d{2})\s*年/g);
+          if (all && all.length) ty = parseInt(all[all.length - 1], 10);
+          else if (/明年/.test(t)) ty += 1;
+          else if (/去年/.test(t)) ty -= 1;
+        }
+
+        var r = ZHW.analyze({ y: y, m: m, d: d, h: h, gender: g }, { y: ty, m: tm, d: td });
+        if (r.err) return { text: '【紫微四化·流运】' + r.err };
+
+        var L = ['【紫微四化·流运】' + y + '年' + m + '月' + d + '日' + h + '时生（' + g + '），推' + ty + '年' + tm + '月' + td + '日（农历' + r.农历 + '）之运。'];
+        L.push('命盘：命宫' + r.命盘.命宫.干支 + '主星「' + r.命盘.命宫.主星 + '」，身宫' + r.命盘.身宫.干支 + '主星「' + r.命盘.身宫.主星 + '」，' + r.命盘.五行局 + '，命主' + r.命盘.命主星 + '、身主' + r.命盘.身主星 + '。');
+        L.push('生年四化：' + r.生年.map(function (x) {
+          return x.星 + '化' + x.化 + '入' + x.宫 + '（' + x.宫干支 + '）';
+        }).join('，') + '。');
+
+        function 层线(L0) {
+          var s = L0.干支 + ((L0.层 === '大限' && L0.岁区间) ? '（' + L0.岁区间.join('-') + '岁）' : '') + '，命宫在' + L0.命宫宫名 + '宫，';
+          s += L0.项.map(function (x) {
+            return (x.星 || '—') + '化' + x.化 + '→' + x.宫 + (x.入三方 ? '★' : '');
+          }).join('，');
+          return s + '。';
+        }
+        // 大限 / 流年 / 流月 / 流日 各出一块；小限与流时合并一块
+        ['大限', '流年', '流月', '流日'].forEach(function (nm) {
+          var L0 = r.层.filter(function (x) { return x.层 === nm; })[0];
+          if (L0) L.push(nm + '运：' + 层线(L0));
+        });
+        var 余 = r.层.filter(function (x) { return x.层 === '小限' || x.层 === '流时'; });
+        L.push('小限流时：' + 余.map(function (x) { return x.层 + '：' + 层线(x); }).join('').replace(/。$/, ''));
+
+        // 流年断语（只给流年四化，避免堆砌）
+        var 流年层 = r.层.filter(function (x) { return x.层 === '流年'; })[0];
+        if (流年层) {
+          L.push('流年断语：' + 流年层.项.map(function (x) { return 净(x.断); }).filter(Boolean).join('；').replace(/；/g, '，') + '。');
+        }
+
+        // 流年十二宫映射
+        if (r.流年映射.length) {
+          L.push('流年宫位：' + r.流年映射.map(function (x) { return x.本命宫 + '→' + x.流年宫; }).join('，') + '。');
+        }
+
+        L.push('标注：' + r.说明.map(function (s) { return String(s).replace(/[。；]/g, '，').replace(/，+$/, ''); }).join('，') + '。');
+        return { text: L.join('\n') };
+      }
+    },
+    // ===== v3.1.8 占星宫位 / 阿拉伯点 / 卜卦 / 择时（C28）=====
+    {
+      key: 'astro-house', 名: '占星宫位（四轴·四家宫制·落宫）',
+      触发词: ['宫位', '上升星座', '上升点', '上升在哪', '天顶', '宫头', '整宫制', '等宫制', '波菲利', '普拉西度', '四分仪', '星盘宫位'],
+      run: function (ent, text) {
+        if (!AH || !AH.houses) return { text: '【占星宫位】内核未加载。' };
+        var y = ent.date && ent.date.year, m = ent.date && ent.date.month, d = ent.date && ent.date.day;
+        var h = ent.time && ent.time.hour != null ? ent.time.hour : null;
+        if (!y || !m || !d) return { prompt: '宫位需出生年月日时与城市，例如「1990年8月15日14时 北京 看宫位」。' };
+        if (h == null) return { prompt: '宫位必须给出生时辰（上升点每 4 分钟走 1°，缺时辰则四轴全错），例如「1990年8月15日14时 北京 看宫位」。' };
+        var city = pickCity(String(text || ''));
+        var r = AH.houses({ y: y, m: m, d: d, h: h, city: city });
+        if (r.err) return { prompt: r.err };
+        var L = ['【占星·宫位】' + y + '年' + m + '月' + d + '日' + h + '时 ' + (city || '北京') + '（' + r.地点 + '，恒星时 ' + r.恒星时 + '）上升' + r.上升 + '，天顶' + r.天顶 + '。'];
+        L.push('四轴：上升' + r.上升 + '，下降' + r.下降 + '，天顶' + r.天顶 + '，天底' + r.天底 + '。');
+        function line(nm, cs) {
+          if (!cs) return null;
+          return '宫制·' + nm + '：' + cs.map(function (x, i) { return (i + 1) + '宫' + AH.fmtLon(x); }).join('，') + '。';
+        }
+        ['整宫', '等宫', '波菲利', '普拉西度'].forEach(function (nm) {
+          var s = line(nm, r.宫制[nm]);
+          if (s) L.push(s);
+        });
+        var main = r.宫制.普拉西度 ? '普拉西度' : '波菲利';
+        var keys = Object.keys(r.落宫);
+        L.push('落宫（' + main + '）：' + keys.map(function (k) { return k + '第' + r.落宫[k][main] + '宫'; }).join('，') + '。');
+        L.push('标注：' + r.缺口.map(function (s) { return String(s).replace(/[。]/g, '，').replace(/，$/, ''); }).join('；') + '。');
+        return { text: L.join('\n') };
+      }
+    },
+    {
+      key: 'astro-lots', 名: '阿拉伯点（福点·精神点等十二点）',
+      触发词: ['阿拉伯点', '福点', '幸运点', '精神点', '爱欲点', '必然点', '勇气点', '胜利点', '父亲点', '母亲点', '婚姻点', '健康点', '职业点', '财产点', '特殊点'],
+      run: function (ent, text) {
+        if (!AH || !AH.lots) return { text: '【阿拉伯点】内核未加载。' };
+        var y = ent.date && ent.date.year, m = ent.date && ent.date.month, d = ent.date && ent.date.day;
+        var h = ent.time && ent.time.hour != null ? ent.time.hour : 12;
+        if (!y || !m || !d) return { prompt: '阿拉伯点需出生年月日时与城市，例如「1990年8月15日14时 北京 看阿拉伯点」。' };
+        var r = AH.lots({ y: y, m: m, d: d, h: h, city: pickCity(String(text || '')) });
+        if (r.err) return { prompt: r.err };
+        var L = ['【占星·阿拉伯点】' + y + '年' + m + '月' + d + '日' + h + '时生，判为' + r.日夜盘 + '，上升' + r.上升 + '。'];
+        r.点.forEach(function (x) {
+          L.push(x.名 + '：' + x.位置 + '（第' + x.宫 + '宫）——' + x.公式 + '，主' + x.说明 + '。');
+        });
+        L.push('标注：' + r.生成 + '；' + r.缺口);
+        return { text: L.join('\n') };
+      }
+    },
+    {
+      key: 'astro-horary', 名: '卜卦占星（Lilly 判据）',
+      触发词: ['卜卦', '问卦', '卜一卦', '起卦问事', '这事能成吗', '能不能成', 'horary'],
+      run: function (ent, text) {
+        if (!AH || !AH.horary) return { text: '【卜卦】内核未加载。' };
+        var t = String(text || '');
+        var y = ent.date && ent.date.year, m = ent.date && ent.date.month, d = ent.date && ent.date.day;
+        var h = ent.time && ent.time.hour != null ? ent.time.hour : null;
+        if (!y || !m || !d) return { prompt: '卜卦以「起念之时」的星盘为盘，须给起卦时间与城市，例如「卜卦 2026年10月20日14时 北京 这笔钱能要回来吗」。' };
+        if (h == null) h = 12;
+        var city0 = pickCity(t);
+        var q0 = t.replace(/(卜卦|问卦|卜一卦|起卦问事|horary)/g, '')
+          .replace(/\d{4}\s*年\s*\d{1,2}\s*月\s*\d{1,2}\s*[日号]/g, '')
+          .replace(/\d{1,2}\s*时(\d{1,2}\s*分)?/g, '')
+          .replace(/\d{4}[-\/.]\d{1,2}[-\/.]\d{1,2}/g, '')
+          .replace(/\s+/g, ' ').trim();
+        if (city0) q0 = q0.split(city0).join('');
+        q0 = q0.replace(/^[，,、：: ]+/, '').trim() || t;
+        var r = AH.horary({ y: y, m: m, d: d, h: h, city: city0 }, q0);
+        if (r.err) return { prompt: r.err };
+        var L = ['【占星·卜卦】起卦时刻 ' + y + '年' + m + '月' + d + '日' + h + '时，所问「' + r.所问 + '」，取' + r.问事宫 + '。'];
+        L.push('主星：' + r.问卦主星 + '；' + r.事主星 + '。');
+        L.push('月亮：' + r.月亮.位置 + '，行' + r.月亮.速度 + '°/日' + (r.月亮.空亡 ? '，月空亡' : '，出宫前有入相') + '。');
+        L.push('判据：' + r.判据.map(function (s) { return String(s).replace(/[。]$/, ''); }).join('；') + '。');
+        L.push('结论：' + r.结论);
+        L.push('标注：' + (r.说明 + r.缺口).replace(/[。]/g, '，').replace(/，$/, '') + '。');
+        return { text: L.join('\n') };
+      }
+    },
+    {
+      key: 'astro-election', 名: '择时占星（行星时·月相·忌宜）',
+      触发词: ['择时', '择时占星', '行星时', '占星择日', 'electional', '选个时辰', '哪个时辰好'],
+      run: function (ent, text) {
+        if (!AH || !AH.election) return { text: '【择时】内核未加载。' };
+        var t = String(text || '');
+        var y = ent.date && ent.date.year, m = ent.date && ent.date.month, d = ent.date && ent.date.day;
+        var h = ent.time && ent.time.hour != null ? ent.time.hour : null;
+        if (!y || !m || !d) return { prompt: '择时需待选日期与时刻，例如「择时 2026年11月1日10时 北京 嫁娶」。' };
+        if (h == null) return { prompt: '择时需具体时刻（行星时按昼夜十二等分，时段不同结果不同），例如「择时 2026年11月1日10时 北京 嫁娶」。' };
+        var topic = '（未指明）';
+        Object.keys(AH.ELECTION_TOPIC).forEach(function (k) {
+          if (topic === '（未指明）' && t.indexOf(k) >= 0) topic = k;
+        });
+        if (topic === '（未指明）') {
+          var alt = [['结婚', '嫁娶'], ['婚礼', '嫁娶'], ['开张', '开业'], ['开市', '开业'], ['签合同', '签约'], ['动工', '动土'], ['装修', '动土'], ['看病', '求医'], ['手术', '求医'], ['打官司', '诉讼'], ['下葬', '安葬'], ['出殡', '安葬'], ['出差', '出行'], ['搬家', '出行']];
+          for (var i = 0; i < alt.length; i++) if (t.indexOf(alt[i][0]) >= 0) { topic = alt[i][1]; break; }
+        }
+        var r = AH.election({ y: y, m: m, d: d, h: h, city: pickCity(t) }, topic);
+        if (r.err) return { prompt: r.err };
+        var L = ['【占星·择时】' + y + '年' + m + '月' + d + '日' + h + '时 ' + (pickCity(t) || '北京') + '（' + r.地点 + '），事项「' + r.事项 + '」，月相' + r.月相 + '，月' + r.月 + '，上升' + r.上升 + '。'];
+        L.push('吉凶项：' + r.项.map(function (x) { return x.名 + '［' + x.判 + '］' + String(x.说).replace(/[。]$/, ''); }).join('；') + '。');
+        L.push('综合：' + r.吉凶档 + '（评分 ' + r.评分 + '／100）。');
+        L.push('通则：' + String(r.通则).replace(/[。]$/, '') + '。');
+        if (r.行星时 && !r.行星时.err) {
+          L.push('行星时：日主' + r.行星时.日主 + '，' + r.行星时.段 + '第' + r.行星时.第几时 + '时，当值' + r.行星时.行星时主 + '（日出' + r.行星时.日出 + '，日落' + r.行星时.日落 + '）。');
+        }
+        L.push('标注：' + (r.说明 + r.缺口).replace(/[。]/g, '，').replace(/，$/, '') + '。');
+        return { text: L.join('\n') };
+      }
+    },
+    // ===== v3.1.8 八字神煞全表 / 八字合婚（C31）=====
+    {
+      key: 'bazi-shensha', 名: '八字神煞全表（21 类）',
+      触发词: ['神煞', '八字神煞', '天乙贵人', '太极贵人', '文昌贵人', '文昌', '天德贵人', '月德贵人', '桃花', '咸池', '驿马', '羊刃', '华盖', '将星', '劫煞', '灾煞', '亡神', '孤辰', '寡宿', '红鸾', '天喜', '金舆', '禄神', '天医', '空亡'],
+      run: function (ent, text) {
+        if (!BSS || !BSS.analyze) return { text: '【八字神煞】内核未加载。' };
+        var y = ent.date && ent.date.year, m = ent.date && ent.date.month, d = ent.date && ent.date.day;
+        var h = ent.time && ent.time.hour != null ? ent.time.hour : null;
+        if (!y || !m || !d) return { prompt: '神煞需出生年月日时，例如「1990年8月15日14时 八字神煞」。' };
+        if (h == null) return { prompt: '神煞须给时辰（时柱决定半数神煞落位），例如「1990年8月15日14时 八字神煞」。' };
+        var r = BSS.analyze({ y: y, m: m, d: d, h: h, gender: genderOf(ent) });
+        if (r.err) return { prompt: r.err };
+        var L = ['【八字·神煞】' + r.四柱 + '，日主' + r.日主 + '（' + r.性别 + '）。'];
+        if (r.命中.length) {
+          r.命中.forEach(function (x) {
+            L.push(x.名 + '：在' + x.位 + '——' + x.义 + '（查法：' + x.查法 + '）。');
+          });
+        } else {
+          L.push('本盘 21 类常用神煞皆未落柱。');
+        }
+        L.push(r.汇总 + '。');
+        L.push('标注：' + String(r.缺口).replace(/[。；]/g, '，').replace(/，$/, '') + '。');
+        return { text: L.join('\n') };
+      }
+    },
+    {
+      key: 'bazi-hehun', 名: '八字合婚（生肖·夫妻宫·五合·纳音·互补）',
+      触发词: ['合婚', '八字合婚', '婚配', '配不配', '合不合', '属相合婚', '婚姻合不合', '两人合婚'],
+      run: function (ent, text) {
+        if (!BSS || !BSS.hehun) return { text: '【八字合婚】内核未加载。' };
+        var t = String(text || '');
+        // 从文本里取两人生辰（YYYY年M月D日[时] 或 YYYY-M-D）
+        var ds = [], re = /(\d{4})\s*[年\-\/.]\s*(\d{1,2})\s*[月\-\/.]\s*(\d{1,2})\s*[日号]?\s*(?:(\d{1,2})\s*时)?/g, mm;
+        while ((mm = re.exec(t)) !== null) {
+          ds.push({ y: +mm[1], m: +mm[2], d: +mm[3], h: mm[4] != null ? +mm[4] : null });
+        }
+        // 只有一方时，把 ent 的一方补进来（ent 在前）
+        if (ds.length === 1 && ent.date && ent.date.year) {
+          ds.unshift({ y: ent.date.year, m: ent.date.month, d: ent.date.day, h: ent.time && ent.time.hour != null ? ent.time.hour : null });
+        }
+        if (ds.length < 2) return { prompt: '合婚需两人生辰，例如「合婚 1990年8月15日14时 男 与 1992年3月20日9时 女」。' };
+        // 性别：按文本中「男/女」出现次序；缺则按前男后女
+        var gs = [], gr = /([男女])/g, gm;
+        while ((gm = gr.exec(t)) !== null) gs.push(gm[1] === '男' ? 'male' : 'female');
+        var a = ds[0], b = ds[1];
+        if (a.h == null) a.h = 12;
+        if (b.h == null) b.h = 12;
+        var r = BSS.hehun(
+          { y: a.y, m: a.m, d: a.d, h: a.h, gender: gs[0] || 'male' },
+          { y: b.y, m: b.m, d: b.d, h: b.h, gender: gs[1] || 'female' }
+        );
+        if (r.err) return { prompt: r.err };
+        var L = ['【八字·合婚】甲（' + (gs[0] === 'female' ? '女' : '男') + '）' + a.y + '年' + a.m + '月' + a.d + '日' + a.h + '时：' + r.甲 + '，乙（' + (gs[1] === 'female' || !gs[1] ? '女' : '男') + '）' + b.y + '年' + b.m + '月' + b.d + '日' + b.h + '时：' + r.乙 + '。'];
+        L.push('综合：' + r.档 + '（参考评分 ' + r.评分 + '／100）。');
+        r.项.forEach(function (x) { L.push(x.名 + '［' + x.判 + '］' + String(x.说).replace(/[。；]/g, '，').replace(/，$/, '') + '。'); });
+        L.push('标注：' + (r.说明 + r.缺口).replace(/[。]/g, '，').replace(/，$/, '') + '。');
+        return { text: L.join('\n') };
+      }
     }
   ];
+
+  // 从文本里认城市（取最长命中，避免「南京」被「京」误取）
+  function pickCity(text) {
+    if (!AH || !AH.cities) return '';
+    var best = '', arr = AH.cities;
+    for (var i = 0; i < arr.length; i++) {
+      var c = arr[i];
+      if (c.length > best.length && text.indexOf(c) >= 0) best = c;
+    }
+    return best;
+  }
+
+  // 文本里的中文数字 → 阿拉伯数字（1-99 够用，择日天数用）
+  function cnNum(s) {
+    if (/^\d+$/.test(s)) return parseInt(s, 10);
+    var CN = { 一: 1, 二: 2, 两: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9, 十: 10 };
+    if (CN[s] != null) return CN[s];
+    var m = String(s).match(/^([二三四五六七八九])?十([一二三四五六七八九])?$/);
+    if (m) return (m[1] ? CN[m[1]] : 1) * 10 + (m[2] ? CN[m[2]] : 0);
+    return 30;
+  }
 
   // 路由：命中触发词**最长（最具体）**者优先（避免「数字八字」被「八字」抢）；
   //      无触发词命中但文本含 ≥2 个生肖 → 兜底到生肖关系；

@@ -74,7 +74,57 @@
     return JDN - 0.5 + (h || 0) / 24;
   }
 
-  // 某实星地心回归黄经（0-360）。A 缺失 → 返回 null（三余仍可用公式，单独给）
+  // 当地钟表时 → 世界时（跨日自动进位）。tz 为时区偏移（小时，东正）。
+  function toUTC(y, m, d, h, tz) {
+    if (!tz) return { y: y, m: m, d: d, h: h || 0 };
+    var t = new Date(Date.UTC(y, m - 1, d, h || 0));
+    t.setUTCHours(t.getUTCHours() - Math.round(tz * 60) / 60);
+    var hh = t.getUTCHours() + t.getUTCMinutes() / 60;
+    return { y: t.getUTCFullYear(), m: t.getUTCMonth() + 1, d: t.getUTCDate(), h: Math.round(hh * 100) / 100 };
+  }
+
+  // 黄赤交角 ε（Meeus 22.2 低精度式，精度 ~0.01″，1900–2100 足够）
+  function obliquity(y, m, d, h) {
+    var T = tcentOf(y, m, d, h || 0);
+    var s = -46.8150 * T - 0.00059 * T * T + 0.001813 * T * T * T; // 秒
+    return 23.439291111 + s / 3600;
+  }
+
+  // 赤经（度）→ 黄经（度）：tanλ = tanα / cosε
+  function raToLon(raDeg, epsDeg) {
+    var a = raDeg * Math.PI / 180, e = (epsDeg == null ? 23.439291111 : epsDeg) * Math.PI / 180;
+    return mod360(Math.atan2(Math.sin(a), Math.cos(a) * Math.cos(e)) * 180 / Math.PI);
+  }
+  // 黄经（度）→ 赤经（度）：tanα = tanλ · cosε
+  function lonToRa(lonDeg, epsDeg) {
+    var l = lonDeg * Math.PI / 180, e = (epsDeg == null ? 23.439291111 : epsDeg) * Math.PI / 180;
+    return mod360(Math.atan2(Math.sin(l) * Math.cos(e), Math.cos(l)) * 180 / Math.PI);
+  }
+  // 黄经 → 赤纬（度）
+  function lonToDec(lonDeg, epsDeg) {
+    var l = lonDeg * Math.PI / 180, e = (epsDeg == null ? 23.439291111 : epsDeg) * Math.PI / 180;
+    return Math.asin(Math.sin(e) * Math.sin(l)) * 180 / Math.PI;
+  }
+
+  // 恒星时：返回 { 世界时, GMST度, LST度(RAMC) }。恒星时权威源 = astronomy-engine SiderealTime（IAU 2006）。
+  function sidereal(y, m, d, h, tz, lon) {
+    var tz2 = (tz == null ? 0 : +tz), lon2 = (lon == null ? 0 : +lon);
+    var U = toUTC(y, m, d, h || 0, tz2);
+    var gmstDeg;
+    if (A && A.SiderealTime) {
+      var t = A.MakeTime(new Date(Date.UTC(U.y, U.m - 1, U.d, Math.floor(U.h), Math.round((U.h % 1) * 60))));
+      gmstDeg = A.SiderealTime(t) * 15;
+    } else {
+      // 兜底：Meeus 12.4 均值恒星时
+      var jd = jdOf(U.y, U.m, U.d, U.h);
+      var T = (jd - 2451545.0) / 36525;
+      var g = 280.46061837 + 360.98564736629 * (jd - 2451545.0) + 0.000387933 * T * T - T * T * T / 38710000;
+      gmstDeg = mod360(g);
+    }
+    return { 世界时: U, GMST: +mod360(gmstDeg).toFixed(4), LST: +mod360(gmstDeg + lon2).toFixed(4) };
+  }
+
+
   function planetLon(bodyKey, y, m, d, h) {
     var B = bodyEnum(); if (!B) return null;
     var t = A.MakeTime(new Date(Date.UTC(y, m - 1, d, h || 0)));
@@ -185,17 +235,22 @@
     var y = inp.y, m = inp.m, d = inp.d, h = inp.h || 0;
     if (!y || !m || !d) return { err: '占星/七政需出生年月日，例如「1990年8月15日」。' };
     var B = bodyEnum();
-    var r3 = threeRemainders(y, m, d, h);
+    // 时区：入参 h 为「当地钟表时」，tz 为时区偏移（小时，东正）。默认 0 = 按世界时（保持既有调用不变）。
+    // 星历一律用 UT 计算；此处换算后所有黄经才是正确瞬时值（北京时间 tz=8）。
+    var tz = (inp.tz == null ? 0 : +inp.tz);
+    var U = toUTC(y, m, d, h, tz);
+    var uy = U.y, um = U.m, ud = U.d, uh = U.h;
+    var r3 = threeRemainders(uy, um, ud, uh);
     var 黄经 = {
-      太阳: B ? planetLon('太阳', y, m, d, h) : null,
-      太阴: B ? planetLon('太阴', y, m, d, h) : null,
-      水星: B ? planetLon('水星', y, m, d, h) : null,
-      金星: B ? planetLon('金星', y, m, d, h) : null,
-      火星: B ? planetLon('火星', y, m, d, h) : null,
-      木星: B ? planetLon('木星', y, m, d, h) : null,
-      土星: B ? planetLon('土星', y, m, d, h) : null,
+      太阳: B ? planetLon('太阳', uy, um, ud, uh) : null,
+      太阴: B ? planetLon('太阴', uy, um, ud, uh) : null,
+      水星: B ? planetLon('水星', uy, um, ud, uh) : null,
+      金星: B ? planetLon('金星', uy, um, ud, uh) : null,
+      火星: B ? planetLon('火星', uy, um, ud, uh) : null,
+      木星: B ? planetLon('木星', uy, um, ud, uh) : null,
+      土星: B ? planetLon('土星', uy, um, ud, uh) : null,
       罗睺: r3.罗睺, 计都: r3.计都, 月孛: r3.月孛,
-      紫气: ziqi(y, m, d, h) // 第 11 曜：闺余虚星（古籍传统行度，非天文实体）
+      紫气: ziqi(uy, um, ud, uh) // 第 11 曜：闺余虚星（古籍传统行度，非天文实体）
     };
     var 星座 = {};
     Object.keys(黄经).forEach(function (k) { 星座[k] = signOf(黄经[k]); });
@@ -210,9 +265,9 @@
       庙旺[k] = maowangOf(k, signIdx);
     });
     return {
-      时刻: y + '年' + m + '月' + d + '日' + h + '时',
-      儒略世纪T: +tcentOf(y, m, d, h).toFixed(5),
-      黄经: 黄经, 星座: 星座, 二十八宿: 二十八宿, 庙旺: 庙旺,
+      时刻: y + '年' + m + '月' + d + '日' + h + '时' + (tz ? '（UTC' + (tz >= 0 ? '+' : '') + tz + '）' : '（世界时）'),
+      儒略世纪T: +tcentOf(uy, um, ud, uh).toFixed(5),
+      黄经: 黄经, 星座: 星座, 二十八宿: 二十八宿, 庙旺: 庙旺, 世界时: uy + '-' + um + '-' + ud + ' ' + uh + '时',
       缺口: '紫气（紫炁，第 11 曜）已按「闺余虚星」古籍行度接入（星平会海 28日行1度 + 万历历元张14度），非天文实体，历元/宿度含流派近似，仅供传统推演不作天文定位；落二十八宿用古宿度（角@春分0°），果老/周敦颐「不等宫·地支跨宿」流派差异未锁；庙旺取《果老星宗卷一》庙/旺/喜/乐/垣 五态查表'
     };
   }
@@ -344,6 +399,9 @@
     aspects: aspects, progressions: progressions, transits: transits, synastry: synastry,
     vedicPositions: vedicPositions, ayanamsa: ayanamsa,
     NAK27: NAK27, NAK_LORD: NAK_LORD, VIMS: VIMS, ASPECTS: ASPECTS,
+    // v3.1.8：时区换算 + 坐标/恒星时基元（供宫位、卜卦、择时复用，单一真源）
+    toUTC: toUTC, obliquity: obliquity, raToLon: raToLon, lonToRa: lonToRa, lonToDec: lonToDec, sidereal: sidereal,
+    aspectBetween: aspectBetween, angleDiff: angleDiff, liveKeys: liveKeys, mod360: mod360,
     _vendorOk: !!(A && A.Body && A.Ecliptic)
   };
 });
