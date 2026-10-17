@@ -29,7 +29,11 @@
  *   ✅ 八宫序、纳甲干支、世应、六亲、六神、旬空、月破 均为经典定论，多源一致，无歧义。
  *   📌 流派差异（已采用主流京房法，标注待黄金盘验证）：① 纳甲有京房/虞翻两说（本内核用占筮最通行的京房纳甲）；
  *       ② 六神"螣蛇/勾陈"顺序、朱雀/玄武方位偶有流派异文，本内核取"甲乙青龙→朱雀→勾陈→螣蛇→白虎→玄武"主流顺；
- *       ③ 用神旺衰断为"通用旺相休囚死 + 日月生克"简化版，深入"暗动/墓绝/三合局"等细则待黄金盘裁定。
+ *       ③ 用神旺衰断为"通用旺相休囚死 + 日月生克"简化版，深入"暗动/墓绝/三合局/化进化退"等细则待黄金盘裁定。
+ *   v3.1.5 补：④【飞伏】"本卦同位 = 飞神、本宫纯卦同位 = 伏神"为京房纳甲通用定论（多源一致，无歧义）；
+ *       飞伏生克取自客观五行生克（生我/我生/克我/我克/比和），非流派臆断。
+ *       ⑤【基础断语】六亲持世 / 六神持世 / 世爻空破冲 / 动爻 / 用神现·伏藏 取通用六爻常识（多源一致的持世歌），
+ *       属"简化常识层"，深入细则待黄金盘裁定，已如实标注。
  */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) {
@@ -156,6 +160,97 @@
     return [nIn[0], nIn[1], nIn[2], nOut[0], nOut[1], nOut[2]]; // 初..上
   }
 
+  // ===== v3.1.5 补：飞神/伏神（本宫八纯卦之爻为伏神，本卦同位之爻为飞神）=====
+  // 权威口径（京房纳甲通用，多源一致）：用神不现于本卦时，到「本宫八纯卦」同位取其所藏之爻 = 伏神；
+  // 本卦同位之爻 = 飞神（覆盖于其上）。飞神生/克伏神 决定是否"出伏可用"。纯卦自身时飞伏同位。
+  function flyingHidden(info, curGz) {
+    var p = info.宫;
+    var pureGz = yaGanZhi(p, p); // 本宫纯卦六爻干支
+    var out = [];
+    for (var j = 0; j < 6; j++) {
+      var fgz = pureGz[j], fz = fgz.charAt(1), fWx = Z_WX[fz];
+      var cgz = curGz[j], cz = cgz.charAt(1), cWx = Z_WX[cz];
+      var 生 = { 木: '火', 火: '土', 土: '金', 金: '水', 水: '木' };
+      var 克 = { 木: '土', 土: '水', 水: '火', 火: '金', 金: '木' };
+      var rel;
+      if (生[cWx] === fWx) rel = '飞生伏（易出）';
+      else if (克[cWx] === fWx) rel = '飞克伏（受压难出）';
+      else if (生[fWx] === cWx) rel = '伏生飞（泄气）';
+      else if (克[fWx] === cWx) rel = '伏克飞（可出）';
+      else rel = '比和';
+      out.push({
+        爻: j + 1,
+        飞神: { 干支: cgz, 五行: cWx, 六亲: qinOf(cWx, info.宫五行) },
+        伏神: { 干支: fgz, 五行: fWx, 六亲: qinOf(fWx, info.宫五行) },
+        飞伏关系: rel,
+        同位: (info.代 === 0 ? '本宫纯卦，飞伏同位' : '')
+      });
+    }
+    return out;
+  }
+
+  // 六亲持世断（通用六爻常识，多源一致的持世歌）
+  var SHI_QIN = {
+    兄弟: '兄弟持世：克财耗财，求财交易不利，防口舌破耗。',
+    子孙: '子孙持世：无忧无虑，消灾解厄；求官求名反而不利（子孙克官鬼）。',
+    父母: '父母持世：辛劳奔波，主文书学业有成，但克子孙、不利求嗣享乐。',
+    官鬼: '官鬼持世：忧疑多阻，主疾病官非口舌，然求官求名有利。',
+    妻财: '妻财持世：利求财、求妻，财物可成；然父母文书受克。'
+  };
+  // 六神持世断（通用六爻常识）
+  var SHI_SHEN = {
+    青龙: '青龙持世：喜庆吉祥，主喜庆财禄、进人口。',
+    朱雀: '朱雀持世：主口舌是非、文书词讼。',
+    勾陈: '勾陈持世：纠缠迟滞，主田土争执、旧事未了。',
+    螣蛇: '螣蛇持世：虚惊怪疑，主事多纠缠、难以定夺。',
+    白虎: '白虎持世：凶丧伤病，主血光孝服、急灾。',
+    玄武: '玄武持世：暧昧不明，主盗贼失脱、虚花暗昧。'
+  };
+
+  /**
+   * 基础断语（通用六爻常识层）：六亲持世 / 六神持世 / 世爻空破冲 / 动爻 / 用神（现 vs 伏藏）。
+   * ⚠️ 属"通用常识+简化旺衰"，深入细则（暗动/墓绝/三合局/化进化退）待黄金盘裁定，不假报。
+   */
+  function judge(info, lines, yongKey, fh, dongYao) {
+    var out = [];
+    var shi = lines[info.世 - 1];
+    if (shi) {
+      if (SHI_QIN[shi.六亲]) out.push({ 类: '持世', 爻: info.世, 项: shi.六亲 + '持世', 断: SHI_QIN[shi.六亲] });
+      if (shi.六神 && SHI_SHEN[shi.六神]) out.push({ 类: '六神', 爻: info.世, 项: shi.六神 + '持世', 断: SHI_SHEN[shi.六神] });
+      if (shi.标记 && shi.标记.trim()) out.push({ 类: '世爻状态', 爻: info.世, 项: '世爻' + shi.标记.trim(), 断: '（世爻空/破/冲：主自身虚弱或事难落实）' });
+    }
+    (dongYao || []).forEach(function (n) {
+      var l = lines[n - 1];
+      if (l) out.push({ 类: '动爻', 爻: n, 项: '第' + n + '爻动（' + l.六亲 + '·' + (l.六神 || '—') + '）', 断: '动则为变机，宜看变卦同位之爻与其化出的六亲。' });
+    });
+    if (yongKey && fh) {
+      var visible = lines.filter(function (l) { return l.六亲 === yongKey; });
+      if (visible.length) {
+        var marks = visible.filter(function (l) { return l.标记 && l.标记.trim(); });
+        out.push({
+          类: '用神', 爻: visible.map(function (l) { return l.爻; }),
+          项: yongKey + '现于第' + visible.map(function (l) { return l.爻; }).join('/') + '爻',
+          断: marks.length ? '用神虽现但临' + marks.map(function (l) { return l.标记.trim(); }).join('、') + '，其力受损，事成中有阻。'
+            : '用神现于卦中，可直接据其旺衰（月建日辰生克）判断。'
+        });
+      } else {
+        var hid = fh.filter(function (f) { return f.伏神.六亲 === yongKey; });
+        if (hid.length) {
+          hid.forEach(function (f) {
+            out.push({
+              类: '用神', 爻: f.爻,
+              项: yongKey + '不现，伏于第' + f.爻 + '爻（伏神 ' + f.伏神.干支 + '·' + f.伏神.五行 + '）',
+              断: '飞神 ' + f.飞神.干支 + '（' + f.飞神.六亲 + '）' + f.飞伏关系 + '；须待伏神出伏透出方可论吉凶（简化判断）。'
+            });
+          });
+        } else {
+          out.push({ 类: '用神', 项: yongKey + '本卦与本宫纯卦皆无', 断: '此事无缘或难成之象（属简化判断，深入细则待黄金盘）。' });
+        }
+      }
+    }
+    return out;
+  }
+
   /**
    * 铜钱起卦：六次投掷，每次记"背"数(0-3)。
    * @param {Array} backs 长度为 6 的数组，每项为 0-3（背数）；缺省随即模拟。
@@ -229,21 +324,28 @@
       });
     }
 
-    var 用神 = inp.事 ? YONG[inp.事] : null;
+    var 用神Key = inp.事 ? YONG[inp.事] : null;
+    // v3.1.5：飞伏关系 + 基础断语
+    var fh = flyingHidden(info, gz);
+    var 断语 = judge(info, lines, 用神Key, fh, 动爻);
 
     return {
       本卦: benName, 变卦: bianName, 动爻: 动爻,
       宫: info.宫 + '宫(' + info.宫五行 + ')', 世: info.世, 应: info.应,
       上下卦: '下' + info.下 + ' 上' + info.上,
       爻线: lines,
-      用神: 用神 ? (用神 + '（依测事"' + inp.事 + '"）') : null,
+      伏飞神: fh,
+      断语: 断语,
+      用神: 用神Key ? (用神Key + '（依测事"' + inp.事 + '"）') : null,
       日干: dayGan, 月建: 月支, 日辰: 日支, 旬空: 空亡,
-      缺料: (!inp.y ? '未给占卦日期，六神/旬空/月破/旺衰未定（仅装卦）。可补"年/月/日"以定。' : (dayGan ? '' : '日干未定'))
+      缺料: (!inp.y ? '未给占卦日期，六神/旬空/月破/旺衰未定（仅装卦+飞伏）。可补"年/月/日"以定六神与旺衰。' : (dayGan ? '' : '日干未定'))
     };
   }
 
   return {
     cast: cast, tossToYao: tossToYao, qinOf: qinOf, shenOf: shenOf,
+    // v3.1.5：飞伏 + 基础断语
+    flyingHidden: flyingHidden, judge: judge, SHI_QIN: SHI_QIN, SHI_SHEN: SHI_SHEN,
     GUA_INDEX: GUA_INDEX, PALACES: PALACES, NAJIA: NAJIA, PALACE_WX: PALACE_WX, SHI_YING: SHI_YING,
     YONG: YONG, xunKongOf: xunKongOf
   };

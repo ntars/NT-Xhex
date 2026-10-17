@@ -17,6 +17,31 @@ function eq(name, got, exp) {
 eqf('ayanamsa(2000)≈23.85', ASTRO.ayanamsa(2000), 23.85, 0.01);
 eqf('ayanamsa(2026)≈24.21', ASTRO.ayanamsa(2026), 23.85 + 26 * 0.013968, 0.01);
 
+// ===== v3.1.5：紫气（紫炁，第 11 曜·闺余虚星）+ 宿界表 =====
+// 行度校验：相隔 28 年须回到同位（《星平会海》"28 年周天"）
+(function () {
+  var a = ASTRO.ziqi(1990, 8, 15, 12), b = ASTRO.ziqi(2018, 8, 15, 12);
+  var d = Math.abs(((a - b) % 360 + 360) % 360); d = Math.min(d, 360 - d);
+  eqf('ziqi 28年周天（相隔28年回同位）', d, 0, 0.01);
+})();
+// 年行度 ≈ 360/28 = 12.857°
+(function () {
+  var a = ASTRO.ziqi(1990, 1, 1, 0), b = ASTRO.ziqi(1991, 1, 1, 0);
+  eqf('ziqi 年行≈12.857°', ((b - a) % 360 + 360) % 360, 360 / 28, 0.1);
+})();
+// 宿界表：角起 0°；张宿累计古度 312 → 起点黄经 312×360/365
+eq('宿界表-角起点=0°', ASTRO.SUIXIU_BOUND[0].起点, 0);
+eq('张宿累计古度=312', ASTRO.suiCumDeg('张'), 312);
+eqf('张宿起点黄经=312×360/365', ASTRO.SUIXIU_BOUND[25].起点, 312 * 360 / 365, 0.01);
+t('宿界表 28 项', ASTRO.SUIXIU_BOUND.length === 28);
+// positions 输出 11 曜（含紫气），且紫气为非天文实体如实标注
+var zp = ASTRO.positions({ y: 1990, m: 8, d: 15, h: 12 });
+t('positions 输出 11 曜', !zp.err && Object.keys(zp.黄经).length === 11);
+t('紫气黄经已算', zp.黄经 && zp.黄经.紫气 != null);
+t('紫气落座/落宿/庙旺已算', zp.星座.紫气 && zp.二十八宿.紫气 && zp.庙旺.紫气);
+t('紫气庙旺简称=气（果老表）', zp.庙旺.紫气 && zp.庙旺.紫气.简称 === '气');
+t('紫气如实标注为非天文实体', zp.缺口.indexOf('非天文实体') >= 0 && zp.缺口.indexOf('闺余') >= 0);
+
 // 本命盘（需 Astronomy 星历；无 vendor 则降级跳过星历相关断言）
 var p = ASTRO.positions({ y: 1990, m: 8, d: 15, h: 12 });
 if (!p.err && p.黄经.太阳 != null) {

@@ -65,7 +65,7 @@ ok('360°回绕→角（角初度对齐春分）', astro.suiXiuOf(360).宿 === '
 ok('30°→氐（角12亢9氐15，x=30.42 落氐·入10度）', astro.suiXiuOf(30).宿 === '氐' && astro.suiXiuOf(30).入度 === 10, JSON.stringify(astro.suiXiuOf(30)));
 // 全名 = 宿+五行+动物；入度∈[1,宿度]（结构自洽）
 var sx = astro.positions({ y: 1990, m: 8, d: 15, h: 14 });
-ok('1990 落宿 10 曜齐全', Object.keys(sx.二十八宿).length === 10, JSON.stringify(Object.keys(sx.二十八宿)));
+ok('1990 落宿 11 曜齐全（v3.1.5 含紫气）', Object.keys(sx.二十八宿).length === 11 && sx.二十八宿['紫气'] != null, JSON.stringify(Object.keys(sx.二十八宿)));
 var sxAllOk = Object.values(sx.二十八宿).every(function (s) {
   return s.全名 === s.宿 + s.五行 + s.动物 && s.入度 >= 1 && s.入度 <= s.宿度;
 });
@@ -79,14 +79,14 @@ ok('日在午(狮子座序4)=垣/庙/乐（日居午位太阳居垣）', astro.m
 ok('土在丑(摩羯座序9)=庙/乐', astro.maowangOf('土星', 9).状态.join('/') === '庙/乐', JSON.stringify(astro.maowangOf('土星', 9)));
 ok('木在未(巨蟹座序3)=旺/喜', astro.maowangOf('木星', 3).状态.join('/') === '旺/喜', JSON.stringify(astro.maowangOf('木星', 3)));
 ok('金在未(巨蟹座序3)=平常（金:辰酉庙午亥旺巳喜辰酉乐，无未）', astro.maowangOf('金星', 3).判 === '平常', JSON.stringify(astro.maowangOf('金星', 3)));
-ok('1990 庙旺 10 曜齐全（紫炁不判）', Object.keys(sx.庙旺).length === 10 && sx.庙旺['紫炁'] === undefined, JSON.stringify(Object.keys(sx.庙旺)));
+ok('1990 庙旺 11 曜齐全（v3.1.5 紫气已判·果老表含气）', Object.keys(sx.庙旺).length === 11 && sx.庙旺['紫气'] && sx.庙旺['紫气'].简称 === '气', JSON.stringify(Object.keys(sx.庙旺)));
 // 庙旺与黄经星座自洽：太阳 1990-8-15 落狮子(序4=午)→应含「垣」（日居午位居垣）
 ok('1990 太阳(狮子/午)庙旺含「垣」', sx.庙旺.太阳.状态.indexOf('垣') >= 0, JSON.stringify(sx.庙旺.太阳));
 
 // 5. 缺口诚实标注
 console.log('5. 缺口标注');
-ok('紫炁不臆造（缺口字段存在）', typeof p2000.缺口 === 'string' && p2000.缺口.indexOf('紫炁') >= 0);
-ok('黄经表无紫炁键', p2000.黄经['紫炁'] === undefined);
+ok('第11曜不臆造（缺口如实标注闺余虚星·非天文实体）', typeof p2000.缺口 === 'string' && p2000.缺口.indexOf('闺余') >= 0 && p2000.缺口.indexOf('非天文实体') >= 0);
+ok('v3.1.5 紫气已接入黄经表（键=紫气）', p2000.黄经['紫气'] != null);
 ok('落宿/庙旺已补齐（缺口不再提「落二十八宿/庙旺需权威表暂缺」）', p2000.缺口.indexOf('落二十八宿/庙旺需权威表') < 0, p2000.缺口);
 
 // 6. 缺料

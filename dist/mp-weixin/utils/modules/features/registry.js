@@ -34,7 +34,8 @@
       require('../CoreModule/taiyi.js'),
       require('../CoreModule/yangzhai.js'),
       require('../CoreModule/xiangshu.js'),
-      require('../CoreModule/qianwen.js')
+      require('../CoreModule/qianwen.js'),
+      require('../CoreModule/cezi.js')
     );
   } else {
     root.NT = root.NT || {};
@@ -54,10 +55,11 @@
       root.NT.core && root.NT.core.taiyi,
       root.NT.core && root.NT.core.yangzhai,
       root.NT.core && root.NT.core.xiangshu,
-      root.NT.core && root.NT.core.qianwen
+      root.NT.core && root.NT.core.qianwen,
+      root.NT.core && root.NT.core.cezi
     );
   }
-})(typeof self !== 'undefined' ? self : this, function (FEI, NUM, NSTAR, ICE, BZH, XS, WX, N81, CORE, BAZI, ZD, ZW, ASTRO, QM, LR, LY, TY, YZ, XSH, QW) {
+})(typeof self !== 'undefined' ? self : this, function (FEI, NUM, NSTAR, ICE, BZH, XS, WX, N81, CORE, BAZI, ZD, ZW, ASTRO, QM, LR, LY, TY, YZ, XSH, QW, CZ) {
 
   // 十二地支序（大六壬天地盘/天将逐一列用）
   function ZHI2() { return ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥']; }
@@ -866,11 +868,62 @@
           var d = QW.astroDice(0, 0, 0);
           return { text: '【占星骰子】组合 = 行星(做什么)·星座(怎样)·宫位(在哪)，共 10×12×12=1440 类。示例：' + d.行星 + '在' + d.星座 + '于' + d.宫位 + ' → ' + d.解读 + '。' };
         }
+        if (t.indexOf('雷诺曼') >= 0) {
+          var hitL = null;
+          for (var li = 0; li < QW.LENORMAND.length; li++) {
+            if (t.indexOf(QW.LENORMAND[li].名) >= 0) { hitL = QW.LENORMAND[li]; break; }
+          }
+          if (hitL) return { text: '【雷诺曼】第 ' + hitL.编号 + ' 张「' + hitL.名 + '」\n关键词：' + hitL.关键词 + '\n牌义：' + hitL.牌义 };
+          return {
+            text: '【雷诺曼】共 36 张：' + QW.LENORMAND.map(function (c) { return c.编号 + c.名; }).join('、')
+              + '。\n可指定牌名或编号查询，如「雷诺曼 心」「雷诺曼 24」。'
+          };
+        }
+        if (t.indexOf('如尼') >= 0) {
+          var mr = t.match(/如尼\s*([^\s，。、]+)/);
+          var hitR = QW.runeCard(mr ? mr[1] : '');
+          if (hitR) return { text: '【如尼】' + hitR.符 + ' ' + hitR.罗马音 + '（' + hitR.中名 + '）\n关键词：' + hitR.关键词 + '\n符义：' + hitR.符义 };
+          return {
+            text: '【如尼】古弗萨克（Elder Futhark）共 24 符：' + QW.RUNES.map(function (r) { return r.符 + r.中名; }).join('、')
+              + '。\n可指定查询，如「如尼 太阳」「如尼 Sowilo」。'
+          };
+        }
         if (t.indexOf('答案') >= 0) {
           var a = QW.answerBook();
           return { text: '【答案之书】' + a.句 + '\n' + a.注 };
         }
-        return { prompt: '请指明：观音灵签 / 塔罗 / 解梦 / 占星骰子 / 答案之书（如「抽观音灵签」「塔罗 愚人」「梦到蛇」）。' };
+        return { prompt: '请指明：观音灵签 / 塔罗 / 解梦 / 占星骰子 / 雷诺曼 / 如尼 / 答案之书（如「抽观音灵签」「塔罗 愚人」「梦到蛇」「雷诺曼 心」）。' };
+      }
+    },
+    {
+      key: 'cezi', 名: '测字（拆字·会意）',
+      触发词: ['测字', '拆字', '一字', '字卜', '看字', '问字', '字义', '笔划测', '这个字'],
+      说明: '测字 C22：康熙笔画(单一真源) → 数理五行(尾数) + 先天八卦起卦(笔画%8) + 增删变字 + 与所问事类生克比对。部首自动判定不可行(汉字为单一码点)，已如实标注。',
+      run: function (ent, text) {
+        if (!CZ) return { text: '【测字】内核未加载。' };
+        var t = String(text || '');
+        // 抽字：优先取「测字/拆字/看字/问字」后紧跟的第一个汉字
+        var ch = null;
+        var patt = /(?:测字|拆字|看字|问字|一字|字卜|字义|笔划测|这个字)\s*([一-鿿])/;
+        var m = t.match(patt);
+        if (m) ch = m[1];
+        else {
+          // 兜底：取文本里第一个汉字（排除触发词本身）
+          var stripped = t.replace(/测字|拆字|看字|问字|一字|字卜|字义|笔划测|这个字|测|字|拆|看|问|卜/g, '');
+          var m2 = stripped.match(/[一-鿿]/);
+          if (m2) ch = m2[0];
+        }
+        if (!ch) return { prompt: '测字需要给一个汉字，例如「测字 好」「看字 财」。' };
+        // 事类：命中 YONG/SHI_WX 关键字
+        var shi = null;
+        var SHI_KEYS = ['财运', '求财', '生意', '事业', '功名', '学业', '文书', '考试', '婚姻', '感情', '家宅', '疾病', '出行', '生育', '官司', '朋友', '自身'];
+        for (var i = 0; i < SHI_KEYS.length; i++) { if (t.indexOf(SHI_KEYS[i]) >= 0 && CZ.SHI_WX[SHI_KEYS[i]] !== undefined) { shi = SHI_KEYS[i]; break; } }
+        var r = CZ.analyze({ 字: ch, 事: shi });
+        if (r.err) return { prompt: r.err };
+        var head = '【测字】「' + r.字 + '」' + (shi ? '（所问：' + shi + '）' : '');
+        if (r.缺字.length) return { text: head + '\n' + r.缺料 + '\n' + r.说明 };
+        var body = r.断语.join('\n');
+        return { text: head + '\n' + body + '\n' + r.说明 };
       }
     }
   ];

@@ -54,7 +54,11 @@ var expectKey = {
   '印占 1990年8月15日': 'astro-vedic',
   '阳宅 厨房在正南': 'yangzhai',
   '相术 面相': 'xiangshu',
-  '观音灵签 抽签': 'qianwen'
+  '观音灵签 抽签': 'qianwen',
+  '测字 好': 'cezi',
+  '拆字 财 财运': 'cezi',
+  '雷诺曼 心': 'qianwen',
+  '如尼 太阳': 'qianwen'
 };
 for (var tx in expectKey) {
   var f = R.match(tx);
@@ -95,7 +99,12 @@ var have = [
   ['astro-vedic', '印占 1990年8月15日', ent(1990, 8, 15, 14)],
   ['yangzhai', '阳宅 厨房在正南 缺西北', ent()],
   ['xiangshu', '相术 面相', ent()],
-  ['qianwen', '观音灵签 抽签', ent(2026, 8, 15)]
+  ['qianwen', '观音灵签 抽签', ent(2026, 8, 15)],
+  ['cezi', '测字 好', ent()],
+  ['cezi', '拆字 财 财运', ent()],
+  ['qianwen', '雷诺曼 心', ent()],
+  ['qianwen', '如尼 太阳', ent()],
+  ['qianwen', '雷诺曼', ent()]
 ];
 have.forEach(function (c) {
   var out = R.run(c[0], c[2], c[1]);
@@ -149,5 +158,31 @@ var xsO = R.run('xiangshu', ent(), '相术 面相');
 ok(xsO && xsO.text && xsO.text.indexOf('【相术·') >= 0, '相术有料出标题（面相/手相/痣相/骨相）');
 var qwO = R.run('qianwen', ent(2026, 8, 15), '观音灵签 抽签');
 ok(qwO && qwO.text && qwO.text.indexOf('【观音灵签】') >= 0, '签文有料出标题（观音灵签 deterministic）');
+
+// ===== v3.1.5 测字 C22（康熙笔画 + 数理五行 + 先天起卦）=====
+console.log('== v3.1.5 测字 C22 ==');
+var czO = R.run('cezi', ent(), '测字 好');
+ok(czO && czO.text && czO.text.indexOf('【测字】') >= 0, '测字有料出标题');
+ok(czO && czO.text && czO.text.indexOf('康熙口径') >= 0, '测字给康熙笔画（kangxi 单一真源）');
+ok(czO && czO.text && czO.text.indexOf('先天卦') >= 0, '测字给先天八卦起卦（笔画%8）');
+ok(czO && czO.text && czO.text.indexOf('数理五行') >= 0, '测字给数理五行（尾数）');
+var czF = R.run('cezi', ent(), '测字 財');
+ok(czF && czF.text && czF.text.indexOf('不臆造') >= 0, '测字缺字据实标注（繁体不在表内，不臆造）');
+var czS = R.run('cezi', ent(), '拆字 财 财运');
+ok(czS && czS.text && czS.text.indexOf('财运') >= 0, '测字识别所问事类并比对生克');
+ok(R.run('cezi', ent(), '测字').prompt, '测字无具体字 → 追问');
+
+// ===== v3.1.5 雷诺曼 36 + 如尼 24 =====
+console.log('== v3.1.5 雷诺曼 / 如尼 ==');
+var lnO = R.run('qianwen', ent(), '雷诺曼 心');
+ok(lnO && lnO.text && lnO.text.indexOf('【雷诺曼】') >= 0, '雷诺曼有料出标题');
+ok(lnO && lnO.text && lnO.text.indexOf('第 24 张') >= 0, '雷诺曼按牌名查到第24张「心」');
+var lnAll = R.run('qianwen', ent(), '雷诺曼');
+ok(lnAll && lnAll.text && lnAll.text.indexOf('共 36 张') >= 0, '雷诺曼概览出36张');
+var rnO = R.run('qianwen', ent(), '如尼 太阳');
+ok(rnO && rnO.text && rnO.text.indexOf('【如尼】') >= 0, '如尼有料出标题');
+ok(rnO && rnO.text && rnO.text.indexOf('索维罗') >= 0, '如尼按关键词「太阳」命中 Sowilo');
+var rnAll = R.run('qianwen', ent(), '如尼');
+ok(rnAll && rnAll.text && rnAll.text.indexOf('共 24 符') >= 0, '如尼概览出24符');
 
 if (fails === 0) { console.log('全部通过 ✓'); process.exit(0); } else { console.log(fails + ' 处失败'); process.exit(1); }
