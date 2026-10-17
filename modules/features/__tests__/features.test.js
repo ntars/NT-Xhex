@@ -199,4 +199,18 @@ ok(qfO && qfO.text && qfO.text.indexOf('值符') >= 0 && qfO.text.indexOf('值�
 ok(qfO && qfO.text && qfO.text.indexOf('黄金范例') >= 0, '飞盘标注飞布已按黄金范例锁死');
 ok(R.run('qimen-fei', ent(), '飞盘奇门').prompt, '飞盘无日期 → 追问');
 
+// ===== v3.1.12 择日·专项凶日展示（杨公忌/红沙/三娘煞/嫁娶周堂）=====
+console.log('== v3.1.12 择日专项凶日展示 ==');
+var zrO = R.run('zeri', ent(2026, 11, 1, null, '鸡'), '结婚择日 2026年11月1日起30天，属鸡');
+ok(zrO && zrO.text && zrO.text.indexOf('【择日·黄道吉日】') >= 0, '择日有料出标题');
+ok(/杨公忌：11月3日（农历九月廿五）/.test(zrO.text), '杨公忌名单给出公历 + 农历月日（九月廿五）');
+ok(zrO.text.indexOf('红沙日：') >= 0, '红沙日名单在位');
+ok(zrO.text.indexOf('三娘煞：') >= 0 && /主忌嫁娶/.test(zrO.text), '嫁娶事项列出三娘煞并注明主忌嫁娶');
+ok(/嫁娶周堂：周堂杀在/.test(zrO.text), '嫁娶事项列出周堂杀七日');
+var zrO2 = R.run('zeri', ent(2026, 11, 1), '开业择日 2026年11月1日起20天');
+ok(/另注：三娘煞、嫁娶周堂只主嫁娶/.test(zrO2.text), '非嫁娶事项明说不拿三娘煞/周堂连累');
+ok(zrO2.text.indexOf('三娘煞：') < 0, '非嫁娶事项不列三娘煞名单');
+ok(zrO.text.indexOf('。；') < 0, '标注段无「。；」双标点（结果页按句号分句）');
+ok(zrO.text.indexOf('黄道·黄道') < 0, '建除黄道档不再重复写「黄道·黄道」');
+
 if (fails === 0) { console.log('全部通过 ✓'); process.exit(0); } else { console.log(fails + ' 处失败'); process.exit(1); }
