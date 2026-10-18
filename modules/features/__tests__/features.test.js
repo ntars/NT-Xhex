@@ -145,6 +145,14 @@ ok(lOut && lOut.text && lOut.text.indexOf('十二天将') >= 0, '大六壬给出
 ok(lOut && lOut.text && lOut.text.indexOf('旬空') >= 0 && lOut.text.indexOf('驿马') >= 0, '大六壬给出旬空与驿马');
 ok(R.run('liuren', ent(), '六壬 看看').prompt, '大六壬无日期 → 追问');
 
+// ===== v3.1.24 六壬细分（天马/连茹/孤虚/应期）输出锁定 =====
+ok(lOut.text.indexOf('天马') >= 0, '大六壬给出天马（驿马·三传带马判定）');
+ok(lOut.text.indexOf('连茹') >= 0, '大六壬给出连茹（进/退连茹或「非连茹」）');
+ok(lOut.text.indexOf('孤虚') >= 0 && lOut.text.indexOf('日孤') >= 0, '大六壬给出孤虚（日孤/日虚/月孤/月虚）');
+ok(lOut.text.indexOf('成期') >= 0 && lOut.text.indexOf('散期') >= 0, '大六壬给出应期（成期=初传所合·散期=末传所冲）');
+ok(R.match('天马 1990年8月15日').key === 'liuren', '「天马」路由到大六壬');
+ok(R.match('连茹 1990年8月15日14时').key === 'liuren', '「连茹」路由到大六壬');
+
 // ===== v3.1.5 新增 9 块功能锁定（三式补全 + 新增内核）=====
 console.log('== v3.1.5 新增 9 块（有料/缺料不崩、出标题）==');
 var tO = R.run('taiyi', ent(2026), '太乙神数 2026');
