@@ -80,6 +80,14 @@ if (!p.err && p.黄经.太阳 != null) {
   t('Vimshottari 大限序9项', vd.Vimshottari.大限序.length === 9);
   eq('Vimshottari 总年120', vd.Vimshottari.总年, 120);
   t('印占缺料标注', vd.缺料.length > 0);
+
+  // §8.6 月亮返照（Lunar Return：月亮回到本命黄经）
+  var lrN = ASTRO.positions({ y: 1990, m: 8, d: 15, h: 14, tz: 8 });
+  var lr = ASTRO.lunarReturn({ y: 1990, m: 8, d: 15, h: 14, tz: 8 }, 2026, 10);
+  t('月亮返照无 err 且给返照黄经', !lr.err && lr.返照黄经 && lr.返照黄经.太阴 != null);
+  eqf('返照点月亮≈本命月亮（<0.001°）', lr.返照黄经.太阴, lrN.黄经.太阴, 0.001);
+  t('返照时刻落在目标月 2026-10', lr.返照时刻UTC.slice(0, 7) === '2026-10');
+  t('月亮返照带与本命相位数组', Array.isArray(lr.与本命相位));
 } else {
   console.log('  （未加载 Astronomy 星历，跳过星历相关断言；仅验证纯数学 ayanamsa）');
   t('positions 优雅降级', p.err || p.黄经.太阳 == null);

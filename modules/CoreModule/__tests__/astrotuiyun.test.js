@@ -77,7 +77,8 @@ var qP = R.run('astro-tuiyun', E36, '推运 36岁');
 ok(/【占星·推运】次限/.test(qP.text || ''), '问「推运」仍走次限');
 ok(qP.text.indexOf('[object Object]') < 0 && qS.text.indexOf('[object Object]') < 0, '输出里没有 [object Object]（对象未格式化的典型症状）');
 var qL = R.run('astro-tuiyun', E36, '月亮返照');
-ok(/未实现/.test(qL.prompt || ''), '月亮返照未实现时明说，不拿太阳返照冒充');
+ok(/【占星·推运】月亮返照/.test(qL.text || ''), '问「月亮返照」答月亮返照盘（v3.1.28 已实现，不再说未实现）');
+ok(!/未实现/.test(qL.text || ''), '月亮返照不再返回「未实现」（不拿太阳返照冒充，也不推脱）');
 
 // ============ ⑥ 奇门家数不许冒充 ============
 console.log('== ⑥ 奇门家数 ==');

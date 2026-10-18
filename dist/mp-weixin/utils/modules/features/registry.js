@@ -1272,7 +1272,7 @@
       key: 'astro-tuiyun', 名: '占星·推运（次限/行运/返照/法达）',
       板块: '占星天文', 短名: '排推运',
       触发词: ['推运', '次限', '行运', '三限', '太阳返照', '月亮返照', '法达', '星限'],
-      说明: '次限推运（1 天=1 年，本命+岁数）/ 行运（指定日天象对本命相位）/ 太阳返照盘（太阳回到本命黄经那一刻起盘）/ 法达星限（日夜盘九期 + 七等分副运，C19 内核 §8.3/§8.6/§8.7）。',
+      说明: '次限推运（1 天=1 年，本命+岁数）/ 行运（指定日天象对本命相位）/ 太阳返照盘（太阳回到本命黄经那一刻起盘）/ 月亮返照盘（月亮回到本命黄经那一刻起盘，约 27.32 天一次）/ 法达星限（日夜盘九期 + 七等分副运，C19 内核 §8.3/§8.6/§8.7）。',
       run: function (ent, text) {
         if (!ent || !ent.date || !ent.date.year) return { prompt: '推运需要出生年月日，例如「1990年8月15日 推运 30岁」「1990年8月15日 法达」。「行运」另给目标日期，如「1990年8月15日 2026年10月17日 行运」。' };
         if (!ASTRO) return { text: '【推运】内核未加载。' };
@@ -1281,7 +1281,7 @@
         var nat = { y: y, m: m, d: d, h: h, tz: 8 };
         var ageM = t.match(/(\d+)\s*岁/);
         var age = ageM ? +ageM[1] : (new Date().getFullYear() - y);
-        var more = '（「行运」加日期看行运、「太阳返照」看年度返照盘、「法达」看时段主星。）';
+        var more = '（「行运」加日期看行运、「太阳返照」看年度返照盘、「月亮返照」看每月返照盘、「法达」看时段主星。）';
 
         // ① 法达星限（纯时段体系，不依赖星历）
         if (t.indexOf('法达') >= 0 || t.indexOf('星限') >= 0) {
@@ -1297,8 +1297,31 @@
         }
         // ② 太阳返照盘
         if (t.indexOf('返照') >= 0) {
-          if (t.indexOf('月亮返照') >= 0) {
-            return { prompt: '月亮返照（每月一次返照盘）本版未实现，不拿别的盘冒充。现有可算：太阳返照（说「太阳返照」）、次限、行运、法达。' };
+          if (t.indexOf('月亮返照') >= 0 || t.indexOf('太阴返照') >= 0) {
+            if (!ASTRO.lunarReturn) return { text: '【月亮返照】内核未加载。' };
+            // 目标年月：取「最后一个不等于本命日期的 YYYY年M月」；只有年份则沿用当前月；都没有=今年本月
+            var anyMon = t.match(/(\d{1,2})\s*月/g) || [];
+            for (var am = 0; am < anyMon.length; am++) {
+              if (+anyMon[am].replace(/[^\d]/g, '') > 12) return { prompt: '月份须 1–12，例如「1990年8月15日 月亮返照 2026年10月」。' };
+            }
+            var tg = null, pr = /((?:19|20)\d{2})\s*年\s*(\d{1,2})\s*月/g, pm, pairs = [];
+            while ((pm = pr.exec(t)) !== null) pairs.push({ y: +pm[1], m: +pm[2] });
+            for (var pi = pairs.length - 1; pi >= 0; pi--) { if (!(pairs[pi].y === y && pairs[pi].m === m)) { tg = pairs[pi]; break; } }
+            if (!tg) {
+              var yrs = t.match(/(19|20)\d{2}/g) || [];
+              for (var yi = yrs.length - 1; yi >= 0; yi--) { if (+yrs[yi] !== y) { tg = { y: +yrs[yi], m: null }; break; } }
+            }
+            var nowD = new Date();
+            var lyr = tg ? tg.y : nowD.getFullYear();
+            var lmo = (tg && tg.m) ? tg.m : (nowD.getMonth() + 1);
+            var lr = ASTRO.lunarReturn(nat, lyr, lmo);
+            if (lr.err) return { prompt: lr.err };
+            var fmtSignL = function (k) { var g = lr.返照星座[k]; return g ? (g.星座 + g.度数.toFixed(1) + '°') : ''; };
+            var LR = ['【占星·推运】月亮返照 ' + lyr + ' 年 ' + lmo + ' 月：月亮回到本命黄经（' + lr.本命月亮黄经.toFixed(2) + '°）的时刻 = ' + lr.返照时刻本地 + '。'];
+            LR.push('返照盘（上升未定则只列行星）：' + ['太阳', '太阴', '水星', '金星', '火星', '木星', '土星'].filter(function (k) { return lr.返照黄经[k] != null; }).map(function (k) { return k + ' ' + lr.返照黄经[k].toFixed(2) + '°（' + fmtSignL(k) + '）'; }).join('，'));
+            LR.push('返照对本命相位：' + (lr.与本命相位.length ? lr.与本命相位.filter(function (x) { return x.精准; }).map(function (x) { return x.a + '　' + x.类型 + '　' + x.b; }).join('，') || '无（取精准相位；全部 ' + lr.与本命相位.length + ' 条）' : '无显著相位'));
+            LR.push('注：月亮返照约 27.32 天一次，取「月亮回照本命黄经那一刻」，不按整点/整日取整（取整即另一张盘）。' + more);
+            return { text: LR.join('\n') };
           }
           if (!ASTRO.solarReturn) return { text: '【返照】内核未加载。' };
           var yrM = t.match(/(19|20)\d{2}/g);

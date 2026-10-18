@@ -127,7 +127,11 @@
 
   function planetLon(bodyKey, y, m, d, h) {
     var B = bodyEnum(); if (!B) return null;
-    var t = A.MakeTime(new Date(Date.UTC(y, m - 1, d, h || 0)));
+    // ⚠ 保留小数小时：旧写法 Date.UTC(y,m-1,d,h) 会把 hour 参数 ToInteger **截成整点**，
+    //   导致 positions() 只有整点精度（返照盘/月亮返照需要分秒级）。改为「当日零点 + h*3600000ms」。
+    //   整点 h 结果与旧写法完全一致，无回归。
+    var ms = Date.UTC(y, m - 1, d, 0, 0, 0, 0) + (h || 0) * 3600000;
+    var t = A.MakeTime(new Date(ms));
     return mod360(A.Ecliptic(A.GeoVector(B[bodyKey], t, false)).elon);
   }
 
@@ -368,6 +372,62 @@
     };
   }
 
+  /**
+   * 月亮返照（Lunar Return）：月亮回到本命黄经的精确时刻起盘（约 27.32 天一次，每月一返照）。
+   * 检索：星历 vendor 只有 SearchSunLongitude / SearchMoonPhase / SearchMoonNode / SearchMoonQuarter，
+   *   **没有**「按月亮绝对黄经」的搜索 API（MoonPhase 是月日黄经差、不是绝对黄经），故自求零点：
+   *   按日粗扫（40 天覆盖整月）找「diff 由负转正」的回归，再二分收敛到秒级。
+   *   月亮日行约 13.18°，按日步进不会出现跨段歧义（一天内 diff 变化 ~13°）。
+   * @param {Object} inp 本命 {y,m,d,h,tz}
+   * @param {number} [year] 目标年（缺省=今年）
+   * @param {number} [month] 目标月（缺省=本月）；从该月 1 日起搜，取该月第一次返照
+   */
+  function lunarReturn(inp, year, month) {
+    var natal = positions(inp); if (natal.err) return natal;
+    var natalMoon = natal.黄经['太阴'];
+    if (natalMoon == null) return { err: '本命月亮黄经不可用（需 astronomy 星历内核）' };
+    var y = +year || new Date().getUTCFullYear();
+    var mo = +month || (inp.m || (new Date().getUTCMonth() + 1));
+    function norm180(x) { x = mod360(x); return x > 180 ? x - 360 : x; }
+    function moonAt(ms) {
+      var t = new Date(ms);
+      return positions({ y: t.getUTCFullYear(), m: t.getUTCMonth() + 1, d: t.getUTCDate(), h: t.getUTCHours() + t.getUTCMinutes() / 60 + t.getUTCSeconds() / 3600, tz: 0 });
+    }
+    var startMs = Date.UTC(y, mo - 1, 1);
+    var p0 = moonAt(startMs); if (p0.err) return p0;
+    var d0 = norm180(p0.黄经['太阴'] - natalMoon);
+    var lo, hi;
+    // 一律扫描 + 二分（不做「月初恰逢」的宽容快照——差 1° 就约 1.8 小时，取整即另一张盘）
+    var prevMs = startMs, prevD = d0, found = false;
+    for (var i = 1; i <= 40; i++) {
+      var ms = startMs + i * 86400000;
+      var p = moonAt(ms); if (p.err) return p;
+      var dd = norm180(p.黄经['太阴'] - natalMoon);
+      if (prevD < 0 && dd >= 0) { lo = prevMs; hi = ms; found = true; break; }
+      prevMs = ms; prevD = dd;
+    }
+    if (!found) return { err: '月亮返照检索失败（' + y + ' 年 ' + mo + ' 月）' };
+    // 二分收敛：区间内 diff 由负到正，diff<0 往右
+    for (var k = 0; k < 32; k++) {
+      var mid = (lo + hi) / 2;
+      var pm = moonAt(mid); if (pm.err) return pm;
+      if (norm180(pm.黄经['太阴'] - natalMoon) < 0) lo = mid; else hi = mid;
+    }
+    var when = (lo + hi) / 2;
+    var dt = new Date(when);
+    var ret = moonAt(when);
+    if (ret.err) return ret;
+    var ks = liveKeys(ret.黄经);
+    var bj = new Date(dt.getTime() + 8 * 3600 * 1000);
+    return {
+      类型: '月亮返照', 年: y, 月: mo, 本命时刻: natal.时刻, 本命月亮黄经: natalMoon,
+      返照时刻UTC: dt.toISOString().replace('T', ' ').slice(0, 19) + ' UT',
+      返照时刻本地: bj.toISOString().replace('T', ' ').slice(0, 16) + '（UTC+8）',
+      返照黄经: ret.黄经, 返照星座: ret.星座,
+      与本命相位: aspectBetween(ret.黄经, natal.黄经, ks)
+    };
+  }
+
   /** §8.7 法达星限（Firdaria）：中世纪波斯/阿拉伯「时段主星」体系 */
   /**
    * 五源核对一致（astrodoor 繁/简、traditional-astrology、yourhearth、astrostarcheck）：
@@ -501,7 +561,7 @@
     // §8.2–8.5
     aspects: aspects, progressions: progressions, transits: transits, synastry: synastry,
     // v3.1.11：返照盘 + 法达星限（原本只有触发词、没有实现，本次补真算法）
-    solarReturn: solarReturn, firdaria: firdaria, FIRDARIA: FIRDARIA, sunAltitude: sunAltitude,
+    solarReturn: solarReturn, lunarReturn: lunarReturn, firdaria: firdaria, FIRDARIA: FIRDARIA, sunAltitude: sunAltitude,
     vedicPositions: vedicPositions, ayanamsa: ayanamsa,
     NAK27: NAK27, NAK_LORD: NAK_LORD, VIMS: VIMS, ASPECTS: ASPECTS,
     // v3.1.8：时区换算 + 坐标/恒星时基元（供宫位、卜卦、择时复用，单一真源）

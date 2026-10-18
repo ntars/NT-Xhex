@@ -468,4 +468,15 @@ ok(hlToday.text.indexOf('；') < 0 && !/。；|；。|。。|；；/.test(hlToda
 ok(R.match('今日黄历').key === 'huangli', '「今日黄历」路由到黄历');
 ok(R.matchAll('今日黄历').map(function (x) { return x.key; }).join(',') === 'huangli', '「今日黄历」不误触发择日/日期换算');
 
+// ===== v3.1.28 月亮返照（Lunar Return：月亮回到本命黄经，约 27.32 天一次）=====
+console.log('== v3.1.28 月亮返照（不再「本版未实现」，精确到分秒）==');
+var lrOut = R.run('astro-tuiyun', ent(1990, 8, 15, 14), '1990年8月15日 月亮返照 2026年10月');
+ok(lrOut.text && lrOut.text.indexOf('月亮返照') >= 0, '月亮返照有料出标题');
+ok(lrOut.text.indexOf('本版未实现') < 0, '月亮返照不再返回「本版未实现」');
+ok(lrOut.text.indexOf('2026 年 10 月') >= 0, '目标月解析为 2026年10月（不误取本命 8 月）');
+ok(lrOut.text.indexOf('返照盘') >= 0 && lrOut.text.indexOf('本命相位') >= 0, '月亮返照给出返照盘与本命相位');
+ok(!/。；|；。|。。|；；/.test(lrOut.text) && lrOut.text.indexOf('；') < 0 && !/\n\s*\n/.test(lrOut.text), '月亮返照切段安全');
+var lrBad = R.run('astro-tuiyun', ent(1990, 8, 15, 14), '1990年8月15日 月亮返照 13月');
+ok(lrBad.prompt && lrBad.prompt.indexOf('1–12') >= 0, '月亮返照非法月（13月）给提示');
+
 if (fails === 0) { console.log('全部通过 ✓'); process.exit(0); } else { console.log(fails + ' 处失败'); process.exit(1); }
