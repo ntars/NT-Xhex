@@ -1,4 +1,4 @@
-# 玄玖灵犀 NT-Xhex v3.1.28
+# 玄玖灵犀 NT-Xhex v3.1.29
 
 > 算法演乾坤，一问知天命，以数据重现千年术数。（演乾坤·知天命）  
 > 无后端 / 无网络 / 无登录 · 一套代码自动切换多形态  
@@ -467,6 +467,7 @@ node tools/transition.test.js      # 转场方向回归（13 条真实导航边 
 node modules/CoreModule/__tests__/kangxi.test.js   # 康熙 3500 字表 + 五格 验收
 node modules/CoreModule/__tests__/cores.test.js    # 内核 C01–C06 验收
 node modules/CoreModule/__tests__/cores2.test.js   # 内核 C08–C20 验收
+node modules/CoreModule/__tests__/solarlunar.test.js # 历法底座 C01（内嵌 lunar-javascript 冒烟：公历/农历/干支/八字基准例 + 黄历方法完整性，30 项）
 node modules/CoreModule/__tests__/astro.test.js    # 占星·七政 C18/C19（7 政对 JPL + 3 余 Meeus 均值 + 落座 + 落二十八宿(等宫近似·淮南子宿度) + 七政庙旺(果老查表)）
 node modules/CoreModule/__tests__/qimen.test.js    # 奇门 C14（时家转盘拆补；阴阳遁双盘黄金盘 24/24 + 阳遁古籍课例 + 《烟波钓叟歌》八神自洽，53 项）
 node modules/CoreModule/__tests__/qimenfei.test.js # 奇门·飞盘(飞宫法) C23（黄金范例逐宫锁死 + 随机结构自洽，16 项）
@@ -486,6 +487,18 @@ node tools/sync-mp.js --check      # dist 与 modules 一致性 + WXML <template
 
 ## 九、更新日志
 
+- **v3.1.29**（测试覆盖审计：补上唯一缺测的历法底座 `solarlunar.js`，让头注释「校验收」成真）：
+  ① **审计方式**：扫 44 个 CoreModule 内核「是否有任何测试直接 require 它」→ **43 个有直测，唯一缺测的是 `solarlunar.js`（437KB，全项目最大的文件）**。
+  ② **发现的真缺陷（文档与现实不符）**：`solarlunar.js` 头部白纸黑字写「校验收：`modules/CoreModule/__tests__/solarlunar.test.js`」，但**那个文件根本不存在**（只有测适配层的 `lunar.test.js`）。而 `solarlunar.js` 是**全项目历法底座**（公历↔农历 / 干支 / 八字 / 每日黄历全依赖它），又是「整文件替换式内嵌库」，一旦升级或传输损坏会**静默**算错、且从上层测试难定位。
+  ③ **补 `solarlunar.test.js`（30 项冒烟）**：① 导出完整性（Solar/Lunar/EightChar/SolarUtil/LunarUtil/NineStar）；② **项目基准例** 2005-6-9 → 农历二〇〇五年五月初三、干支乙酉壬午甲子、八字乙酉壬午甲子甲子、生肖鸡、星期四；③ 2026-10-18 → 九月初九（重阳）、值星=平；④ **黄历 14 个方法完整性**（getZhiXing / getDayTianShen(Type/Luck) / getXiu(Luck) / getPengZuGan/Zhi / getDayPositionTai / getDayYi/Ji / getDayChongShengXiao / getDaySha / getDayNineStar）——这正是「每日黄历」直接依赖的方法集，锁住它等于给黄历上了保险；⑤ 农历→公历反查（2005 五月初三 → 2005-06-09）。
+  ④ **顺手确认底座完好**：冒烟全绿说明这 437KB 内嵌库当前无损坏、与项目基准例一致。
+  ⑤ **三端 + 版本**：只新增测试文件 + README 补一条单测命令，不改任何运行时代码；**44 个测试文件全绿**、`sync-mp --check` 全绿；版本 7 处同步 **3.1.29**。功能块数不变（仍 54）。
+- **v3.1.29**（测试覆盖审计：补上唯一缺测的历法底座 `solarlunar.js`，让头注释「校验收」成真）：
+  ① **审计方式**：扫 44 个 CoreModule 内核「是否有任何测试直接 require 它」→ **43 个有直测，唯一缺测的是 `solarlunar.js`（437KB，全项目最大的文件）**。
+  ② **发现的真缺陷（文档与现实不符）**：`solarlunar.js` 头部白纸黑字写「校验收：`modules/CoreModule/__tests__/solarlunar.test.js`」，但**那个文件根本不存在**（只有测适配层的 `lunar.test.js`）。而 `solarlunar.js` 是**全项目历法底座**（公历↔农历 / 干支 / 八字 / 每日黄历全依赖它），又是「整文件替换式内嵌库」，一旦升级或传输损坏会**静默**算错、且从上层测试难定位。
+  ③ **补 `solarlunar.test.js`（30 项冒烟）**：① 导出完整性（Solar/Lunar/EightChar/SolarUtil/LunarUtil/NineStar）；② **项目基准例** 2005-6-9 → 农历二〇〇五年五月初三、干支乙酉壬午甲子、八字乙酉壬午甲子甲子、生肖鸡、星期四；③ 2026-10-18 → 九月初九（重阳）、值星=平；④ **黄历 14 个方法完整性**（getZhiXing / getDayTianShen(Type/Luck) / getXiu(Luck) / getPengZuGan/Zhi / getDayPositionTai / getDayYi/Ji / getDayChongShengXiao / getDaySha / getDayNineStar）——这正是「每日黄历」直接依赖的方法集，锁住它等于给黄历上了保险；⑤ 农历→公历反查（2005 五月初三 → 2005-06-09）。
+  ④ **顺手确认底座完好**：冒烟全绿说明这 437KB 内嵌库当前无损坏、与项目基准例一致。
+  ⑤ **三端 + 版本**：只新增测试文件 + README 补一条单测命令，不改任何运行时代码；**44 个测试文件全绿**、`sync-mp --check` 全绿；版本 7 处同步 **3.1.29**。功能块数不变（仍 54）。
 - **v3.1.28**（补上**月亮返照**——推运四法里唯一还标「本版未实现」的，第 54 个功能内补全）：
   ① **本轮先做「孤儿/桩」审计**：CoreModule 44 个内核全部在运行时闭包内（v3.1.27 接上 shensha.js 后已无孤儿）；全项目只剩**一处**真「本版未实现」——推运里的**月亮返照（Lunar Return）**（v3.1.11 明写「问到就明说未实现」）。这次把它做出来。
   ② **月亮返照（Lunar Return）**：月亮回到本命黄经的精确时刻起盘，约 **27.32 天（恒星月）**一次。星历 vendor **没有**「按月亮绝对黄经搜索」的 API（只有 `SearchSunLongitude`/`SearchMoonPhase`/`SearchMoonNode`/`SearchMoonQuarter`，`MoonPhase` 是月日黄经差、不是绝对黄经），故自求零点：**按日粗扫 40 天（覆盖整月）找「diff 由负转正」的回归 → 二分收敛到亚秒**（月亮日行约 13.18°，按日步进不会跨段歧义）。新增 `ASTRO.lunarReturn(inp, year, month)`。
