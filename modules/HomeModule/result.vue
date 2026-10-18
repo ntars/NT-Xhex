@@ -108,23 +108,25 @@ export default {
       cv.height = Math.round(plan.height * dpr)
       var ctx = cv.getContext('2d')
       ctx.scale(dpr, dpr)
-      ExportImage.paint(ctx, plan)
+      // ⚠ paint 返回 Promise：须等位图（设计稿小程序码）加载完再出图，否则首次导出会缺码
       var self = this
-      var name = '玄玖灵犀-' + (r.title || '分析结果') + '.png'
-      function save(url) {
-        var a = document.createElement('a')
-        a.href = url; a.download = name
-        document.body.appendChild(a); a.click()
-        setTimeout(function () { document.body.removeChild(a); if (url.indexOf('blob:') === 0) URL.revokeObjectURL(url) }, 0)
-      }
-      if (cv.toBlob) {
-        cv.toBlob(function (blob) {
-          if (!blob) { save(cv.toDataURL('image/png')) } else { save(URL.createObjectURL(blob)) }
-          self.toast('已导出图片')
-        }, 'image/png')
-      } else {
-        save(cv.toDataURL('image/png')); this.toast('已导出图片')
-      }
+      ExportImage.paint(ctx, plan).then(function () {
+        var name = '玄玖灵犀-' + (r.title || '分析结果') + '.png'
+        function save(url) {
+          var a = document.createElement('a')
+          a.href = url; a.download = name
+          document.body.appendChild(a); a.click()
+          setTimeout(function () { document.body.removeChild(a); if (url.indexOf('blob:') === 0) URL.revokeObjectURL(url) }, 0)
+        }
+        if (cv.toBlob) {
+          cv.toBlob(function (blob) {
+            if (!blob) { save(cv.toDataURL('image/png')) } else { save(URL.createObjectURL(blob)) }
+            self.toast('已导出图片')
+          }, 'image/png')
+        } else {
+          save(cv.toDataURL('image/png')); self.toast('已导出图片')
+        }
+      })
       // #endif
 
       // #ifdef MP-WEIXIN
@@ -143,18 +145,20 @@ export default {
         canvas.width = Math.round(planMp.width * dprMp)      // ② 按计划定尺寸并落笔
         canvas.height = Math.round(planMp.height * dprMp)
         cx.scale(dprMp, dprMp)
-        ExportImage.paint(cx, planMp)
-        uni.canvasToTempFilePath({                            // ③ 出临时 PNG → 预览（不写相册、不申请权限）
-          canvas: canvas,
-          x: 0, y: 0, width: planMp.width, height: planMp.height,
-          destWidth: planMp.width * dprMp, destHeight: planMp.height * dprMp,
-          fileType: 'png',
-          success: function (out) {
-            uni.hideLoading()
-            uni.previewImage({ urls: [out.tempFilePath], current: out.tempFilePath })
-            selfMp.toast('长按图片可保存到相册')
-          },
-          fail: function () { selfMp.fail('导出失败，请重试') }
+        // ⚠ 同上：等位图加载完再 canvasToTempFilePath，否则码缺失
+        ExportImage.paint(cx, planMp).then(function () {
+          uni.canvasToTempFilePath({                          // ③ 出临时 PNG → 预览（不写相册、不申请权限）
+            canvas: canvas,
+            x: 0, y: 0, width: planMp.width, height: planMp.height,
+            destWidth: planMp.width * dprMp, destHeight: planMp.height * dprMp,
+            fileType: 'png',
+            success: function (out) {
+              uni.hideLoading()
+              uni.previewImage({ urls: [out.tempFilePath], current: out.tempFilePath })
+              selfMp.toast('长按图片可保存到相册')
+            },
+            fail: function () { selfMp.fail('导出失败，请重试') }
+          })
         })
       })
       // #endif
