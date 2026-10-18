@@ -1,4 +1,4 @@
-<view class="page nt-page-safe nt-theme-fade {{isDark ? 'nt-dark' : ''}} {{boot ? 'nt-cascade' : ''}}" style="padding-bottom:{{nav.bottom}}px">
+<view class="page nt-theme-fade {{isDark ? 'nt-dark' : ''}} {{boot ? 'nt-cascade' : ''}}">
   <!-- ⚠️ nt-theme-fade 是「主题切换过渡」的门控类（theme.css），**必须常挂**：
        它是"让界面色板在换主题时 320ms 交叉渐变"的开关，摘掉就等于关掉这个动效。
        这里静态写死是安全的 —— 本页首帧的 isDark 就是正确主题，不存在冷启动闪烁。

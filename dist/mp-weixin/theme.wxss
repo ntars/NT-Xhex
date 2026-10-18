@@ -404,6 +404,11 @@ page { scrollbar-width: none; -ms-overflow-style: none; }
   padding: 0 var(--gutter) calc(var(--band-top) - var(--band-bottom));
 }
 .nt-hero-logo { width: var(--logo-w); height: var(--logo-h); }
+/* v3.1.35（清单第 5 项「logo 或某些信息丢失一秒左右后重新显示」）：
+   <image> 是**异步解码**的，首帧到解码完成之间小程序会画空白 → 用户看到「logo 消失约 1 秒再出现」。
+   修法：给 logo 盒子铺一层**与当前主题底色相同**的背景（--nt-bg）。解码完成前看到的是纯底色（视觉上「本来就没有图」），
+   完成后图片直接盖上，全程无「闪一下/丢失感」，也不用等 onload、不引入任何布局抖动（宽高本就是定值）。 */
+.nt-hero-logo, .nt-brand-logo, .nt-splash-logo { background: var(--nt-bg); }
 /* 品牌名 22pt = HIG Title 2 → Bold */
 .nt-hero-title { margin-top: var(--gap); font-size: var(--fs-xl); line-height: var(--lh-xl); font-weight: var(--fw-bold); }
 .nt-hero-pill { margin-top: var(--gap); width: var(--pill-w); max-width: 100%; }
@@ -802,6 +807,12 @@ page { scrollbar-width: none; -ms-overflow-style: none; }
  *    若两层透明，底层重建时重播的入场动画会从顶层内容背后透出来 → 重影（用户实测反馈）。
  *    不透明后底层只作为「转场时的旧页/新页」可见，静止态被顶层完全遮住。 */
 .nt-layer { position: absolute; inset: 0; display: flex; flex-direction: column; min-height: 0; background: var(--nt-bg); }
+/* v3.1.35（清单第 4 项「切换页面时底部手势条白边」）：手势条避让从**页面根**移到**每一层**。
+   起因：页面根原来挂 .nt-page-safe（padding-bottom = safe-bottom），而转场舞台 .nt-stage 在它**内侧**，
+   于是切页时舞台只覆盖「屏幕高 − 手势条」那块，**手势条那一带不属于任何层 → 露出底色白边**，
+   看起来像「只切了一部分页面」。现页面根不再留底，stage 满屏（含手势条区）整页一起滑动；
+   底部避让改由本层承担 —— 内容不会被手势条压住，白边也没有。 */
+.nt-layer { padding-bottom: var(--safe-bottom); box-sizing: border-box; }
 .nt-layer.back  { z-index: 1; }
 .nt-layer.front { z-index: 3; }
 .nt-dim { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; z-index: 2; }
