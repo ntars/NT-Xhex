@@ -49,7 +49,8 @@
       require('../CoreModule/jinkou.js'),
       require('../CoreModule/qimen-ri.js'),
       require('../CoreModule/qimen-ke.js'),
-      require('../CoreModule/qimen-nianyue.js')
+      require('../CoreModule/qimen-nianyue.js'),
+      require('../CoreModule/xiaocheng.js')
     );
   } else {
     root.NT = root.NT || {};
@@ -84,10 +85,11 @@
       root.NT.core && root.NT.core.jinkou,
       root.NT.core && root.NT.core.qimenRi,
       root.NT.core && root.NT.core.qimenKe,
-      root.NT.core && root.NT.core.qimenNianYue
+      root.NT.core && root.NT.core.qimenNianYue,
+      root.NT.core && root.NT.core.xiaocheng
     );
   }
-})(typeof self !== 'undefined' ? self : this, function (FEI, NUM, NSTAR, ICE, BZH, XS, WX, N81, CORE, BAZI, ZD, ZW, ASTRO, QM, LR, LY, TY, YZ, XSH, QW, CZ, QF, BP, ZR, QG, LBF, LWS, ZHW, AH, BSS, ZWS, JK, QMR, QMK, QNY) {
+})(typeof self !== 'undefined' ? self : this, function (FEI, NUM, NSTAR, ICE, BZH, XS, WX, N81, CORE, BAZI, ZD, ZW, ASTRO, QM, LR, LY, TY, YZ, XSH, QW, CZ, QF, BP, ZR, QG, LBF, LWS, ZHW, AH, BSS, ZWS, JK, QMR, QMK, QNY, XCO) {
 
   // 十二地支序（大六壬天地盘/天将逐一列用）
   function ZHI2() { return ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥']; }
@@ -535,6 +537,38 @@
           if (one) return render(one.序);
         }
         return { prompt: '请给卦名（如「地天泰」「泰」）或卦序（如「第11卦」）。' };
+      }
+    },
+    {
+      key: 'xiaocheng', 名: '小成图（霍斐然《周易小成图简述》）',
+      板块: '三式推演', 短名: '排小成图',
+      触发词: ['小成图', '小成图预测', '天地数起卦', '归藏法'],
+      说明: '报 4 个数（天地数 1-10→乾坤艮兑坎离震巽乾坤，前 2 位本卦·后 2 位之卦）或给本/之四单卦 → 装进洛书九宫地盘出完整小成图：四正（本/之上下卦）/四隅（本/之互卦）/中宫（归藏「同阴异阳」异或）/取用神宫+应期/阴阳得配。霍老原论只用象数不涉五行，本内核只做结构定位、不硬下五行吉凶断语。',
+      run: function (ent, text) {
+        var t = String(text || '');
+        if (!XCO || !XCO.图) return { text: '【小成图】内核未加载，暂不可用。' };
+        // 抓 4 个数字（天地数 1-10，10 优先于 1/0）：小成图按 4 位报数，超出取前 4
+        var nums = (t.match(/10|[1-9]/g) || []).slice(0, 4);
+        // 问事关键词（取对应宫位；婚 → 巽/震双宫，由内核处理）
+        var 问 = '';
+        ['财', '官', '名', '病', '失', '盗', '婚', '行'].forEach(function (k) { if (t.indexOf(k) >= 0) 问 += k; });
+        var c;
+        if (nums.length === 4) c = XCO.图({ 数字: nums.join(''), 问: 问 || undefined });
+        else return { prompt: '小成图要报 4 个数（前 2 位本卦、后 2 位之卦），例如「小成图 1136」；或给本卦上下 + 之卦上下四个单卦名（如「小成图 本乾乾之艮离」）。' };
+        if (c.err) return { prompt: c.err };
+        var L = ['【小成图】报数 ' + nums.join('') + '（天地数 1-10→乾坤艮兑坎离震巽乾坤，前 2 位本卦·后 2 位之卦）：'];
+        L.push('本卦「' + c.本卦 + '」之「' + c.之卦 + '」，中宫归藏 ' + c.中宫.中宫 + '（本归藏 ' + c.中宫.本归藏 + '·之归藏 ' + c.中宫.之归藏 + '）。');
+        L.push('四正（本/之上下卦）：离9 ' + c.四正[9] + '·坎1 ' + c.四正[1] + '·震3 ' + c.四正[3] + '·兑7 ' + c.四正[7] + '。');
+        L.push('四隅（本/之互卦·霍老方位）：巽4 ' + c.四隅[4] + '·坤2 ' + c.四隅[2] + '·艮8 ' + c.四隅[8] + '·乾6 ' + c.四隅[6] + '。');
+        if (c.用神落 && c.用神落.length) {
+          c.用神落.filter(Boolean).forEach(function (x) {
+            L.push('用神' + (问 ? '（问' + 问 + '）' : '') + '：' + x.宫 + ' 落 ' + x.落卦 + '，' + x.得配 + '，主 ' + x.事 + '，应期 ' + x.期 + '。');
+          });
+        } else {
+          L.push('用神（未指明所问，列全八宫·地盘宫取用与应期）：' + Object.keys(XCO.YONG_SHEN).map(function (gn) { return gn + '主' + XCO.YONG_SHEN[gn].事 + '·应' + XCO.YONG_SHEN[gn].期; }).join('、') + '。');
+        }
+        L.push('小成图只做象数结构定位：起图、取用、应期、阴阳得配。同时「阖辟往来」四势吉凶与五行生克断语，因霍老原论只用象数、转述版互斥，本内核不硬下。' + c.缺口);
+        return { text: L.join('\n') };
       }
     },
     {
