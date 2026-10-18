@@ -1,4 +1,4 @@
-# 玄玖灵犀 NT-Xhex v3.1.25
+# 玄玖灵犀 NT-Xhex v3.1.26
 
 > 算法演乾坤，一问知天命，以数据重现千年术数。（演乾坤·知天命）  
 > 无后端 / 无网络 / 无登录 · 一套代码自动切换多形态  
@@ -318,6 +318,7 @@ NT-Xhex/
 │  ├─ platform-modules.json  # 各平台「加载哪些模块/静态资源」单一事实源
 │  ├─ sync-mp.js             # 生成 dist/mp-weixin（引擎 + theme.wxss + 静态资源），--check 校验 + WXML 模板传参体检
 │  ├─ sync-version.js        # 版本号收敛：version.json 唯一真值写 7 处，--check 接进 sync-mp --check
+│  ├─ check-load-order.js    # PWA 脚本加载顺序自检（防 UMD 依赖静默降级）：被依赖者须先于使用方，--check 接进 sync-mp --check
 │  ├─ gen-kangxi.js          # 生成 CoreModule/kangxi-strokes.js（3500 字康熙笔画，TDEM 康熙部首 + opencc 简繁 可复现管道）
 │  ├─ intent.test.js         # 意图解析回归（示例统一用白玖玖）
 │  ├─ transition.test.js     # 转场方向回归（13 条真实导航边 + DEPTH 层级自洽断言）
@@ -472,19 +473,26 @@ node modules/CoreModule/__tests__/qimenfei.test.js # 奇门·飞盘(飞宫法) C
 node modules/CoreModule/__tests__/liuren.test.js   # 大六壬 C16（月将加占时；天地盘/四课/九宗门黄金范例/三传/天将/旬空/驿马/遁干，97 项）
 node modules/features/__tests__/features.test.js    # 扩展功能触发词路由 + 有料/缺料 验收
 node modules/features/__tests__/catalog.test.js     # 板块分类 / 短名可检索 / 功能介绍页数据 验收（22 项）
-node tools/sync-mp.js --check      # dist 与 modules 一致性 + WXML <template is> 是否漏传 data
+node tools/sync-mp.js --check      # dist 与 modules 一致性 + WXML <template is> 是否漏传 data + PWA 脚本加载顺序（UMD 依赖先于使用方）
 # 占星 7 政对拍基准（ephem 自带 JPL 级 ephemeris，装在隔离 venv；改 astro 内核后重跑刷新 tools/astro-check.js 的 REF）：
 #   python3 tools/astro-gen-ref.py   # 7 政（日月光金木水火土）当回归经真值
 ```
 
 > `transition.test.js` 枚举五视图之间**所有真实可达的导航边**，逐条断言「前进 / 返回」方向与 `stage-*`、`nt-slide-in-*` 类名，并额外校验 `DEPTH` 层级自洽（父子关系不能并列）。曾出现过「关于我们 → 关于 返回时方向反了」的问题（`us` 与 `about` 被并列成同一深度），现在改坏会直接红。  
-> `sync-mp.js --check` 会在 CI / 提交前硬失败于两类问题：产物与源不一致；WXML 里 `<template is="x">` 漏写 `data="{{...}}"`。  
+> `sync-mp.js --check` 会在 CI / 提交前硬失败于三类问题：产物与源不一致；WXML 里 `<template is="x">` 漏写 `data="{{...}}"`；**PWA 手写 `<script>` 里某模块的 UMD 依赖被排在使用方之后（`check-load-order.js`，防 `NT.core.*` 静默拿不到而降级）**。  
 > 后者是微信的坑：WXML `<template>` 是**独立作用域**，不写 `data` 不会报错，表现为「硬编码文案正常、所有数据绑定静默消失」。
 
 ---
 
 ## 九、更新日志
 
+- **v3.1.26**（修 PWA 依赖顺序静默降级 + 新增 `check-load-order.js` 防复发护栏）：
+  ① **修一个真实静默降级 bug（和 v3.1.23 漏载 bazi-shensha 同源）**：v3.1.23 补上了 `bazi-shensha.js` 的**漏载**，但只验了「模块在不在」，没验「加载顺序对不对」。而 `bazi-shensha.js` 的 UMD 头真依赖 `zeri.js`（复用它的天乙贵人表，注释明写「本项目已在 zeri.js 的 GUI_REN 锁定，本文件直接复用」）——PWA 手写 `<script>` 里 `zeri.js` 却排在 `bazi-shensha.js` **之后** → 挂载时 `NT.core.zeri` 还是 undefined → 神煞的**天乙贵人查法静默丢失**（页面不报错、功能部分失灵）。本轮把 `zeri.js` 上移到 `bazi-shensha.js` 之前。
+  ② **PWA 端到端坐实修复**：清 SW/缓存后重开，`bazi-shensha.analyze(1990-08-15 14时)` 输出里天乙贵人查法完整出现（甲戊丑未/乙己子申/丙丁亥酉/庚辛午寅/壬癸卯巳，正是从 zeri 复用来的表），`JSON.stringify` 输出**不含 `undefined`**，21 类神煞正常命中。
+  ③ **清单顺序一并对齐**：`platform-modules.json` 双清单里 `zeri.js` 也挪到 `bazi-shensha.js` 前（清单是「单一真源」，若将来按清单顺序生成脚本就不会复现此坑）。
+  ④ **新增 `tools/check-load-order.js` 防复发护栏**：只读 PWA `index.html` 的 `<script>` 顺序，逐个模块 UMD 头的 `require('./x.js')` 同目录依赖，检查「被依赖者是否排在使用方之前」；违例 → 退出码 1。**已并入 `sync-mp.js --check`**（每次同步/CI 自动跑，`--check` 硬失败项从「两类」升「三类」），以后任何 PWA 手写脚本排错序都会被自动拦下，不用等用户报障。
+  ⑤ **全量核对（顺带做了一次系统体检）**：PWA `index.html` 加载的 65 个 modules 脚本与 `platform-modules.json` 的 pwa 清单 **65 ↔ 65 完全一致**（双向无漏记、无多记）；mp-weixin 与 pwa 清单差异**仅 `EnvModule/env.js`**（PWA 特有，符合设计）。
+  ⑥ **纯加固，不动任何算法与 UI**：只改加载顺序（`index.html` 两行互换 + 清单顺序）+ 新增一个只读自检脚本 + 接进 `--check`。43 个测试文件全绿、`sync-mp --check`（含新护栏）全绿、版本 7 处同步 **3.1.26**。功能块数不变（仍 53 个）。
 - **v3.1.25**（新增内核 `xiaocheng.js`：小成图（霍斐然《周易小成图简述》）——报 4 数装九宫，第 53 个功能）：
   ① **补上待办里风险最高、资料最散乱的一项**：小成图此前因「网络资料质量参差、异说并存」一直暂缓。本轮先做足检索（霍斐然《周易小成图简述》原文 + 易德轩/卦无忧/天海易学/新浪/术数纵横 8 处转述，≥3 源），把**能锁死的骨架**与**属流派分歧的断法**分开——只把锁得住的做进内核，其余如实标缺口、不假报已锁。
   ② **起卦（天地数表，3 源一致 + 两个外部算例锁死）**：一~十 → 乾坤艮兑坎离震巽乾坤（奇阳偶阴、乾坤重出「天地至大而万物生于中」）；报 4 数前 2 位本卦、后 2 位之卦。外部算例逐位核对：`1136 → 乾为天 之 山火贲`、`5596 → 坎为水 之 天火同人`（卦无忧/天海易学原文）。

@@ -163,6 +163,14 @@ function main() {
       console.log('  ✗ 版本号漂移（跑 node tools/sync-version.js 修复）');
       bad++;
     }
+    // PWA 脚本加载顺序体检：UMD 依赖必须「被依赖者先加载」，否则 NT.core.* 静默 undefined（防 bazi-shensha←zeri 这类降级）
+    try {
+      cp.execSync('node tools/check-load-order.js', { cwd: ROOT, stdio: 'inherit' });
+      console.log('  ✓ PWA 脚本加载顺序（UMD 依赖先于使用方）');
+    } catch (e) {
+      console.log('  ✗ PWA 脚本加载顺序违例（跑 node tools/check-load-order.js 看详情）');
+      bad++;
+    }
     console.log(bad === 0 ? '[sync-mp] 产物完整且与 modules/ 一致' : '[sync-mp] 发现 ' + bad + ' 处不一致，请重新生成');
     process.exit(bad === 0 ? 0 : 1);
     return;
