@@ -204,6 +204,14 @@ function main() {
       console.log('  ✗ 主包超 2MB 红线（跑 node tools/check-bundle-size.js 看体积构成，考虑把大内核挪进分包）');
       bad++;
     }
+    // 全功能巡检：55 个功能块逐个跑一遍（抛错/空输出/事故标记/切段/触发词冲突/缺料守门）
+    try {
+      cp.execSync('node tools/audit-features.js', { cwd: ROOT, stdio: 'inherit' });
+      console.log('  ✓ 全功能巡检（55 个功能块逐个可跑、无冲突）');
+    } catch (e) {
+      console.log('  ✗ 全功能巡检有失败项（跑 node tools/audit-features.js 看详情）');
+      bad++;
+    }
     // 分包产物体检：清单里声明的分包文件必须已生成到 dist（漏生成 → 运行时 require.async 拿不到 → 静默不可用）
     (function () {
       var map = subPackageMap();

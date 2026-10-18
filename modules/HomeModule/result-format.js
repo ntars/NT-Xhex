@@ -33,18 +33,30 @@
       raw = raw.slice(tm[0].length);
     }
 
-    // 2) 按句号/分号/换行切段（保留语义完整），过滤空段
-    var segs = raw
-      .split(/[。；\n]+/)
+    // 2) 标点归一：一律按「句号 / 换行」断段，行内分号与冗余标点先降级
+    //    为什么：切段用 [。\n]，而不少内核在**行内**用「；」分隔并列项（如「甲 10 乙 8；丙 6 丁 4」），
+    //    原样切会把一句话从中间劈开；另有一种写法是「子项自带句尾『。』+ 外层用『；』拼接」，
+    //    会产出「。；」这种双标点。两者都在**渲染层一处兜底**，不为 28 个功能块逐个改文案。
+    //    行首的分号式分节不受影响（本正则只替换「前一字符不是标点」的行内分号）。
+    var normalized = raw
+      .replace(/[；;]+(?=[。\n])/g, '，')      // 分号紧跟句号/换行 → 逗号（消「。；」）
+      .replace(/[。]{2,}/g, '。')                 // 连续句号压成一个
+      .split('\n')
+      .map(function (line) { return line.replace(/([^\n：:；;。!！?？])；(?=[^；;])/g, '$1，'); })
+      .join('\n');
+
+    // 3) 按句号/换行切段（保留语义完整），过滤空段
+    var segs = normalized
+      .split(/[。\n]+/)
       .map(function (s) { return s.trim(); })
       .filter(function (s) { return s.length > 0; });
 
-    // 3) 首句作为导语，其余进 blocks
+    // 4) 首句作为导语，其余进 blocks
     if (segs.length) {
       lead = segs.shift();
     }
 
-    // 4) 识别「标签：内容」形式（2-6 字中文标签 + 冒号），作为小节标签
+    // 5) 识别「标签：内容」形式（2-6 字中文标签 + 冒号），作为小节标签
     var blocks = segs.map(function (s) {
       var lm = s.match(/^([\u4e00-\u9fa5]{2,6})[：:]\s*(.+)$/);
       if (lm) return { label: lm[1], text: lm[2] };
