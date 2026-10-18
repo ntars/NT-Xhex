@@ -50,7 +50,8 @@
       require('../CoreModule/qimen-ri.js'),
       require('../CoreModule/qimen-ke.js'),
       require('../CoreModule/qimen-nianyue.js'),
-      require('../CoreModule/xiaocheng.js')
+      require('../CoreModule/xiaocheng.js'),
+      require('../CoreModule/shensha.js')
     );
   } else {
     root.NT = root.NT || {};
@@ -86,10 +87,11 @@
       root.NT.core && root.NT.core.qimenRi,
       root.NT.core && root.NT.core.qimenKe,
       root.NT.core && root.NT.core.qimenNianYue,
-      root.NT.core && root.NT.core.xiaocheng
+      root.NT.core && root.NT.core.xiaocheng,
+      root.NT.core && root.NT.core.shensha
     );
   }
-})(typeof self !== 'undefined' ? self : this, function (FEI, NUM, NSTAR, ICE, BZH, XS, WX, N81, CORE, BAZI, ZD, ZW, ASTRO, QM, LR, LY, TY, YZ, XSH, QW, CZ, QF, BP, ZR, QG, LBF, LWS, ZHW, AH, BSS, ZWS, JK, QMR, QMK, QNY, XCO) {
+})(typeof self !== 'undefined' ? self : this, function (FEI, NUM, NSTAR, ICE, BZH, XS, WX, N81, CORE, BAZI, ZD, ZW, ASTRO, QM, LR, LY, TY, YZ, XSH, QW, CZ, QF, BP, ZR, QG, LBF, LWS, ZHW, AH, BSS, ZWS, JK, QMR, QMK, QNY, XCO, SHEN) {
 
   // 十二地支序（大六壬天地盘/天将逐一列用）
   function ZHI2() { return ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥']; }
@@ -775,6 +777,36 @@
         lines.push('农历：' + r.lunar.text + '；干支四柱：' + r.ganzhi.年.干支 + ' ' + r.ganzhi.月.干支 + ' ' + r.ganzhi.日.干支 + ' ' + r.ganzhi.时.干支 + '。');
         lines.push('生肖：' + r.ganzhi.年.生肖 + '；儒略日：' + Math.round(CORE.julianDay(y, m, d, 0, 0, 0)) + '。');
         return { text: lines.join('\n') };
+      }
+    },
+    {
+      key: 'huangli', 名: '每日黄历（老黄历·宜忌·建除·黄道·二十八宿）',
+      板块: '黄历择日', 短名: '查黄历',
+      触发词: ['黄历', '老黄历', '今日黄历', '每日宜忌', '今日宜忌', '通胜', '宪书', '今日冲煞', '值日天神', '今日财神方位', '今日喜神'],
+      说明: '某公历日（**缺省=今天**）的完整老黄历：建除十二值神 / 黄道黑道六神+吉凶 / 二十八宿+吉凶+动物 / 日九星 / 彭祖百忌 / 胎神占方 / 吉神五方（喜福财贵）/ 冲煞（冲生肖+煞方）/ 宜 / 忌 / 吉神宜趋 / 凶煞宜忌 / 节日。全程走 lunar 底座通书口径（权威，与「择日」同一数据源，非另一套）。问「今日黄历」「今天宜什么」即出，无需给日期。',
+      run: function (ent, text) {
+        if (!SHEN || !SHEN.daily) return { text: '【黄历】内核未加载，暂不可用。' };
+        var y, m, d, 今天 = false;
+        if (ent && ent.date && ent.date.year) { y = ent.date.year; m = ent.date.month || 1; d = ent.date.day || 1; }
+        else { var now = new Date(); y = now.getFullYear(); m = now.getMonth() + 1; d = now.getDate(); 今天 = true; }   // 缺省=今天
+        var r;
+        try { r = SHEN.daily(y, m, d); } catch (e) { return { text: '【黄历】起历失败：' + String(e && e.message ? e.message : e) }; }
+        var wd = ['日', '一', '二', '三', '四', '五', '六'][new Date(y, m - 1, d).getDay()];
+        var L = ['【每日黄历】' + y + '年' + m + '月' + d + '日（星期' + wd + '）' + (今天 ? '（今天）' : '') + '：'];
+        L.push('农历 ' + r.lunar.text + '，干支 ' + r.ganzhi.年.干支 + '年 ' + r.ganzhi.月.干支 + '月 ' + r.ganzhi.日.干支 + '日，属' + r.ganzhi.年.生肖 + '。');
+        L.push('建除值神 ' + (r.值星 || '—') + '，' + (r.天神类 || '') + '日天神 ' + (r.天神 || '—') + '（' + (r.天神吉凶 || '') + '）。');
+        L.push('二十八宿 ' + (r.二十八宿.宿 || '—') + '（' + (r.二十八宿.吉凶 || '') + (r.二十八宿.动物 ? '·' + r.二十八宿.动物 : '') + '），日九星 ' + (r.九星 || '—') + '。');
+        L.push('彭祖百忌：' + (r.彭祖百忌.干 || '—') + '，' + (r.彭祖百忌.支 || '—') + '。');
+        L.push('胎神占方 ' + (r.胎神 || '—') + '。');
+        L.push('吉神五方：喜神' + (r.方位.喜神 || '—') + '、福神' + (r.方位.福神 || '—') + '、财神' + (r.方位.财神 || '—') + '、阳贵' + (r.方位.阳贵 || '—') + '、阴贵' + (r.方位.阴贵 || '—') + '。');
+        L.push('冲煞：冲' + (r.冲煞.冲生肖 || '—') + '（' + (r.冲煞.冲 || '—') + '），煞方' + (r.冲煞.煞方 || '—') + '。');
+        L.push('【宜】' + ((r.宜 && r.宜.length) ? r.宜.join('、') : '（无）') + '。');
+        L.push('【忌】' + ((r.忌 && r.忌.length) ? r.忌.join('、') : '（无）') + '。');
+        if (r.吉神宜趋 && r.吉神宜趋.length) L.push('吉神宜趋：' + r.吉神宜趋.join('、') + '。');
+        if (r.凶煞宜忌 && r.凶煞宜忌.length) L.push('凶煞宜忌：' + r.凶煞宜忌.join('、') + '。');
+        if (r.节日 && r.节日.length) L.push('节日：' + r.节日.join('、') + '。');
+        L.push('（宜忌、值神、冲煞等为传统通书数据，走 lunar 底座口径，与「择日」同一数据源，作日常参考，具体大事请结合专业日课。）');
+        return { text: L.join('\n') };
       }
     },
     {

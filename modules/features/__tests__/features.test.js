@@ -449,4 +449,23 @@ ok(R.match('小成图 1136').key === 'xiaocheng', '「小成图」路由到小�
 var xPrompt = R.run('xiaocheng', {}, '小成图 看看');
 ok(xPrompt.prompt, '小成图无 4 位数字 → 追问（守门）');
 
+// ===== v3.1.27 每日黄历（复用 shensha.js C06：把写好未接的老黄历内核接成功能）=====
+console.log('== v3.1.27 每日黄历（缺省今天·建除/黄道/二十八宿/宜忌/冲煞/吉神五方）==');
+var hlToday = R.run('huangli', {}, '今日黄历');
+ok(hlToday.text && hlToday.text.indexOf('【每日黄历】') >= 0, '黄历有料出标题');
+ok(hlToday.text.indexOf('今天') >= 0, '黄历无日期时默认今天（问「今日黄历」即出）');
+ok(hlToday.text.indexOf('建除值神') >= 0 && hlToday.text.indexOf('日天神') >= 0, '黄历给出建除十二值神 + 黄道黑道天神吉凶');
+ok(hlToday.text.indexOf('二十八宿') >= 0 && hlToday.text.indexOf('彭祖百忌') >= 0, '黄历给出二十八宿 + 彭祖百忌');
+ok(hlToday.text.indexOf('【宜】') >= 0 && hlToday.text.indexOf('【忌】') >= 0, '黄历给出宜/忌');
+ok(hlToday.text.indexOf('吉神五方') >= 0 && hlToday.text.indexOf('冲煞') >= 0 && hlToday.text.indexOf('胎神') >= 0, '黄历给出吉神五方/冲煞/胎神');
+ok(hlToday.text.indexOf('同一数据源') >= 0, '黄历如实标注通书口径、与择日同一数据源');
+// 显式日期
+var hlDate = R.run('huangli', { date: { year: 2026, month: 8, day: 6 } }, '黄历 2026年8月6日');
+ok(hlDate.text.indexOf('2026年8月6日') >= 0 && hlDate.text.indexOf('农历') >= 0, '黄历支持显式日期');
+// 切段安全（无中文分号/无双标点/无空段）
+ok(hlToday.text.indexOf('；') < 0 && !/。；|；。|。。|；；/.test(hlToday.text) && !/\n\s*\n/.test(hlToday.text), '黄历输出切段安全（无中文分号/双标点/空段）');
+// 路由与去撞车：今日黄历只命中 huangli，不误触发 zeri（择日）/date-convert
+ok(R.match('今日黄历').key === 'huangli', '「今日黄历」路由到黄历');
+ok(R.matchAll('今日黄历').map(function (x) { return x.key; }).join(',') === 'huangli', '「今日黄历」不误触发择日/日期换算');
+
 if (fails === 0) { console.log('全部通过 ✓'); process.exit(0); } else { console.log(fails + ' 处失败'); process.exit(1); }
