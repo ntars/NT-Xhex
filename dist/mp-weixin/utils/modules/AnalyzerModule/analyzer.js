@@ -21,6 +21,16 @@
     return TOPIC_OK_RE.test(input) || it.intent !== 'unknown' || !!it.entities.date;
   }
 
+  // ---------- 工资理财直连（通用小工具；公式与文案只有 registry 一份，这里只做「能不能算」的判断 + 转调）----------
+  // 为什么要直连：触发词是连续匹配，而「工资12000」「月薪 1.5万」这类写法里「工资」与「理财」被数字隔开，
+  //   连「工资理财」也命中不了。用「工资/月薪/薪水/月收入 + 数字」直接识别更贴近真人输入。
+  function trySalary(text) {
+    if (!FEATURES || !FEATURES.run) return '';
+    if (!/(工资|月薪|薪水|月收入)/.test(text)) return '';
+    var out = FEATURES.run('salary-plan', null, text);
+    return out && out.text ? out.text : '';
+  }
+
   // ---------- 扩展功能（搜索框单一入口的长尾路由）：命中触发词才跑 ----------
   // 触发词是「明确的玄学功能词」（紫微/易经/八宅/号码八星/数字命理/小六壬/五格/生克…），
   // 比 intent 的贪婪实体分类更具体 → 一律**先于** intent 判定，避免「紫微 2026」被误判成八字。
@@ -75,6 +85,13 @@
     // ① 长尾功能触发词优先（搜索框单一入口；触发词明确，先于 intent 贪婪分类）
     //    多命中时**按常用性顺序依次调用、并列输出**（各自带【标题】，结果页按标题分段展示）。
     var feats = dispatchFeatures(text, it.entities);
+    // ①-b 工资理财直连（用户点名的**通用小工具**，不属于玄学内核，故不靠连续触发词命中）：
+    //      「工资12000」「工资 12000 怎么理财」「月薪1.5万」等「工资/月薪 + 金额」的各种写法
+    //      只要带得出金额就算，不误拦也不污染话题守卫（玄学白名单里没有工资类词）。
+    if (!feats.length) {
+      var sal = trySalary(text);
+      if (sal) feats = [sal];
+    }
     if (feats.length) {
       if (feats.length === 1) return feats[0];      // 单命中：行为与旧版完全一致
       // 多算法同页：用换行分隔，各算法自带【标题】；不引入中文分号（结果页按 [。；\n] 切段）

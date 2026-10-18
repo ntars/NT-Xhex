@@ -1,10 +1,37 @@
 {
-  "pages": ["pages/index/index"],
+  "pages": [
+    "pages/index/index"
+  ],
   "lazyCodeLoading": "requiredComponents",
   "window": {
     "navigationStyle": "custom",
     "backgroundColor": "#ffffff",
     "navigationBarTitleText": "玄玖灵犀"
   },
-  "sitemapLocation": "sitemap.json"
+  "sitemapLocation": "sitemap.json",
+  "subPackages": [
+    {
+      "root": "occupy-astro/",
+      "name": "occupy-astro",
+      "pages": [
+        "occupy-astro/pages/placeholder/placeholder"
+      ]
+    },
+    {
+      "root": "occupy-ziwei/",
+      "name": "occupy-ziwei",
+      "pages": [
+        "occupy-ziwei/pages/placeholder/placeholder"
+      ]
+    }
+  ],
+  "preloadRule": {
+    "pages/index/index": {
+      "network": "all",
+      "packages": [
+        "occupy-astro",
+        "occupy-ziwei"
+      ]
+    }
+  }
 }

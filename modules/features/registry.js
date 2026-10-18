@@ -91,7 +91,83 @@
       root.NT.core && root.NT.core.shensha
     );
   }
-})(typeof self !== 'undefined' ? self : this, function (FEI, NUM, NSTAR, ICE, BZH, XS, WX, N81, CORE, BAZI, ZD, ZW, ASTRO, QM, LR, LY, TY, YZ, XSH, QW, CZ, QF, BP, ZR, QG, LBF, LWS, ZHW, AH, BSS, ZWS, JK, QMR, QMK, QNY, XCO, SHEN) {
+})(typeof self !== 'undefined' ? self : this, function (FEI, NUM, NSTAR, ICE, BZH, XS, WX, N81, CORE, BAZI, ZD, _ZW, _ASTRO, QM, LR, LY, TY, YZ, XSH, QW, CZ, QF, BP, ZR, QG, LBF, LWS, _ZHW, _AH, BSS, _ZWS, JK, QMR, QMK, QNY, XCO, SHEN) {
+
+  // ===== v3.1.32 分包冷加载：占星/紫微两大件不进小程序主包，用到才异步拉取 =====
+  // 这五个变量声明在工厂内（不是形参），预热加载后**重新赋值**即可让下面所有功能块直接读到，
+  // 于是 12 个占星/紫微功能块**一行都不用改**，同步 run() 语义完整保留（Node/PWA/uni-app 同理）。
+  var ASTRO = _ASTRO, AH = _AH, ZW = _ZW, ZWS = _ZWS, ZHW = _ZHW;
+
+  // ===== v3.1.32 分包冷加载（占星/紫微两大件不进主包，用到才拉）=====
+  // 背景：小程序主包 2MB 红线。iztro(779KB) + astronomy(114KB) 只有紫微/占星用得到，
+  //   静态 require 会让它们在启动时进主包（实测主包 2.58MB 超线 28%）。微信「分包异步化」
+  //   （基础库 2.26.1+）允许主包用 require.async 跨包加载，故这两组内核改为**懒加载**：
+  //     · 小程序端：wx.requireAsync 走分包（loadSubpackage 拉包 → require.async 取模块）
+  //     · Node/PWA/uni-app：无分包概念，仍走同步 require（三端行为一致，只是加载时机不同）
+  // 降级：基础库 <2.26.1 或分包加载失败 → 返回 false，功能块照旧给出「内核未加载」提示（不静默假装能算）。
+  var isMP = (typeof wx !== 'undefined' && typeof wx.loadSubpackage === 'function');
+  var PKG_ASTRO = 'occupy-astro', PKG_ZIWEI = 'occupy-ziwei';
+  var warming = {};
+
+  // 拉分包 → require.async 取模块 → **重新赋值工厂内变量**（于是所有功能块零改动即可读到）
+  function warmup(pkgName, files, assign) {
+    if (warming[pkgName]) return warming[pkgName];
+    if (!isMP) return Promise.resolve(false);
+    warming[pkgName] = new Promise(function (resolve) {
+      var done = function (ok) { warming[pkgName] = null; resolve(ok); };
+      try {
+        wx.loadSubpackage({
+          name: pkgName,
+          success: function () {
+            Promise.all(files.map(function (rel) {
+              return wx.requireAsync('../' + pkgName + '/utils/modules/' + rel);
+            })).then(function (mods) {
+              try { assign(mods); done(true); } catch (e) { done(false); }
+            }).catch(function () { done(false); });
+          },
+          fail: function () { done(false); }
+        });
+      } catch (e) { done(false); }
+    });
+    return warming[pkgName];
+  }
+
+  // 预热占星分包（astronomy + astro + astro-house）。返回 Promise<boolean>。
+  function warmAstro() {
+    if (ASTRO && ASTRO.positions) return Promise.resolve(true);
+    return warmup(PKG_ASTRO, ['CoreModule/vendor/astronomy.js', 'CoreModule/astro.js', 'CoreModule/astro-house.js'],
+      function (mods) {
+        var astroMod = mods[1], houseMod = mods[2];
+        if (root.NT && root.NT.core && astroMod) root.NT.core.astro = astroMod;
+        if (root.NT && root.NT.core && houseMod) root.NT.core.astroHouse = houseMod;
+        ASTRO = astroMod || ASTRO; AH = houseMod || AH;
+      });
+  }
+  // 预热紫微分包（iztro + ziwei + ziwei-stars + ziwei-horoscope）
+  function warmZiwei() {
+    if (ZW && ZW.chart) return Promise.resolve(true);
+    return warmup(PKG_ZIWEI, ['CoreModule/vendor/iztro.min.js', 'CoreModule/ziwei.js', 'CoreModule/ziwei-stars.js', 'CoreModule/ziwei-horoscope.js'],
+      function (mods) {
+        var z = mods[1], s = mods[2], h = mods[3];
+        if (root.NT && root.NT.core) {
+          if (z) root.NT.core.ziwei = z;
+          if (s) root.NT.core.ziweiStars = s;
+          if (h) root.NT.core.ziweiHoroscope = h;
+        }
+        ZW = z || ZW; ZWS = s || ZWS; ZHW = h || ZHW;
+      });
+  }
+  // 统一预热入口：小程序壳可在 onLaunch / 命中关键词时调用
+  function warmupByKeys(keys) {
+    var ks = Array.isArray(keys) ? keys : [keys];
+    var hitZ = ks.some(function (k) { return /紫微|四化|斗数/.test(String(k || '')); });
+    var hitA = ks.some(function (k) { return /占星|七政|星盘|星历|相位|推运|返照|法达|合盘|印占|宫位|阿拉伯点|卜卦占星|择时占星|太阴|罗睺|月孛/.test(String(k || '')); });
+    var jobs = [];
+    if (hitZ) jobs.push(warmZiwei());
+    if (hitA) jobs.push(warmAstro());
+    if (!jobs.length) return Promise.resolve(false);
+    return Promise.all(jobs).then(function (r) { return r.some(Boolean); });
+  }
 
   // 十二地支序（大六壬天地盘/天将逐一列用）
   function ZHI2() { return ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥']; }
@@ -825,6 +901,45 @@
         lines.push(diff === 0 ? '就是今天。' : (diff > 0 ? ('还有 ' + days + ' 天。') : ('已过去 ' + days + ' 天。')));
         if (diff > 0 && days <= 365) lines.push('约 ' + Math.floor(days / 30.44) + ' 个月、' + Math.round(days / 7) + ' 周。');
         return { text: lines.join('\n') };
+      }
+    },
+    {
+      key: 'salary-plan', 名: '工资理财（存钱 / 备用金 / 财务自由）',
+      板块: '黄历择日', 短名: '查工资理财',
+      触发词: ['工资理财', '算理财', '工资理财结果', '每月存多少', '存钱比例', '财务自由', '理财规划', '工资规划', '被动收入', '备用金', '工资怎么理财', '工资如何理财', '月入多少', '理财基准'],
+      说明: '输入月工资，按固定比例算出四项理财基准（纯本地算术，与玄学内核无关、不参与话题守卫）：每月可存/投资 = 工资×0.2、每月支出上限（备用金/生活费）= 工资×0.5、财务自由本金（按 4% 年回报）= 工资×300、失能/大病备用金 = 工资×12×5。**这是按比例算的「参考基准」，不是投资建议**，结果附风险提醒。',
+      run: function (ent, text) {
+        var t = String(text || '');
+        // 工资解析：支持「工资12000 / 工资 12000元 / 月薪1.5万 / 税后月薪2万 / 12000元工资 / 工资是 8000」
+        var v = null, u = null;
+        var m1 = t.match(/(?:工资|月薪|薪水|月收入|税后|收入)\s*(?:是|为|约|：|:)?\s*([0-9]+(?:\.[0-9]+)?)\s*(万|千|w|W|k|K)?/);
+        if (m1) { v = parseFloat(m1[1]); u = m1[2]; }
+        if (v == null) {
+          var m2 = t.match(/([0-9]+(?:\.[0-9]+)?)\s*(万|千|w|W|k|K)?\s*(?:元|块)?\s*(?:的)?\s*(?:月)?(?:工资|月薪|薪水)/);
+          if (m2) { v = parseFloat(m2[1]); u = m2[2]; }
+        }
+        if (v == null) return { prompt: '请给出月工资数字，例如「工资 12000 怎么理财」「月薪 1.5万 每月存多少」。' };
+        if (u === '万' || u === 'w' || u === 'W') v *= 10000;
+        else if (u === '千' || u === 'k' || u === 'K') v *= 1000;
+        if (!(v > 0) || v > 100000000) return { prompt: '工资数额看起来不对，请给一个合理的月工资（例如「工资 12000」）。' };
+
+        // 按主人给的固定公式算（四项）
+        var save = v * 0.2;            // 每月存/投资
+        var spend = v * 0.5;           // 每月支出上限（备用金/生活费）
+        var freedom = v * 300;         // 财务自由本金（4% 年回报）
+        var passive = v * 300 * 0.04 / 12;  // 月被动收入 = 本金×4%÷12
+        var medical = v * 12 * 5;      // 失能/大病备用金
+        var fmt = function (n) { return (Math.round(n * 100) / 100).toLocaleString('zh-CN'); };
+
+        var L = ['【工资理财】月工资 ' + fmt(v) + ' 元的四项参考基准：'];
+        L.push('每月可存/投资：' + fmt(save) + ' 元（工资 × 0.2）');
+        L.push('每月支出上限（备用金/生活费）：' + fmt(spend) + ' 元（工资 × 0.5）');
+        L.push('财务自由本金（按 4% 年回报）：' + fmt(freedom) + ' 元（工资 × 300）');
+        L.push('届时月被动收入：' + fmt(passive) + ' 元/月（本金 × 4% ÷ 12）');
+        L.push('失能/大病备用金：' + fmt(medical) + ' 元（工资 × 12 × 5）');
+        L.push('提醒：以上是按固定比例算出的参考基准，不是投资建议，投资需谨慎，不要靠近免费的东西，越是免费的东西越贵。');
+        L.push('不献血、不捐款、不买股票、不贷款、不管闲事、不围观、不信专家、不信广告、不听别人的推荐、不跟风买自己不需要的东西。');
+        return { text: L.join('\n') };
       }
     },
     {
@@ -2366,7 +2481,21 @@
     });
   }
 
+  // 需要分包冷加载的 key（占星系 / 紫微系）——小程序主包不再静态带它们
+  var LAZY_KEYS = {
+    astro: 'astro', 'astro-xiangwei': 'astro', 'astro-tuiyun': 'astro', 'astro-hepan': 'astro',
+    'astro-vedic': 'astro', 'astro-house': 'astro', 'astro-lots': 'astro', 'astro-horary': 'astro', 'astro-election': 'astro',
+    ziwei: 'ziwei', 'ziwei-sihua': 'ziwei', 'ziwei-astro': 'ziwei'
+  };
+  var lazyReady = function (which) { return which === 'astro' ? !!(ASTRO && ASTRO.positions) : !!(ZW && ZW.chart); };
+
   function run(key, ent, text) {
+    // 分包冷加载兜底：小程序端命中占星/紫微而内核尚未就绪 → 触发预热并明确告知「正在加载，请再问一次」，
+    //   不静默假装算得出（宁可让用户重问一次，也不给假结果）。预热完成后同一次会话即可正常出结果。
+    if (LAZY_KEYS[key] && isMP && !lazyReady(LAZY_KEYS[key])) {
+      (LAZY_KEYS[key] === 'astro' ? warmAstro() : warmZiwei());
+      return { prompt: '【正在加载】首次使用' + (LAZY_KEYS[key] === 'astro' ? '占星' : '紫微') + '引擎（约 1 秒，请稍候再问一次；之后即可秒出）。' };
+    }
     for (var i = 0; i < FEATURES.length; i++) if (FEATURES[i].key === key) return FEATURES[i].run(ent, text) || {};
     return { prompt: '未知功能：' + key };
   }
@@ -2378,6 +2507,10 @@
     matchAll: matchAll,      // 多命中（按常用性排序）——一个输入可依次调用多个算法
     run: run,
     catalog: catalog,   // 介绍页用：按板块分组的功能总览（与 FEATURES 同一真源）
+    // v3.1.32 分包冷加载：小程序壳在命中关键词时调它预热分包（Node/PWA 无分包 → 直接返回 true）
+    warmup: warmupByKeys,
+    warmAstro: warmAstro,
+    warmZiwei: warmZiwei,
     BANKS: BANKS        // 板块顺序与说明（介绍页只读）
   };
 });

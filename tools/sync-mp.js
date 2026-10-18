@@ -37,11 +37,36 @@ var THEME_DST = path.join(ROOT, 'dist', 'mp-weixin', 'theme.wxss');
 var MODE = process.argv.indexOf('--check') >= 0 ? 'check' : 'copy';
 
 // 从「各平台加载清单」取小程序要用的引擎文件（单一事实源，自动忽略不相关目录）
-function neededFiles() {
+// v3.1.32：分包冷加载。mp-weixin.subPackages 列出的文件**不进主包**，而是生成到各自分包目录
+//   （dist/mp-weixin/<pkg>/utils/modules/…），由主包用 require.async 按需拉取（基础库 2.26.1+）。
+//   这样 iztro(779KB)+astronomy(114KB) 这类「只有某板块用得到」的大件不在启动时进主包，压住 2MB 红线。
+function manifest() {
   var m = JSON.parse(fs.readFileSync(MANIFEST, 'utf8'));
   var p = m.platforms && m.platforms['mp-weixin'];
   if (!p || !Array.isArray(p.files)) throw new Error('platform-modules.json 缺少 mp-weixin.files 清单');
-  return p.files;
+  return p;
+}
+function subPackageMap() {
+  var p = manifest();
+  var subs = p.subPackages || {};
+  var map = {};   // 包名 → { 用途, files[] }
+  Object.keys(subs).forEach(function (k) {
+    if (k.charAt(0) === '_') return;      // 跳过 _说明
+    map[k] = { 用途: subs[k].用途 || '', files: subs[k].files || [] };
+  });
+  return map;
+}
+function subFileSet() {
+  var set = {};
+  var map = subPackageMap();
+  Object.keys(map).forEach(function (k) { map[k].files.forEach(function (f) { set[f] = k; }); });
+  return set;
+}
+function neededFiles() {
+  var p = manifest();
+  var inSub = subFileSet();
+  // 主包 files = 清单 files 去掉已在分包里的（分包文件不进主包，避免重复计体积）
+  return p.files.filter(function (f) { return !inSub[f]; });
 }
 
 // 视觉规范产物 = theme.css 的「图标 url 内嵌 base64」版本（源 = static/icons/ 的 3 个源 SVG，单一真源不变）
@@ -171,6 +196,29 @@ function main() {
       console.log('  ✗ PWA 脚本加载顺序违例（跑 node tools/check-load-order.js 看详情）');
       bad++;
     }
+    // 小程序主包体积体检：主包 ≤ 2MB 是发布硬线，超线 CI 直接红（v3.1.32 分包冷加载后已达标）
+    try {
+      cp.execSync('node tools/check-bundle-size.js', { cwd: ROOT, stdio: 'inherit' });
+      console.log('  ✓ 主包体积在 2MB 红线内');
+    } catch (e) {
+      console.log('  ✗ 主包超 2MB 红线（跑 node tools/check-bundle-size.js 看体积构成，考虑把大内核挪进分包）');
+      bad++;
+    }
+    // 分包产物体检：清单里声明的分包文件必须已生成到 dist（漏生成 → 运行时 require.async 拿不到 → 静默不可用）
+    (function () {
+      var map = subPackageMap();
+      var missSub = [];
+      Object.keys(map).forEach(function (pkg) {
+        map[pkg].files.forEach(function (rel) {
+          var p = path.join(MP_DIST, pkg, 'utils', 'modules', rel);
+          if (!fs.existsSync(p)) missSub.push(pkg + '/' + rel);
+        });
+      });
+      if (missSub.length) { missSub.forEach(function (t) { console.log('  ✗ 分包产物缺失:', t); }); bad += missSub.length; }
+      else if (Object.keys(map).length) {
+        console.log('  ✓ 分包产物齐全（' + Object.keys(map).map(function (k) { return k + '(' + map[k].files.length + ')'; }).join(', ') + '）');
+      }
+    })();
     console.log(bad === 0 ? '[sync-mp] 产物完整且与 modules/ 一致' : '[sync-mp] 发现 ' + bad + ' 处不一致，请重新生成');
     process.exit(bad === 0 ? 0 : 1);
     return;
@@ -197,6 +245,59 @@ function main() {
     });
   }
 
+  // 分包引擎文件（v3.1.32）：分包清单里的文件不进主包，生成到 dist/mp-weixin/<pkg>/utils/modules/…
+  //   由主包用 require.async 按需拉取（微信「分包异步化」，基础库 2.26.1+），实现「冷加载 > 分包加载」。
+  //   同时把 app.json 的 subPackages 段写出来（root 指分包目录），与本函数单一真源（清单 subPackages）。
+  function syncSubPackages() {
+    var map = subPackageMap();
+    var pkgNames = Object.keys(map);
+    if (!pkgNames.length) return;
+    pkgNames.forEach(function (pkg) {
+      map[pkg].files.forEach(function (rel) {
+        var srcP = path.join(SRC, rel);
+        if (!fs.existsSync(srcP)) throw new Error('分包「' + pkg + '」缺少源文件：' + rel);
+        var dst = path.join(MP_DIST, pkg, 'utils', 'modules', rel);
+        fs.mkdirSync(path.dirname(dst), { recursive: true });
+        fs.copyFileSync(srcP, dst);
+        console.log('  分包生成[' + pkg + ']', rel);
+      });
+    });
+    // 微信要求每个分包至少有一个 page，故给每个分包生成一个**占位页**（用户永不看到）：
+    //   分包里的引擎是给主包 require.async 拉的，不靠页面进入；此页纯为满足分包结构、让打包通过。
+    pkgNames.forEach(function (pkg) {
+      var dir = path.join(MP_DIST, pkg, 'pages', 'placeholder');
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path.join(dir, 'placeholder.json'), '{ "usingComponents": {} }\n', 'utf8');
+      fs.writeFileSync(path.join(dir, 'placeholder.wxml'), '<view class="ph"></view>\n', 'utf8');
+      fs.writeFileSync(path.join(dir, 'placeholder.wxss'), '.ph { display: none; }\n', 'utf8');
+      fs.writeFileSync(path.join(dir, 'placeholder.js'),
+        '// 占位页：分包只放 JS 代码、由主包 require.async 按需拉取（占星/紫微冷加载），\n'
+        + '// 此页仅为满足微信「分包必须有 page」的结构要求，用户永不看到，故不做任何界面。\n'
+        + 'Page({})\n', 'utf8');
+    });
+
+    // app.json：写入 subPackages（微信要求分包有 pages 或至少独立目录；本项目分包只放 JS 代码，
+    //   故给一个占位 page 满足分包结构，主包用 require.async 拉分包 JS）
+    var appJsonPath = path.join(MP_DIST, 'app.json');
+    if (fs.existsSync(appJsonPath)) {
+      var appJson = JSON.parse(fs.readFileSync(appJsonPath, 'utf8'));
+      appJson.subPackages = appJson.subPackages || [];
+      pkgNames.forEach(function (pkg) {
+        var root = pkg + '/';
+        var already = appJson.subPackages.some(function (sp) { return sp.root === root; });
+        if (!already) {
+          appJson.subPackages.push({ root: root, name: pkg, pages: [root + 'pages/placeholder/placeholder'] });
+        }
+      });
+      // 预下载：进入首页后后台预下载两个分包（用户点占星/紫微时秒开）
+      appJson.preloadRule = {
+        'pages/index/index': { network: 'all', packages: pkgNames }
+      };
+      fs.writeFileSync(appJsonPath, JSON.stringify(appJson, null, 2) + '\n', 'utf8');
+      console.log('  app.json 已写入 subPackages（' + pkgNames.join(', ') + '）+ preloadRule 预下载');
+    }
+  }
+
   clearFiles(MP);
   NEEDED.forEach(function (rel) {
     var dst = path.join(MP, rel);
@@ -204,6 +305,7 @@ function main() {
     fs.copyFileSync(path.join(SRC, rel), dst);
     console.log('  生成', rel);
   });
+  syncSubPackages();
   syncTheme();
   syncStatics();
   // 壳体检（生成模式只告警不中断，便于边改边看；CI 用 --check 会硬失败）

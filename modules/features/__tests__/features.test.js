@@ -479,4 +479,31 @@ ok(!/。；|；。|。。|；；/.test(lrOut.text) && lrOut.text.indexOf('；') 
 var lrBad = R.run('astro-tuiyun', ent(1990, 8, 15, 14), '1990年8月15日 月亮返照 13月');
 ok(lrBad.prompt && lrBad.prompt.indexOf('1–12') >= 0, '月亮返照非法月（13月）给提示');
 
+// ===== v3.1.32 工资理财（清单第 8 项：通用小工具，独立于玄学内核 + 必带风险提醒）=====
+console.log('== v3.1.32 工资理财（工资×0.2 / ×0.5 / ×300 / ×12×5 + 风险提醒）==');
+var sp = R.run('salary-plan', {}, '工资 12000');
+ok(sp.text && sp.text.indexOf('【工资理财】') >= 0, '工资理财有料出标题');
+ok(sp.text.indexOf('2,400') >= 0, '每月存/投资 = 工资×0.2（12000→2400）');
+ok(sp.text.indexOf('6,000') >= 0, '每月支出上限 = 工资×0.5（12000→6000）');
+ok(sp.text.indexOf('3,600,000') >= 0, '财务自由本金 = 工资×300（12000→360万）');
+ok(sp.text.indexOf('12,000 元/月') >= 0, '月被动收入 = 本金×4%÷12（360万→1.2万）');
+ok(sp.text.indexOf('720,000') >= 0, '失能/大病备用金 = 工资×12×5（12000→72万）');
+// 风险提醒必须齐全（清单原文逐项）
+var warn = ['投资需谨慎', '越是免费的东西越贵', '不献血', '不捐款', '不买股票', '不贷款', '不管闲事', '不围观', '不信专家', '不信广告', '不听别人的推荐', '不跟风'];
+var missWarn = warn.filter(function (k) { return sp.text.indexOf(k) < 0; });
+ok(missWarn.length === 0, '风险提醒 12 项齐全（缺：' + missWarn.join('，') + '）');
+// 切段安全
+ok(sp.text.indexOf('；') < 0 && !/。；|；。|。。/.test(sp.text) && !/\n\s*\n/.test(sp.text), '工资理财输出切段安全');
+// 缺料追问
+ok(R.run('salary-plan', {}, '工资理财').prompt, '没给金额 → 追问（守门）');
+// 多种写法都能解析（端到端经 analyzer，且不被话题守卫拦）
+['工资12000', '工资 12000 怎么理财', '月薪1.5万', '工资是8000'].forEach(function (q) {
+  var out = String(A.analyze(q) || '');
+  ok(out.indexOf('【工资理财】') >= 0, '「' + q + '」端到端命中工资理财（不被守卫拦）');
+});
+// 多种金额单位
+ok(R.run('salary-plan', {}, '月薪1.5万').text.indexOf('3,000') >= 0, '「1.5万」单位换算正确（15000×0.2=3000）');
+// 不误伤玄学（守卫白名单不含工资类词，但玄学功能块必须照常）
+ok(String(A.analyze('今日黄历')).indexOf('【每日黄历】') >= 0, '工资理财未污染玄学路由（今日黄历照常）');
+
 if (fails === 0) { console.log('全部通过 ✓'); process.exit(0); } else { console.log(fails + ' 处失败'); process.exit(1); }
