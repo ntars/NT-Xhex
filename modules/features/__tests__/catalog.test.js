@@ -75,7 +75,11 @@ cat.forEach(function (b, i) {
 ok(rowBad.length === 0, '每板块正文 = 说明 1 行 + 功能 N 行（异常：' + rowBad.join('，') + '）');
 
 var hints = about.searchHints;
-ok(hints.length === 8, '首页建议 8 条（实际 ' + hints.length + '）');
+ok(hints.length === 9, '首页建议 9 条（实际 ' + hints.length + '）');
+// v3.1.30：三类前缀都要有（查/排/解统一）；缺一类即视为未统一
+var hasPrefix = { 查: false, 排: false, 解: false };
+hints.forEach(function (h) { var p = String(h || '').charAt(0); if (hasPrefix[p] === false) hasPrefix[p] = true; });
+ok(hasPrefix.查 && hasPrefix.排 && hasPrefix.解, '首页建议覆盖 查/排/解 三类（实际：查 ' + hasPrefix.查 + ' 排 ' + hasPrefix.排 + ' 解 ' + hasPrefix.解 + '）');
 var badHint = [];
 hints.forEach(function (h) {
   if (!/^[查排解]/.test(h)) badHint.push(h + ' 非查/排/解 开头');
