@@ -90,5 +90,26 @@ hints.forEach(function (h) {
 });
 ok(badHint.length === 0, '每条建议都能答出来（异常：' + badHint.join('；') + '）');
 
+console.log('== ⑤ 参考文献页（v3.1.31 方案 B：书目+对应内核+查证状态）==');
+var refs = about.aboutNotes.refs;
+ok(refs.length >= 25, '参考文献条目 ≥25 条（实际 ' + refs.length + '）');
+ok(refs[0].h.indexOf('凡例') >= 0, '第一条是凡例（查证状态四档说明）');
+// 每条必须带四档状态标记之一（凡例条自身讲四档定义、示例条讲排盘例，豁免）
+var noStatus = [];
+refs.forEach(function (r, i) {
+  if (i === 0 || r.h.indexOf('算法示例') >= 0) return;
+  if (!/✅已锁|✅已核|⚠单源待验|◆/.test(r.text)) noStatus.push(r.h);
+});
+ok(noStatus.length === 0, '除凡例/示例外每条都标注查证状态档（缺：' + noStatus.join('，') + '）');
+// 关键古籍必须出现在页面上（与内核头注释一一对应）
+var refsAll = refs.map(function (r) { return r.h + r.text; }).join('');
+var mustBook = ['金函玉镜', '子平真诠', '穷通宝鉴', '滴天髓', '奇门遁甲统宗', '大六壬指南', '心印赋', '毕法赋', '六壬大全', '大六壬金口诀', '增删卜易', '卜筮正宗', '黄金策', '金镜式经', 'iztro', 'astronomy-engine', 'Meeus', '沈氏玄空学', '神相全编', '测字秘牒', '周易小成图简述', 'lunar-javascript'];
+var missBook = mustBook.filter(function (b) { return refsAll.indexOf(b) < 0; });
+ok(missBook.length === 0, '关键古籍/库全部在列（缺：' + missBook.join('，') + '）');
+// 「本项目独有」必须如实存在（数字命理），不许假装有权威
+ok(refsAll.indexOf('本项目独有') >= 0, '自研项如实标「本项目独有」（数字命理）');
+// 单源待验项必须如实存在（不许全员✅美化）
+ok(/⚠单源待验/.test(refsAll), '单源待验项如实标注（刻家奇门等）');
+
 console.log(fails === 0 ? '\n全部通过' : '\n' + fails + ' 处失败');
 process.exit(fails === 0 ? 0 : 1);
