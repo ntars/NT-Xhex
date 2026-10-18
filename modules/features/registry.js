@@ -2202,6 +2202,74 @@
     }
     return null;
   }
+
+  // —— 功能「常用性」次序（一个输入命中多个功能时，按此顺序依次输出）——
+  // 只服务多命中排序，不改各功能定义；未列入者排最后（按 FEATURES 原序）。
+  // 排序原则：大众化、日常用得多的在前（八字/紫微/五格/起名/生肖/奇门…），
+  // 专项/进阶/冷门在后（各种进阶断法、占星细分、工具类）。
+  var COMMON_ORDER = [
+    'bazi-chart', 'ziwei', 'wuge', 'naming', 'zodiac', 'qimen', 'liuyao', 'iching', 'meihua', 'zhouyi',
+    'wuxing', 'wuxing-color', 'feixing', 'bazhai', 'fengshui', 'yangzhai', 'taisui',
+    'numberstars', 'numeral-chart', 'numeral-judge', 'numeral-fix', 'xiaoshu', 'cezi', 'xiangshu', 'qianwen',
+    'dayun', 'bazi-pattern', 'bazi-shensha', 'bazi-hehun', 'ziwei-sihua',
+    'qimen-ri', 'qimen-ke', 'qimen-nianyue', 'qimen-fei', 'qimen-ge',
+    'liuren', 'liuren-bifa', 'taiyi', 'jinkou', 'liuyao-wangshuai',
+    'date-convert', 'countdown', 'zeri',
+    'astro', 'astro-xiangwei', 'astro-tuiyun', 'astro-hepan', 'astro-vedic', 'astro-house', 'astro-lots', 'astro-horary', 'astro-election'
+  ];
+  // 通用动作词：单独命中它不算「用户点名了某算法」（如「奇门遁甲排盘」里的「排盘」不该再带出一个八字排盘）
+  var GENERIC_TRIGGERS = ['排盘', '排', '查', '看', '解'];
+
+  function commonIndexOf(key) {
+    var i = COMMON_ORDER.indexOf(key);
+    if (i >= 0) return i;
+    for (var j = 0; j < FEATURES.length; j++) if (FEATURES[j].key === key) return COMMON_ORDER.length + j;
+    return 9999;
+  }
+
+  /**
+   * 多命中路由（用户需求：一个输入可按常用性顺序依次调用多个算法、并列输出）：
+   *   ① 收集每个功能「命中的最长触发词」；
+   *   ② 去从属：若某功能的命中词是另一功能命中词的**真子串**（如「紫微」⊂「紫微飞星」、「八字」⊂「八字神煞」、
+   *      「奇门」⊂「日家奇门」），则被包含者剔除（保留更长更具体的那个）——这是现有「最长优先」原则的多命中推广；
+   *   ③ 通用动作词保护：仅靠「排盘/排/查/看/解」这类通用词命中的功能，若同段还有别的实质命中，则不列；
+   *   ④ 无触发词命中时，回落 match() 的兜底（生肖/周易/坐向），返回至多一个。
+   * @returns {Array<{key,名,板块,短名,命中词,常用序}>} 按常用性升序
+   */
+  function matchAll(text) {
+    text = String(text || '');
+    var hits = [];
+    for (var i = 0; i < FEATURES.length; i++) {
+      var f = FEATURES[i], bestWord = '', bestLen = 0;
+      for (var k = 0; k < f.触发词.length; k++) {
+        var w = f.触发词[k];
+        if (text.indexOf(w) >= 0 && w.length > bestLen) { bestWord = w; bestLen = w.length; }
+      }
+      if (bestLen > 0) hits.push({ f: f, word: bestWord, len: bestLen });
+    }
+    if (!hits.length) {
+      var fb = match(text);  // 复用兜底（生肖/64卦/坐向）
+      if (fb) return [{ key: fb.key, 名: fb.名, 板块: fb.板块, 短名: fb.短名, 命中词: '', 常用序: commonIndexOf(fb.key) }];
+      return [];
+    }
+    // 去从属：被更长命中词包含者剔除（不同 key 之间）
+    var kept = hits.filter(function (a) {
+      for (var j = 0; j < hits.length; j++) {
+        var b = hits[j];
+        if (b.f.key !== a.f.key && b.word.length > a.word.length && b.word.indexOf(a.word) >= 0) return false;
+      }
+      return true;
+    });
+    // 通用动作词保护
+    var hasSubstantive = kept.some(function (a) { return GENERIC_TRIGGERS.indexOf(a.word) < 0; });
+    if (hasSubstantive) kept = kept.filter(function (a) { return GENERIC_TRIGGERS.indexOf(a.word) < 0; });
+    // 按常用性排序
+    kept.sort(function (a, b) { return commonIndexOf(a.f.key) - commonIndexOf(b.f.key); });
+    return kept.map(function (a) {
+      return { key: a.f.key, 名: a.f.名, 板块: a.f.板块, 短名: a.f.短名, 命中词: a.word, 常用序: commonIndexOf(a.f.key) };
+    });
+  }
+
   function run(key, ent, text) {
     for (var i = 0; i < FEATURES.length; i++) if (FEATURES[i].key === key) return FEATURES[i].run(ent, text) || {};
     return { prompt: '未知功能：' + key };
@@ -2211,6 +2279,7 @@
     FEATURES: FEATURES,
     keys: FEATURES.map(function (f) { return f.key; }),
     match: match,
+    matchAll: matchAll,      // 多命中（按常用性排序）——一个输入可依次调用多个算法
     run: run,
     catalog: catalog,   // 介绍页用：按板块分组的功能总览（与 FEATURES 同一真源）
     BANKS: BANKS        // 板块顺序与说明（介绍页只读）

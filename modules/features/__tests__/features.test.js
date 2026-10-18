@@ -5,6 +5,7 @@
  * 锁：① 每个功能触发词都能 match；② run 不崩、缺料给 prompt、有料给 text。
  */
 var R = require('../registry.js');
+var A = require('../../AnalyzerModule/analyzer.js');
 var fails = 0;
 function ok(c, m) { if (c) console.log('  ✓', m); else { fails++; console.log('  ✗', m); } }
 
@@ -405,5 +406,26 @@ ok(qnW.text.indexOf('本版未实现') < 0, '时家块不再说年家「未实�
 // 缺日期
 var qnN = R.run('qimen-nianyue', { date: null, time: null }, '年家奇门');
 ok(qnN && qnN.prompt && qnN.prompt.indexOf('需要日期') >= 0, '缺日期给提示');
+
+// ===== v3.1.23 多命中路由（一个输入依次调用多个算法，按常用性排序并列输出）=====
+console.log('== v3.1.23 多命中路由 ==');
+ok(typeof R.matchAll === 'function', '导出 matchAll（多命中）');
+var ma = R.matchAll('1990年8月15日14时 八字 紫微 神煞');
+ok(ma.length === 3, '三个触发词命中三个功能');
+ok(ma.map(function (x) { return x.key; }).join(',') === 'bazi-chart,ziwei,bazi-shensha', '按常用性排序（八字→紫微→神煞）');
+// 去从属：更长的具体触发词胜出，被包含者剔除
+ok(R.matchAll('紫微飞星').map(function (x) { return x.key; }).join(',') === 'feixing', '「紫微飞星」只命中飞星，不被「紫微」抢');
+ok(R.matchAll('八字神煞').map(function (x) { return x.key; }).join(',') === 'bazi-shensha', '「八字神煞」只命中神煞，不被「八字」抢');
+ok(R.matchAll('日家奇门').map(function (x) { return x.key; }).join(',') === 'qimen-ri', '「日家奇门」只命中日家，不被「奇门」抢');
+// 通用动作词保护：「奇门遁甲排盘」不该再带出八字排盘
+ok(R.matchAll('奇门遁甲排盘').map(function (x) { return x.key; }).join(',') === 'qimen', '通用动作词「排盘」不额外带出功能');
+// 端到端：多算法并列输出，各带可辨识标题
+var multi = A.analyze('1990年8月15日14时 八字 紫微 神煞');
+var mt = multi.split('\n').filter(function (l) { return l.indexOf('【') === 0; });
+ok(mt.length === 3, '多命中时结果页有三条独立标题');
+ok(multi.indexOf('；') < 0 && !/\n\s*\n/.test(multi), '多算法输出无中文分号、无空段（切段安全）');
+// 单命中行为不变（与旧版一致）
+var single = A.analyze('奇门遁甲 1990年8月15日 14时');
+ok(single.indexOf('【奇门遁甲】') === 0, '单命中仍只出一个结果（行为不变）');
 
 if (fails === 0) { console.log('全部通过 ✓'); process.exit(0); } else { console.log(fails + ' 处失败'); process.exit(1); }

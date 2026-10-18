@@ -21,15 +21,26 @@
     return TOPIC_OK_RE.test(input) || it.intent !== 'unknown' || !!it.entities.date;
   }
 
-  // ---------- 扩展功能（搜索框单一入口的长尾路由）：FEATURES.match 命中触发词才跑 ----------
+  // ---------- 扩展功能（搜索框单一入口的长尾路由）：命中触发词才跑 ----------
   // 触发词是「明确的玄学功能词」（紫微/易经/八宅/号码八星/数字命理/小六壬/五格/生克…），
   // 比 intent 的贪婪实体分类更具体 → 一律**先于** intent 判定，避免「紫微 2026」被误判成八字。
-  function dispatchFeature(text, ent) {
-    if (!FEATURES || !FEATURES.match) return null;
-    var f = FEATURES.match(text);
-    if (!f) return null;
-    var out = FEATURES.run(f.key, ent, text);
-    return out ? out.text || out.prompt || null : null;
+  // v3.1.23：由「只取一个」改为**多命中**——一个输入命中多个功能时，**按常用性顺序依次调用、并列输出**
+  //   （用户明确要求：一条信息不必只出一种结果）。顺序 = registry.matchAll 的常用序（大众化在前）。
+  //   上限 MAX_FEAT：同段命中过多时只保留最常用的前几个，避免刷屏（常用性即 matchAll 的排序）。
+  var MAX_FEAT = 5;
+  function dispatchFeatures(text, ent) {
+    if (!FEATURES || !FEATURES.matchAll) return [];
+    var hits = FEATURES.matchAll(text);
+    var parts = [];
+    for (var i = 0; i < hits.length && parts.length < MAX_FEAT; i++) {
+      var out = FEATURES.run(hits[i].key, ent, text);
+      var t = out ? (out.text || out.prompt || '') : '';
+      if (!t) continue;
+      // 并列输出时每条都要有可辨识的标题：本身以【…】开头的直接用，否则补【短名】（如缺性别的提示）
+      if (hits.length > 1 && t.indexOf('【') !== 0) t = '【' + hits[i].短名 + '】' + t;
+      parts.push(t);
+    }
+    return parts;
   }
 
   // ---------- 按意图执行对应算法（核心 5 意图）----------
@@ -62,8 +73,13 @@
     var it = INTENT.parse(text);
     if (it.error) return it.error;
     // ① 长尾功能触发词优先（搜索框单一入口；触发词明确，先于 intent 贪婪分类）
-    var feat = dispatchFeature(text, it.entities);
-    if (feat) return feat;
+    //    多命中时**按常用性顺序依次调用、并列输出**（各自带【标题】，结果页按标题分段展示）。
+    var feats = dispatchFeatures(text, it.entities);
+    if (feats.length) {
+      if (feats.length === 1) return feats[0];      // 单命中：行为与旧版完全一致
+      // 多算法同页：用换行分隔，各算法自带【标题】；不引入中文分号（结果页按 [。；\n] 切段）
+      return feats.join('\n');
+    }
     // ② 核心 5 意图
     if (it.intent === 'unknown') return guardTopic(text) ? GUIDE : REFUSED;
     return runIntent(it);
