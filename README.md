@@ -498,6 +498,16 @@ node tools/sync-mp.js --check      # dist 与 modules 一致性 + WXML <template
   ⑧ **验证**：主包 **1.666MB → 0.267MB（红线占用 13.3%，降 84%）**；整包 2.639MB；五道护栏全绿（主包无静态引用分包 ✓、分包产物齐全 67 项 ✓、包体 ✓、WXML 模板传参 ✓、PWA 加载顺序 65 项 ✓）；**44 个测试文件全绿**；55 个功能块巡检全过；Node 端到端冒烟（懒取三件 → 提问今日宜忌/八字 → 功能介绍注入 → 紫微/占星出盘）全通。
   ⑨ **仍存在的缺口（如实写）**：① **真机 / 开发者工具未验证**（本机无 miniprogram-ci）——请在微信开发者工具确认：首页秒开、首次提问 / 首次导出有约 1 秒「正在加载引擎 / 正在生成」提示、之后秒回；② **整包首次要下约 1.3MB**（问八字和问紫微一样，因为算法是一个整包）——这是「不细拆」的必然代价；若希望「问八字不下紫微」，得把内核的同步 require 改写成异步，那会动到引擎层，属大改，建议单独评估；③ `occupy-cores` 清单有重复项（`shensha.js` 登记两次），不影响产物，后续可清。
 
+- **v3.1.38**（📦 完成 v3.1.37 ⑩ 里挂着的「下一阶段」：**主包只装起始页 UI**，主包 1.666MB → **0.267MB（13.3%）**）：
+  ① **主人要求**：「**主包只装起始页，其他页面 / 算法 / 功能都在需要时加载，无需预加载任何其他内容**」。
+  ② **做法：全部算法整体挪进一个分包 `occupy-cores`**。`tools/platform-modules.json` 的 mp-weixin 主包清单由 **64 条精简到 8 条**（只剩起始页要用的 storage / settings / conversation / result-format / cores-loader / safe-area / theme / transition），其余 **67 个文件**（`CoreModule/*` 全部内核含 solarlunar 437KB、`AnalyzerModule/*` 分析装配层、`ExportModule/*` 导出图片、`features/registry.js` 功能注册表 190KB）进分包。
+  ③ **为什么是「整体一包」而不是按板块细拆**（这一点很关键）：内核之间是**同步 require**（`bazi → lunar → solarlunar`），几乎全部内核都依赖 solarlunar 这座底座；而微信规定**分包之间不能同步 require**。底座与内核一旦分到两个包，必然产生非法引用。故只能整包挪 —— 结论是「主包只装起始页」，而不是「主包装一半算法」。
+  ④ **新增 `HomeModule/cores-loader.js`（算法内核按需取用器 · 单一真源）**：对外接口 `load('analyzer'|'registry'|'export')` / `loadAll()`，**三端签名一致**，只是「从哪拿」不同 —— 小程序首次 `load` 时 `wx.loadSubpackage` 拉分包 → 官方 `require.async` 取模块（基础库 2.11.2+），取到即**缓存**，同一 key 只拉一次；Node / uni-app 源码树完整直接同步 require（外面包一层 Promise，接口一样）；PWA 走 `NT.*` 全局（本就不列进 PWA 清单）。**任何失败一律 `resolve(null)`、绝不 reject**，上层给「引擎未就绪」兜底提示，**不静默假装算得出**（宁可让用户重试也不给假结果）。
+  ⑤ **壳已接线**：小程序壳 `pages/index/index.js` 的 require 由「指向 64 个引擎文件」改为**只 require 主包 8 个**（含 `var Cores = require('.../cores-loader.js')`），内核一律经 `Cores.load(...)` 异步取 → v3.1.37 那条「主包不得静态 require 分包文件」的护栏也就自然守住。
+  ⑥ **护栏复用**：`sync-mp --check` 的**第五道**「主包未静态 require 任何分包文件 ✓」继续生效；**全功能巡检**（55 个功能块）与**包体检查**照跑 —— 主包 **0.267MB / 2MB = 13.3%**，整包 2.639MB（远低于 30MB 上限）。
+  ⑦ **验证**：新增 `HomeModule/__tests__/cores-loader.test.js`（**15 项断言**：三 key 取用、模块导出齐全、未知 key → null 不抛、`loadAll`、缓存命中、端到端真算命且含 v3.1.36 新增的十二长生/地支关系）→ **15 项全过**；**45 个测试文件全绿**；`sync-mp --check` 五道护栏全绿；版本 7 处同步 **3.1.38**。
+  ⑧ **仍存在的缺口（如实写）**：① **真机 / 微信开发者工具的分包异步效果，本轮同样无法在命令行验证**（本机无 miniprogram-ci）—— 需在开发者工具里确认：首次提问会先 `loadSubpackage`（约 1 秒）再出结果，第二次起秒回；② **`pages/index/index.vue`（uni-app 形态）与 PWA 壳本轮未改**（两者本就无「主包/分包」概念，走同步全量加载，符合预期），但**真机验证前不要认为小程序端已稳**；③ `preloadRule` 早已按主人要求移除（进首页不后台下载任何东西），代价是**首次用到紫微/占星/任意算法时有约 1 秒等待**，这是「用到才加载」的必然代价。
+
 - **v3.1.37**（🐛 修「小程序启动即崩」：主包静态 require 分包文件 + 用了不存在的 `wx.requireAsync`；并按主人要求去掉进首页的后台预下载）：
   ① **报错现场**：微信开发者工具里 `app.js` 一启动就抛 `module 'utils/modules/CoreModule/ziwei.js' is not defined, require args is '../CoreModule/ziwei.js'`，栈顶为 `settings.js:12 ← app.js:6`，连带 `Page "pages/index/index" has not been registered yet` —— 不是某个功能坏了，是**启动链整条断了**（`app.js → settings.js → registry.js`）。
   ② **根因一：主包静态 require 了分包文件**。v3.1.32 把 iztro+astronomy 两组内核挪进分包后，`modules/features/registry.js` 的 UMD 头部（小程序与 Node **共用**的 `module.exports` 分支）**仍留着那 5 个文件的同步 `require`**。微信规定**主包不得 require 分包文件**（编译期即判非法、运行也取不到模块），于是启动链在第二个参数处就炸。**注意：Node 端 44 个测试全绿也照不出这个错** —— Node 里那些文件在源码树里确实在，只有「产物包」才缺它们。
