@@ -153,7 +153,20 @@ Page({
     }, 330)
   },
 
-  onInput: function (e) { this.setData({ input: e.detail.value }) },
+  onInput: function (e) {
+    var v = e.detail.value
+    this.setData({ input: v })
+    // v3.1.45（性能）：用户**一开口打字**就在后台把引擎分包拉下来 —— 等他点「发送」时多半已就绪，
+    //   首次提问不再干等约 3 秒（真机曾 `setTimeout handler took 2991ms`）。
+    //   · 这仍是「**用到才加载**」：用户确实要用（已经在输入了），不是「进首页就预下载」
+    //     （主人否掉的 preloadRule 已从 app.json 移除，本优化不动 app.json、不占启动时间）。
+    //   · **静默**进行：不弹 loading、失败不提示 —— 真有失败，提问时那次加载会兜底并提示。
+    //   · Cores.load 内部有缓存，所以预热过之后再提问是**秒回**。
+    if (!this._warmed && String(v).length >= 1) {
+      this._warmed = true
+      if (Cores && typeof Cores.load === 'function') Cores.load('analyzer')
+    }
+  },
   // 聚焦/失焦只影响「要不要显示滚动词条」，不碰输入内容
   onFocus: function () { this.setData({ focused: true }) },
   onBlur: function () { this.setData({ focused: false }) },
@@ -304,19 +317,13 @@ Page({
 
   // 打开内容详情页：标题/正文/返回目标全取 settings.js 单一真源
   openDetail: function (id) {
-    var self = this
-    // v3.1.38：「功能介绍」的正文来自 features/registry.js（在分包里）——
-    //   先在主包侧把 registry 注入 settings，再重取 about()（这时 introPage 才拿得到功能清单）。
-    //   其余详情页（参考文献 / 关于我们等）正文都在主包内的 settings.js 里，不必等待。
-    if (id === 'intro' && !this._regInjected) {
-      Cores.load('registry').then(function (REG) {
-        if (REG && Settings.setRegistry) Settings.setRegistry(REG)
-        self._regInjected = true
-        self.setData({ about: Settings.about() })
-        self.openDetail(id)
-      })
-      return
-    }
+    // v3.1.45（性能修复）：**「功能介绍」不再加载分包**。
+    //   原先这里走 Cores.load('registry') —— 而 registry 顶层 require 了 37 个内核（约 2MB，全在分包里），
+    //   只为渲染一个"功能列表"就要把整个分包加载并执行完：真机日志
+    //   `[Violation] 'setTimeout' handler took 2991ms`，卡近 3 秒。
+    //   现清单已由 sync-mp **快照进主包**（HomeModule/catalog.js，约 9KB），
+    //   settings.about() 在启动时就已含完整 intro —— 所以本页**同步立即打开**，不碰分包。
+    //   （快照与 registry 同源：构建期从 registry.catalog() 提取，数据一致。）
     var a = this.data.about
     var items = (a.aboutNotes && a.aboutNotes[id]) || []
     var target = (a.backTarget && a.backTarget[id]) || 'about'

@@ -27,10 +27,15 @@
     //   不会判「主包引用分包」（构建期护栏 sync-mp --check 第五道也按此口径放行）。
     //   两条保险互补：__isMP 保证**运行时不取**（小程序端），拼接保证**编译期不判非法**。
     var __p = '../features/' + 'registry.js';
-    module.exports = factory(require, __isMP ? null : require(__p));
+    // 「功能介绍」页的功能总览**快照**（主包内、约 9KB，由 tools/sync-mp.js 生成）：
+    //   小程序端专用 —— 介绍页只需要纯数据，有它就不必加载整个分包（registry 顶层 require 了
+    //   37 个内核、约 2MB，真机实测卡 2991ms）。源码树里没有此文件（生成产物），故 try 兜底。
+    var __cat = null;
+    try { __cat = require('../HomeModule/catalog.js'); } catch (e) { __cat = null; }
+    module.exports = factory(require, __isMP ? null : require(__p), __cat);
   }
   else { root.NT = root.NT || {}; root.NT.settings = factory(null, root.NT.features || null); }
-})(typeof self !== 'undefined' ? self : this, function (require, REG) {
+})(typeof self !== 'undefined' ? self : this, function (require, REG, CATALOG_SNAP) {
   // 跨模块依赖 storage：Node 用相对路径 require；浏览器用已挂载的全局 NT.storage
   var S;
   if (typeof module === 'object' && module.exports) {
@@ -66,7 +71,11 @@
         R = NS && NS.NT && NS.NT.features;
       } catch (e) { R = null; }
     }
-    return (R && R.catalog) ? R.catalog() : [];
+    if (R && R.catalog) return R.catalog();
+    // 小程序端路径：registry 在分包里（加载它要 3 秒），而介绍页只需要"板块/短名/名/简介"这点纯数据，
+    //   故优先用构建期生成的**主包快照** —— 介绍页**瞬间打开**，不碰分包。
+    if (CATALOG_SNAP && CATALOG_SNAP.length) return CATALOG_SNAP;
+    return [];
   }
 
   // fixed = [怎么切换主题, 怎么用, 示例, 更新日志]（这 4 条不随功能增减变化）
@@ -101,7 +110,7 @@
   return {
     // 关于我们：版权/简介/版本/备案（统一品牌信息，单一真源）
     about: function () {
-      var version = 'v3.1.44'; // 唯一版本真值；由 tools/sync-version.js 从 version.json 同步，勿手改第二份
+      var version = 'v3.1.45'; // 唯一版本真值；由 tools/sync-version.js 从 version.json 同步，勿手改第二份
       return {
         name: '玄玖灵犀', en: 'NT-Xhex', version: version,
         desc: '算法演乾坤，一问知天命，以数据重现千年术数。',

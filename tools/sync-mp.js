@@ -340,6 +340,18 @@ function main() {
       else console.log('  ✓ app.json 的 subPackages[].pages 均为相对 root 的路径（无重复前缀）');
     })();
 
+    // 第八道：HomeModule/catalog.js（功能介绍快照）必须与当前 registry.catalog() 一致（v3.1.45 新增）
+    //   它是**生成产物**（源码树没有），一旦 registry 加了功能而忘了重跑 sync-mp，
+    //   介绍页就会显示旧清单 —— 而人眼很难发现「少了一个板块」。故按内容比对。
+    (function () {
+      var dst = path.join(MP_DIST, 'utils', 'modules', 'HomeModule', 'catalog.js');
+      if (!fs.existsSync(dst)) { console.log('  ✗ 缺 HomeModule/catalog.js（功能介绍快照）'); bad++; return; }
+      var want = renderCatalog(catalogSnapshot());
+      var have = fs.readFileSync(dst, 'utf8');
+      if (have !== want) { console.log('  ✗ HomeModule/catalog.js 与 registry 不一致（跑 node tools/sync-mp.js 重新生成）'); bad++; }
+      else console.log('  ✓ HomeModule/catalog.js 与 registry.catalog() 一致（介绍页快照是最新的）');
+    })();
+
     // 第六道之前：project.config.json 的 babelSetting 必须忽略 vendor
     (function () {
       var pcfg = path.join(MP_DIST, 'project.config.json');
@@ -490,6 +502,53 @@ function main() {
   }
 
   /**
+   * 生成主包内的「功能介绍」快照 HomeModule/catalog.js（v3.1.45）。
+   *
+   * 为什么需要（性能·真机实测）：
+   *   「功能介绍」页原先走 Cores.load('registry') —— 而 registry 顶层 require 了 **37 个内核**
+   *   （iztro 779KB + solarlunar 427KB + …合计约 2MB JS，全在分包 occupy-cores 里）。
+   *   于是**只是打开一个"功能列表"就要把整个分包加载并执行完**，真机日志
+   *   `[Violation] 'setTimeout' handler took 2991ms` —— 卡近 3 秒。
+   *   可这个页面**只需要纯数据**（板块/短名/名/简介），不需要任何内核。
+   *
+   * 做法：构建期用 Node 跑一遍 registry（Node 环境完整），取 catalog() 的结果**快照**成这份小文件，
+   *   放进主包 —— 介绍页直接同步读，**瞬间打开**，再不为它加载分包。
+   *   单一真源仍是 modules/features/registry.js：加功能只改 registry，本文件由本脚本重新生成。
+   *
+   * ⚠ 本文件是**生成产物**，不在 platform-modules.json 的 files 里（不走「源码→dist 拷贝」），
+   *   因为它源码树里并不存在。若误加进 files，NEEDED 拷贝会因找不到源文件而报错。
+   */
+  function catalogSnapshot() {
+    var REG = require(path.join(ROOT, 'modules', 'features', 'registry.js'));
+    var data = (REG && typeof REG.catalog === 'function') ? REG.catalog() : [];
+    return data;
+  }
+  function renderCatalog(data) {
+    return '/**\n'
+      + ' * modules/HomeModule/catalog.js —— 「功能介绍」页的功能总览（主包静态快照）\n'
+      + ' * 【生成产物 · 请勿手改】由 tools/sync-mp.js 从 modules/features/registry.js 的 catalog() 提取。\n'
+      + ' * 为什么放进主包：registry 顶层 require 了 37 个内核（约 2MB，都在分包 occupy-cores），\n'
+      + ' *   而为「功能介绍」页加载整个分包要卡约 3 秒（真机 setTimeout handler took 2991ms）；\n'
+      + ' *   此页只需要纯数据，故快照成这份小文件，让介绍页**瞬间打开**。\n'
+      + ' * 单一真源仍是 registry —— 加功能只改 registry，本文件由 sync-mp 重新生成。\n'
+      + ' */\n'
+      + '(function (root, factory) {\n'
+      + '  if (typeof module === "object" && module.exports) module.exports = factory();\n'
+      + '  else { root.NT = root.NT || {}; root.NT.core = root.NT.core || {}; root.NT.core.catalog = factory(); }\n'
+      + '})(typeof self !== "undefined" ? self : this, function () {\n'
+      + '  return ' + JSON.stringify(data, null, 2).replace(/^/gm, '  ').replace(/^\s{2}/, '') + ';\n'
+      + '});\n';
+  }
+  function genCatalog() {
+    var dst = path.join(MP_DIST, 'utils', 'modules', 'HomeModule', 'catalog.js');
+    var src = renderCatalog(catalogSnapshot());
+    fs.mkdirSync(path.dirname(dst), { recursive: true });
+    fs.writeFileSync(dst, src, 'utf8');
+    console.log('  生成 HomeModule/catalog.js（功能介绍快照，主包内，约 '
+      + Math.round(src.length / 1024) + 'KB）');
+  }
+
+  /**
    * 保证 project.config.json 的 babelSetting 正确（v3.1.42）。
    *
    * 为什么不只手写、还要脚本兜底：微信开发者工具会自己改写 project.config.json（加 multiPlatform、
@@ -532,6 +591,7 @@ function main() {
   syncSubPackages();
   syncTheme();
   syncStatics();
+  genCatalog();
   ensureBabelSetting();
   // 壳体检（生成模式只告警不中断，便于边改边看；CI 用 --check 会硬失败）
   var problems = lintWxmlTemplates();
