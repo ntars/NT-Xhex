@@ -1,4 +1,4 @@
-# 玄玖灵犀 NT-Xhex v3.1.42
+# 玄玖灵犀 NT-Xhex v3.1.43
 
 > 算法演乾坤，一问知天命，以数据重现千年术数。（演乾坤·知天命）  
 > 无后端 / 无网络 / 无登录 · 一套代码自动切换多形态  
@@ -486,6 +486,15 @@ node tools/sync-mp.js --check      # dist 与 modules 一致性 + WXML <template
 ---
 
 ## 九、更新日志
+
+- **v3.1.43**（🐛 又逮到一个「分包套分包」真 bug：`app.json` 的 `subPackages[].pages` 误写成 `root + 'pages/…'`（重复了 root）—— 与 v3.1.42 的 babel 问题**同轮发现、独立成因**）：
+  ① **症状**：`git status` 里冒出一条 `D dist/mp-weixin/occupy-cores/occupy-cores/pages/placeholder/placeholder.wxml` —— **分包里套了一层同名目录**。这与 v3.1.38 修过的 `occupy-astro/occupy-astro/` 是**同一个坑**，只是换了个分包名又犯了一次。
+  ② **根因**：`tools/sync-mp.js` 写 `app.json` 时写的是 `pages: [root + 'pages/placeholder/placeholder']`，而 `root = 'occupy-cores/'` —— 微信规则里 **`subPackages[].pages` 是相对 `root` 的路径**，于是声明出来的实际页面路径变成 `occupy-cores/occupy-cores/pages/…`（不存在）；早期按该路径生成的产物就在分包里多挖了一层。
+  ③ **修法**：`pages` 改为 `['pages/placeholder/placeholder']`（只写 root 之后的相对路径）。同时给 `clearSubPackages()` 加了**嵌套残留清理** —— 生成前递归清掉 `<pkg>/<pkg>/…` 并收掉空目录（历史残留不清会一直堆在包里计体积）。实测：`dist/mp-weixin/occupy-cores/` 下已只剩 `utils/` 与 `pages/`，嵌套层消失；`app.json` 现为 `{"root":"occupy-cores/","name":"occupy-cores","pages":["pages/placeholder/placeholder"]}`。
+  ④ **新增第七道护栏**：`sync-mp --check` 逐条校验 `subPackages[].pages` **不得以 root 开头**（即不许重复前缀），一旦复发立刻判红。至此 `--check` 共 **七道**：巡检 / 包体 / 分包产物 / 主包跨包引用 / **app.json pages 格式** / babelSetting / WXML+加载顺序。
+  ⑤ **为什么值得单独立版**：这是**第二次**同类事故（`occupy-astro` → `occupy-cores`），说明「手写拼接 root」这个写法**天然容易错**，靠人眼复查不可靠 —— 故本轮把判据固化成护栏，而不是改完就算。
+  ⑥ **验证**：**46 个测试文件全绿**；`sync-mp --check` **七道护栏**全绿；主包 **0.269MB / 2MB（13.5%）**；整包 2.642MB；55 功能块巡检全过；版本 7 处同步 **3.1.43**。
+  ⑦ **仍存在的缺口（如实写）**：① **分包 `pages` 路径修正后，分包加载是否更稳，需真机确认**（本机无 miniprogram-ci）；② 若主人真机上仍见 `module 'occupy-cores/...' is not defined`，请把**完整报错栈**发我 —— 分包路径与 babelSetting 是本轮两个独立变量，按逐步排除法分别修了，需要真机逐一确认收敛。
 
 - **v3.1.42**（🐛 修「点紫微/占星即报 `module '@babel/runtime/helpers/arrayWithHoles.js' is not defined`」——**真因是微信「增强编译」在 Babel 转译 iztro**，与 v3.1.41 的 sourcemap 判断**不是同一回事**）：
   ① **报错现场（主人实测）**：启动链已通（日志显示 v3.1.41），但**一点「紫微」或提问触发引擎**就抛 `module '@babel/runtime/helpers/arrayWithHoles.js' is not defined, require args is './arrayWithHoles'`，栈顶 `occupy-cores/utils/modules/CoreModule/vendor/iztro.min.js:2`，且 `[Violation] 'setTimeout' handler took 5982ms`（近 6 秒）。

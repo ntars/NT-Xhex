@@ -318,6 +318,29 @@ function main() {
     //     只写到 'vendor/' 是不匹配的（v3.1.41 试过，没生效，白等一轮）。
     //   ⚠ 另外 outputPath 是「Babel 辅助函数的输出目录」，别乱填（曾写成 './dist/.'，
     //     相对项目根会变成 dist/mp-weixin/dist/.，错乱）—— 置空用官方默认即可。
+    // 第七道：app.json 的 subPackages[].pages 必须是**相对 root** 的路径（v3.1.42 新增）
+    //   病因：曾误写成 `root + 'pages/…'`（root 已含分包名，重复一次）→ 声明了一条不存在的页面路径，
+    //     且生成时会在分包里多挖一层同名嵌套目录（occupy-astro 一次、occupy-cores 一次，都是同一个坑）。
+    //   微信规则：pages 相对 root。这里逐条检查，只要有一项以 root 开头就判红。
+    (function () {
+      var ap = path.join(MP_DIST, 'app.json');
+      if (!fs.existsSync(ap)) { console.log('  ✗ 缺 app.json'); bad++; return; }
+      var j;
+      try { j = JSON.parse(fs.readFileSync(ap, 'utf8')); }
+      catch (e) { console.log('  ✗ app.json 不是合法 JSON: ' + e.message); bad++; return; }
+      var subs = j.subPackages || [];
+      var dupPages = [];
+      subs.forEach(function (sp) {
+        var root = sp.root || '';
+        (sp.pages || []).forEach(function (pg) {
+          if (root && pg.indexOf(root) === 0) dupPages.push(sp.name + ': pages 不该以 root 重复开头 → ' + pg);
+        });
+      });
+      if (dupPages.length) { dupPages.forEach(function (t) { console.log('  ✗ ' + t); }); bad += dupPages.length; }
+      else console.log('  ✓ app.json 的 subPackages[].pages 均为相对 root 的路径（无重复前缀）');
+    })();
+
+    // 第六道之前：project.config.json 的 babelSetting 必须忽略 vendor
     (function () {
       var pcfg = path.join(MP_DIST, 'project.config.json');
       if (!fs.existsSync(pcfg)) { console.log('  ✗ 缺 project.config.json（微信项目配置）'); bad++; return; }
@@ -376,7 +399,18 @@ function main() {
     // ① 清单内的分包：清掉旧文件（分包目录不在 clearFiles(MP) 的管辖范围内）
     Object.keys(map).forEach(function (pkg) {
       var dir = path.join(MP_DIST, pkg);
-      if (fs.existsSync(dir)) clearFiles(dir);
+      if (!fs.existsSync(dir)) return;
+      clearFiles(dir);
+      // ⚠ v3.1.42：铲掉「分包套分包」的嵌套残留 <pkg>/<pkg>/…
+      //   历史 bug：app.json 的 subPackages[].pages 误写成 root + 'pages/…'（root 已含 pkg，重复一次），
+      //   按那套路径生成就会在分包里多挖一层同名目录（occupy-astro 一次、occupy-cores 一次）。
+      //   声明已修（pages 改为相对 root），但旧产物残留要清干净，否则一直堆在包里计入体积。
+      var nested = path.join(dir, pkg);
+      if (fs.existsSync(nested)) {
+        clearFiles(nested);
+        removeEmptyDirs(nested);
+        console.log('  清除分包内的嵌套残留目录 ' + pkg + '/' + pkg + '/');
+      }
     });
     // ② 清单外、历史上生成过的分包目录（分包改名/合并后的残留，如 v3.1.38 前的 occupy-astro / occupy-ziwei）：
     //    整目录清文件并收掉空目录，避免废弃产物继续占包体。
@@ -439,7 +473,12 @@ function main() {
       //   （v3.1.38 把 occupy-astro/occupy-ziwei 合并成 occupy-cores 时就踩到了这个）。
       appJson.subPackages = pkgNames.map(function (pkg) {
         var root = pkg + '/';
-        return { root: root, name: pkg, pages: [root + 'pages/placeholder/placeholder'] };
+        // ⚠ v3.1.42 修：subPackages[].pages 的路径是**相对 root** 的（微信规则），
+        //   原来写成 root + 'pages/…' 会变成 'occupy-cores/occupy-cores/pages/…'
+        //   —— 声明了一条根本不存在的页面路径，且首次生成会在分包里多挖一层嵌套目录
+        //   （dist/mp-weixin/occupy-cores/occupy-cores/…，历史遗留过两次：occupy-astro 一次、occupy-cores 一次）。
+        //   正确写法：pages 只写 root 之后的相对路径。
+        return { root: root, name: pkg, pages: ['pages/placeholder/placeholder'] };
       });
       // 不写 preloadRule（主人要求：主包之外的内容一律「用到才加载」——主包只装起始页，
       //   其他页面 / 算法 / 功能都在需要时才拉，进首页不后台预下载任何分包）。

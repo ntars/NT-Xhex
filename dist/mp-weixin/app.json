@@ -14,7 +14,7 @@
       "root": "occupy-cores/",
       "name": "occupy-cores",
       "pages": [
-        "occupy-cores/pages/placeholder/placeholder"
+        "pages/placeholder/placeholder"
       ]
     }
   ]
