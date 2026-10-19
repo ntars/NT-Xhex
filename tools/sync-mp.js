@@ -37,9 +37,11 @@ var THEME_DST = path.join(ROOT, 'dist', 'mp-weixin', 'theme.wxss');
 var MODE = process.argv.indexOf('--check') >= 0 ? 'check' : 'copy';
 
 // 从「各平台加载清单」取小程序要用的引擎文件（单一事实源，自动忽略不相关目录）
-// v3.1.32：分包冷加载。mp-weixin.subPackages 列出的文件**不进主包**，而是生成到各自分包目录
-//   （dist/mp-weixin/<pkg>/utils/modules/…），由主包用 require.async 按需拉取（基础库 2.26.1+）。
+// v3.1.32 起：分包冷加载。mp-weixin.subPackages 列出的文件**不进主包**，而是生成到各自分包目录
+//   （dist/mp-weixin/<pkg>/utils/modules/…），由主包用 require.async 按需拉取（官方文档口径：基础库 2.11.2+）。
 //   这样 iztro(779KB)+astronomy(114KB) 这类「只有某板块用得到」的大件不在启动时进主包，压住 2MB 红线。
+//   ⚠ 主包侧**不得**对这些文件写静态 require（微信编译期即判「主包引用分包」非法，运行也取不到）；
+//     主包代码里对应的功能改走 require.async 懒加载（见 modules/features/registry.js 的 warmZiwei/warmAstro）。
 function manifest() {
   var m = JSON.parse(fs.readFileSync(MANIFEST, 'utf8'));
   var p = m.platforms && m.platforms['mp-weixin'];
@@ -227,6 +229,36 @@ function main() {
         console.log('  ✓ 分包产物齐全（' + Object.keys(map).map(function (k) { return k + '(' + map[k].files.length + ')'; }).join(', ') + '）');
       }
     })();
+    // 主包静态 require 分包文件体检（v3.1.37 新增）：
+    //   微信规定**主包不得静态 require 分包文件**（编译期即判非法、运行也取不到模块）。
+    //   一旦漏进去，启动链第二句就抛「module 'utils/modules/CoreModule/ziwei.js' is not defined」，
+    //   整包起不来、页面全部未注册 —— v3.1.37 修的就是这个。固化成立即判红的硬校验，防回归。
+    //   合法的 require.async('...分包路径...') 是官方跨包取码方式，不在检查范围内（正则只认 require(...) 同步式）。
+    (function () {
+      var subBase = Object.keys(subFileSet()).map(function (f) { return f.split('/').pop(); });
+      var subMap = subPackageMap();
+      var leaks = [];
+      (function scan(dir) {
+        if (!fs.existsSync(dir)) return;
+        fs.readdirSync(dir).forEach(function (f) {
+          var fp = path.join(dir, f);
+          var st = fs.lstatSync(fp);
+          if (st.isDirectory()) {
+            // 跳过分包目录本身（分包内互相 require 是允许的，只查主包）
+            if (subMap[path.relative(MP_DIST, fp).split(path.sep)[0]]) return;
+            return scan(fp);
+          }
+          if (!/\.js$/i.test(f)) return;
+          var src = fs.readFileSync(fp, 'utf8');
+          subBase.forEach(function (bn) {
+            var re = new RegExp('require\\(\\s*[\'"][^\'"]*' + bn.replace(/\./g, '\\.') + '[\'"]\\s*\\)');
+            if (re.test(src)) leaks.push(path.relative(ROOT, fp) + '  →  静态 require 了分包文件 ' + bn);
+          });
+        });
+      })(MP_DIST);
+      if (leaks.length) { leaks.forEach(function (t) { console.log('  ✗ 主包静态引用分包文件:', t); }); bad += leaks.length; }
+      else console.log('  ✓ 主包未静态 require 任何分包文件（分包只经 require.async 懒加载）');
+    })();
     console.log(bad === 0 ? '[sync-mp] 产物完整且与 modules/ 一致' : '[sync-mp] 发现 ' + bad + ' 处不一致，请重新生成');
     process.exit(bad === 0 ? 0 : 1);
     return;
@@ -253,9 +285,22 @@ function main() {
     });
   }
 
-  // 分包引擎文件（v3.1.32）：分包清单里的文件不进主包，生成到 dist/mp-weixin/<pkg>/utils/modules/…
-  //   由主包用 require.async 按需拉取（微信「分包异步化」，基础库 2.26.1+），实现「冷加载 > 分包加载」。
-  //   同时把 app.json 的 subPackages 段写出来（root 指分包目录），与本函数单一真源（清单 subPackages）。
+  // 分包引擎文件：分包清单里的文件不进主包，生成到 dist/mp-weixin/<pkg>/utils/modules/…
+  //   由主包用 require.async 按需拉取（微信「分包异步化」，官方文档口径为**基础库 2.11.2+**），
+  //   实现「冷加载 > 分包加载」。同时把 app.json 的 subPackages 段写出来（root 指分包目录），
+  //   与本函数单一真源（清单 subPackages）保持一致。
+  //
+  // 生成前先清掉两个分包目录里的**旧文件**：分包目录不在 clearFiles(MP)（只清主包 utils/modules）的
+  //   管辖范围内，历史产物（如早期生成逻辑留下的 <pkg>/<pkg>/… 嵌套目录）会一直堆着、计入包体，
+  //   故这里一并清干净再生成（同 clearFiles 约定：只删文件、不删空目录）。
+  function clearSubPackages() {
+    var map = subPackageMap();
+    Object.keys(map).forEach(function (pkg) {
+      var dir = path.join(MP_DIST, pkg);
+      if (fs.existsSync(dir)) clearFiles(dir);
+    });
+  }
+
   function syncSubPackages() {
     var map = subPackageMap();
     var pkgNames = Object.keys(map);
@@ -297,16 +342,17 @@ function main() {
           appJson.subPackages.push({ root: root, name: pkg, pages: [root + 'pages/placeholder/placeholder'] });
         }
       });
-      // 预下载：进入首页后后台预下载两个分包（用户点占星/紫微时秒开）
-      appJson.preloadRule = {
-        'pages/index/index': { network: 'all', packages: pkgNames }
-      };
+      // 不写 preloadRule（主人要求：主包之外的内容一律「用到才加载」——主包只装起始页，
+      //   其他页面 / 算法 / 功能都在需要时才拉，进首页不后台预下载任何分包）。
+      //   这里主动清掉历史上写入的 preloadRule，保证 app.json 干净。
+      delete appJson.preloadRule;
       fs.writeFileSync(appJsonPath, JSON.stringify(appJson, null, 2) + '\n', 'utf8');
-      console.log('  app.json 已写入 subPackages（' + pkgNames.join(', ') + '）+ preloadRule 预下载');
+      console.log('  app.json 已写入 subPackages（' + pkgNames.join(', ') + '）；不预下载，用到才拉');
     }
   }
 
   clearFiles(MP);
+  clearSubPackages();
   NEEDED.forEach(function (rel) {
     var dst = path.join(MP, rel);
     fs.mkdirSync(path.dirname(dst), { recursive: true });

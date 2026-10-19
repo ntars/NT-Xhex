@@ -24,14 +24,5 @@
         "occupy-ziwei/pages/placeholder/placeholder"
       ]
     }
-  ],
-  "preloadRule": {
-    "pages/index/index": {
-      "network": "all",
-      "packages": [
-        "occupy-astro",
-        "occupy-ziwei"
-      ]
-    }
-  }
+  ]
 }

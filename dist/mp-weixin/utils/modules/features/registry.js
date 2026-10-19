@@ -14,6 +14,20 @@
  */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) {
+    // ===== v3.1.37 修正：主包不可静态 require 分包文件 =====
+    // 紫微/占星两组内核已挪进分包（occupy-ziwei / occupy-astro）。微信规定**主包不能 require 分包文件**：
+    //   ① 编译期即判定「主包引用分包」非法；② 运行时分包未注入，取不到模块。
+    //   之前这里照旧静态 require 了那 5 个文件，导致小程序启动链
+    //   app.js → settings.js → registry.js 在第二句就抛
+    //   「module 'utils/modules/CoreModule/ziwei.js' is not defined」，整包起不来、页面未注册。
+    //
+    // 修法：用「环境判定 + 间接调用」分流 ——
+    //   · 小程序端：这 5 个位置一律取到 undefined，改由工厂内 warmAstro/warmZiwei 走官方
+    //     require.async 按需拉取（冷加载，不参与启动）；间接调用（__sync）让微信的静态依赖分析
+    //     看不到这几个路径，主包产物里不会残留指向分包的 require。
+    //   · Node / 旧 PWA / uni-app：无分包概念，__sync 就是 require，照旧同步加载（三端行为一致）。
+    var __isMP = (typeof wx !== 'undefined' && typeof wx.loadSubpackage === 'function');
+    var __sync = __isMP ? function () { return undefined; } : require;
     module.exports = factory(
       require('../CoreModule/feixing.js'),
       require('../CoreModule/numeral.js'),
@@ -26,8 +40,8 @@
       require('../CoreModule/lunar.js'),
       require('../CoreModule/bazi.js'),
       require('../CoreModule/zodiac-rel.js'),
-      require('../CoreModule/ziwei.js'),
-      require('../CoreModule/astro.js'),
+      __sync('../CoreModule/ziwei.js'),        // 分包 occupy-ziwei：小程序端取空，见工厂内 warmZiwei
+      __sync('../CoreModule/astro.js'),        // 分包 occupy-astro：小程序端取空，见工厂内 warmAstro
       require('../CoreModule/qimen.js'),
       require('../CoreModule/liuren.js'),
       require('../CoreModule/liuyao.js'),
@@ -42,10 +56,10 @@
       require('../CoreModule/qimen-ge.js'),
       require('../CoreModule/liuren-bifa.js'),
       require('../CoreModule/liuyao-wangshuai.js'),
-      require('../CoreModule/ziwei-horoscope.js'),
-      require('../CoreModule/astro-house.js'),
+      __sync('../CoreModule/ziwei-horoscope.js'),   // 分包 occupy-ziwei
+      __sync('../CoreModule/astro-house.js'),       // 分包 occupy-astro
       require('../CoreModule/bazi-shensha.js'),
-      require('../CoreModule/ziwei-stars.js'),
+      __sync('../CoreModule/ziwei-stars.js'),       // 分包 occupy-ziwei
       require('../CoreModule/jinkou.js'),
       require('../CoreModule/qimen-ri.js'),
       require('../CoreModule/qimen-ke.js'),
@@ -98,19 +112,53 @@
   // 于是 12 个占星/紫微功能块**一行都不用改**，同步 run() 语义完整保留（Node/PWA/uni-app 同理）。
   var ASTRO = _ASTRO, AH = _AH, ZW = _ZW, ZWS = _ZWS, ZHW = _ZHW;
 
-  // ===== v3.1.32 分包冷加载（占星/紫微两大件不进主包，用到才拉）=====
+  // ===== 分包冷加载（占星/紫微两大件不进主包，用到才拉）=====
   // 背景：小程序主包 2MB 红线。iztro(779KB) + astronomy(114KB) 只有紫微/占星用得到，
   //   静态 require 会让它们在启动时进主包（实测主包 2.58MB 超线 28%）。微信「分包异步化」
-  //   （基础库 2.26.1+）允许主包用 require.async 跨包加载，故这两组内核改为**懒加载**：
-  //     · 小程序端：wx.requireAsync 走分包（loadSubpackage 拉包 → require.async 取模块）
-  //     · Node/PWA/uni-app：无分包概念，仍走同步 require（三端行为一致，只是加载时机不同）
-  // 降级：基础库 <2.26.1 或分包加载失败 → 返回 false，功能块照旧给出「内核未加载」提示（不静默假装能算）。
+  //   （官方文档口径：基础库 2.11.2+）允许主包用 require.async 跨包取代码，故这两组内核改为**懒加载**：
+  //     · 小程序端：loadSubpackage 先确保分包已下载 → require.async 取模块（官方 API）
+  //     · Node/PWA/uni-app：无分包概念，已在 UMD 头部同步 require（三端行为一致，只是加载时机不同）
+  // 降级：基础库过低 / 分包加载失败 / 环境无 require.async → 返回 false，
+  //   功能块照旧给出「内核未加载」提示（不静默假装能算）。
   var isMP = (typeof wx !== 'undefined' && typeof wx.loadSubpackage === 'function');
   var PKG_ASTRO = 'occupy-astro', PKG_ZIWEI = 'occupy-ziwei';
   var warming = {};
 
+  /**
+   * 分包内 7 个文件的取用器（key → 一次 require.async 调用）。
+   *
+   * 为什么逐个写死、不做字符串拼接：
+   *   微信的 require.async 只有拿到**静态字符串字面量**路径才能被依赖分析认出来，
+   *   动态拼出来的路径（'../' + pkg + '/...'）解析不到，会静默失败。
+   *   故这里把 7 条路径显式列全，不用循环拼字符串。
+   * 路径基准 = 本文件（utils/modules/features/registry.js）：上三级到包根，再进分包目录。
+   *   ../../../occupy-astro/utils/modules/CoreModule/astro.js  等。
+   */
+  var ASYNC_MODS = {
+    astroVendor: function (ok, fail) { require.async('../../../occupy-astro/utils/modules/CoreModule/vendor/astronomy.js', ok, fail); },
+    astro: function (ok, fail) { require.async('../../../occupy-astro/utils/modules/CoreModule/astro.js', ok, fail); },
+    astroHouse: function (ok, fail) { require.async('../../../occupy-astro/utils/modules/CoreModule/astro-house.js', ok, fail); },
+    ziweiVendor: function (ok, fail) { require.async('../../../occupy-ziwei/utils/modules/CoreModule/vendor/iztro.min.js', ok, fail); },
+    ziwei: function (ok, fail) { require.async('../../../occupy-ziwei/utils/modules/CoreModule/ziwei.js', ok, fail); },
+    ziweiStars: function (ok, fail) { require.async('../../../occupy-ziwei/utils/modules/CoreModule/ziwei-stars.js', ok, fail); },
+    ziweiHoroscope: function (ok, fail) { require.async('../../../occupy-ziwei/utils/modules/CoreModule/ziwei-horoscope.js', ok, fail); }
+  };
+
+  /**
+   * 异步取一个分包模块。永远 resolve（拿到 = 模块对象，任何失败 = null），绝不 reject ——
+   * 这样上层用一个 Promise.all 就能收口，不必逐个写 catch。
+   */
+  function fetchMod(key) {
+    return new Promise(function (resolve) {
+      var getter = ASYNC_MODS[key];
+      if (!getter || typeof require.async !== 'function') return resolve(null);
+      try { getter(function (mod) { resolve(mod || null); }, function () { resolve(null); }); }
+      catch (e) { resolve(null); }
+    });
+  }
+
   // 拉分包 → require.async 取模块 → **重新赋值工厂内变量**（于是所有功能块零改动即可读到）
-  function warmup(pkgName, files, assign) {
+  function warmup(pkgName, keys, assign) {
     if (warming[pkgName]) return warming[pkgName];
     if (!isMP) return Promise.resolve(false);
     warming[pkgName] = new Promise(function (resolve) {
@@ -119,9 +167,7 @@
         wx.loadSubpackage({
           name: pkgName,
           success: function () {
-            Promise.all(files.map(function (rel) {
-              return wx.requireAsync('../' + pkgName + '/utils/modules/' + rel);
-            })).then(function (mods) {
+            Promise.all(keys.map(fetchMod)).then(function (mods) {
               try { assign(mods); done(true); } catch (e) { done(false); }
             }).catch(function () { done(false); });
           },
@@ -135,7 +181,7 @@
   // 预热占星分包（astronomy + astro + astro-house）。返回 Promise<boolean>。
   function warmAstro() {
     if (ASTRO && ASTRO.positions) return Promise.resolve(true);
-    return warmup(PKG_ASTRO, ['CoreModule/vendor/astronomy.js', 'CoreModule/astro.js', 'CoreModule/astro-house.js'],
+    return warmup(PKG_ASTRO, ['astroVendor', 'astro', 'astroHouse'],
       function (mods) {
         var astroMod = mods[1], houseMod = mods[2];
         if (root.NT && root.NT.core && astroMod) root.NT.core.astro = astroMod;
@@ -146,7 +192,7 @@
   // 预热紫微分包（iztro + ziwei + ziwei-stars + ziwei-horoscope）
   function warmZiwei() {
     if (ZW && ZW.chart) return Promise.resolve(true);
-    return warmup(PKG_ZIWEI, ['CoreModule/vendor/iztro.min.js', 'CoreModule/ziwei.js', 'CoreModule/ziwei-stars.js', 'CoreModule/ziwei-horoscope.js'],
+    return warmup(PKG_ZIWEI, ['ziweiVendor', 'ziwei', 'ziweiStars', 'ziweiHoroscope'],
       function (mods) {
         var z = mods[1], s = mods[2], h = mods[3];
         if (root.NT && root.NT.core) {
@@ -157,7 +203,8 @@
         ZW = z || ZW; ZWS = s || ZWS; ZHW = h || ZHW;
       });
   }
-  // 统一预热入口：小程序壳可在 onLaunch / 命中关键词时调用
+  // 统一预热入口（供壳按需调用）。当前小程序壳**不主动调用** —— 主人要求「主包之外的内容用到才加载」，
+  //   故不做任何预下载/预热；用户真问到紫微/占星时，run() 的兜底分支会触发对应 warmXxx() 并提示「再问一次」。
   function warmupByKeys(keys) {
     var ks = Array.isArray(keys) ? keys : [keys];
     var hitZ = ks.some(function (k) { return /紫微|四化|斗数/.test(String(k || '')); });
