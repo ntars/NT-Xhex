@@ -59,7 +59,11 @@
       require('../CoreModule/shensha.js'),
       require('../CoreModule/ziwei-duanyu.js'),
       require('../CoreModule/qizheng-duanyu.js'),
-      require('../CoreModule/astro-duanyu.js')
+      require('../CoreModule/astro-duanyu.js'),
+      require('../CoreModule/liuren-duanyu.js'),
+      require('../CoreModule/taiyi-duanyu.js'),
+      require('../CoreModule/meihua-duanyu.js'),
+      require('../CoreModule/huangli-duanyu.js')
     );
   } else {
     root.NT = root.NT || {};
@@ -99,10 +103,14 @@
       root.NT.core && root.NT.core.shensha,
       root.NT.core && root.NT.core.ziweiDuanyu,
       root.NT.core && root.NT.core.qizhengDuanyu,
-      root.NT.core && root.NT.core.astroDuanyu
+      root.NT.core && root.NT.core.astroDuanyu,
+      root.NT.core && root.NT.core.liurenDuanyu,
+      root.NT.core && root.NT.core.taiyiDuanyu,
+      root.NT.core && root.NT.core.meihuaDuanyu,
+      root.NT.core && root.NT.core.huangliDuanyu
     );
   }
-})(typeof self !== 'undefined' ? self : this, function (FEI, NUM, NSTAR, ICE, BZH, XS, WX, N81, CORE, BAZI, ZD, ZW, ASTRO, QM, LR, LY, TY, YZ, XSH, QW, CZ, QF, BP, ZR, QG, LBF, LWS, ZHW, AH, BSS, ZWS, JK, QMR, QMK, QNY, XCO, SHEN, ZWD, QZD, AAD) {
+})(typeof self !== 'undefined' ? self : this, function (FEI, NUM, NSTAR, ICE, BZH, XS, WX, N81, CORE, BAZI, ZD, ZW, ASTRO, QM, LR, LY, TY, YZ, XSH, QW, CZ, QF, BP, ZR, QG, LBF, LWS, ZHW, AH, BSS, ZWS, JK, QMR, QMK, QNY, XCO, SHEN, ZWD, QZD, AAD, LID, TID, MID, HLD) {
 
   // 占星/紫微五件与其他内核一视同仁：形参直接注入（v3.1.32 曾因分包把它们拆成「工厂内可变变量」，
   //   v3.1.38 改为整体分包后不再需要，恢复形参、去掉那一层间接。）
@@ -551,6 +559,20 @@
         lines.push('上卦「' + ICE.BAGUA[sh].名 + '」下卦「' + ICE.BAGUA[x].名 + '」→ 本卦「' + (ben.卦名 || ICE.hexName(ICE.BAGUA[sh].名, ICE.BAGUA[x].名)) + '」，互卦「' + ICE.hexName(ICE.BAGUA[hu.上卦].名, ICE.BAGUA[hu.下卦].名) + '」。');
         lines.push('动爻：第 ' + dy + ' 爻动。');
         lines.push('体用：体「' + ty.体卦 + '」用「' + ty.用卦 + '」，' + ty.关系 + '（体' + ty.体五 + ' / 用' + ty.用五 + '）→ ' + ty.吉凶 + '。');
+        // 解卦层（v3.1.49 新增，meihua-duanyu）：此前只有「用克体→凶」一句，没有可读断语
+        if (MID && MID.TIYONG) {
+          var tyd = MID.tiYongOf(ty.关系);
+          if (tyd) lines.push('体用断语：' + tyd);
+          var 本卦名 = ben.卦名 || ICE.hexName(ICE.BAGUA[sh].名, ICE.BAGUA[x].名);
+          // GUA64 键是单字卦名（如「蹇」），而本卦名是「水山蹇」式 → 依次试：原名 / 去前两字 / 末两字
+          var gd = MID.guaOf(本卦名)
+            || MID.guaOf(本卦名.replace(/^../, ''))
+            || MID.guaOf(本卦名.slice(-2));
+          if (gd) lines.push('本卦断语：' + gd);
+          var xt = MID.xiangOf(ty.体卦), xu = MID.xiangOf(ty.用卦);
+          if (xt || xu) lines.push('八卦类象：' + (xt || '') + (xu ? '；' + xu : ''));
+          lines.push('梅花口径：体用/卦象/类象取《梅花易数》通行断法，单点参考，仍须结合互变与应期综合断。');
+        }
         return { text: lines.join('\n') };
       }
     },
@@ -878,6 +900,19 @@
         if (r.吉神宜趋 && r.吉神宜趋.length) L.push('吉神宜趋：' + r.吉神宜趋.join('、') + '。');
         if (r.凶煞宜忌 && r.凶煞宜忌.length) L.push('凶煞宜忌：' + r.凶煞宜忌.join('、') + '。');
         if (r.节日 && r.节日.length) L.push('节日：' + r.节日.join('、') + '。');
+        // 神煞断语层（v3.1.49 新增，huangli-duanyu）：建除/值神/吉神/凶煞 逐条给「何意·主何·趋避」
+        if (HLD && HLD.JIANCHU) {
+          // 逐项**独立成行**（不用中文分号连接，守「切段安全」护栏）
+          var jd = HLD.jianchuOf(r.值星);
+          if (jd) L.push('【神煞断语·建除】' + r.值星 + '日：' + jd);
+          var zd = HLD.zhIShenOf(r.天神);
+          if (zd) L.push('【神煞断语·值神】' + r.天神 + '：' + zd);
+          var gs = [], xs = [];
+          (r.吉神宜趋 || []).forEach(function (n) { var t = HLD.shenshaOf(n); if (t) gs.push(n + '——' + t); });
+          (r.凶煞宜忌 || []).forEach(function (n) { var t = HLD.shenshaOf(n); if (t) xs.push(n + '——' + t); });
+          if (gs.length) L.push('【神煞断语·吉神宜趋】' + gs.slice(0, 6).join(' '));
+          if (xs.length) L.push('【神煞断语·凶煞宜忌】' + xs.slice(0, 6).join(' '));
+        }
         L.push('（宜忌、值神、冲煞等为传统通书数据，走 lunar 底座口径，与「择日」同一数据源，作日常参考，具体大事请结合专业日课。）');
         return { text: L.join('\n') };
       }
@@ -1242,6 +1277,16 @@
           L.push('（' + c.发用.说明 + '）');
           L.push('（九宗门全门已按《大六壬指南》《心印赋》《六壬大全》《探源》多源条文实现，并由古籍黄金课例逐条锁死；'
             + '涉害藏干/季无取/元首重审混见次序/金口诀贵人顺逆异说/夜子日柱 等细分项内核已如实标注，不假报已锁。）');
+          // 解课层（v3.1.49 新增，liuren-duanyu）：此前排盘完整但零断事断语
+          if (LID && LID.FAYONG) {
+            var fk = (c.发用 && c.发用.方法) || '';   // 字段名 = 方法（实测：'伏吟·自任(阳日干上)'）
+            var fd = LID.fayongOf(fk);
+            if (fd) L.push('发用断语：' + fd);
+            var ds = ['求财', '官讼', '疾病', '婚姻', '行人', '失物', '兵占', '天时']
+              .map(function (t) { return LID.duanshiOf(t); }).filter(Boolean);
+            if (ds.length) L.push('分类断事（问什么看什么）：' + ds.join(' '));
+            L.push('六壬口径：断语取《大六壬指南》《六壬大全》通行断法，为单点参考；断事仍须合日辰用神与年命。');
+          }
           return { text: L.join('\n') };
         } catch (e) {
           return { text: '【大六壬】起课失败：' + String(e && e.message ? e.message : e) + '（内核暂不可用，不影响其他功能）。' };
@@ -1264,6 +1309,18 @@
           L.push('天目(文昌)：' + c.天目文昌 + '；计神：' + c.计神 + '；客目(始击)：' + c.客目始击 + '。');
           L.push('太乙落宫：' + c.太乙落宫 + '。');
           L.push('（' + c.缺料 + '）');
+          // 解局层（v3.1.49 新增，taiyi-duanyu）：仅对**确定性输出**的二目二神给象意，落宫/主客算待验证不断
+          if (TID && TID.SHEN) {
+            // 天目/计神/始击的**类象意**（值里的「武德」等是天目本名，十六神另立表，此处给类的通义）
+            var sv = [];
+            [['天目(文昌)', '文昌'], ['计神', '计神'], ['客目(始击)', '始击']].forEach(function (pr) {
+              var t = TID.shenOf(pr[1]);
+              if (t) sv.push(pr[0] + '——' + t);
+            });
+            if (sv.length) L.push('二目二神象意：' + sv.join('；') + '。');
+            L.push('太乙口径：主客算与掩迫关囚击格对等格局须「太乙落宫 + 主客算」确定后方可断；'
+              + '本内核落宫与主客算已标【待黄金盘验证】，流派公式分歧（移宫 3 年/9 年异说）未锁，故**不硬断**。');
+          }
           return { text: L.join('\n') };
         } catch (e) {
           return { text: '【太乙】起局失败：' + String(e && e.message ? e.message : e) };
