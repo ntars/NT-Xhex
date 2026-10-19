@@ -1,4 +1,4 @@
-# 玄玖灵犀 NT-Xhex v3.1.37
+# 玄玖灵犀 NT-Xhex v3.1.38
 
 > 算法演乾坤，一问知天命，以数据重现千年术数。（演乾坤·知天命）  
 > 无后端 / 无网络 / 无登录 · 一套代码自动切换多形态  
@@ -486,6 +486,17 @@ node tools/sync-mp.js --check      # dist 与 modules 一致性 + WXML <template
 ---
 
 ## 九、更新日志
+
+- **v3.1.38**（主人要求「**主包只加载起始页 UI，其他页面 / 算法 / 功能都在需要时才加载**」——算法整体挪进分包 `occupy-cores`，主包缩到 0.267MB）：
+  ① **测绘先行（先量后改）**：主包原 1.666MB，前两大件 = **solarlunar 427KB**（历法底座）+ **registry.js 190KB**（功能注册表）。有两条「被迫带上全部算法」的锁链：`index.js → settings.js → registry.js → 32 个内核`，以及 `index.js → analyzer.js → AnalyzerModule/bazi.js → CoreModule/bazi.js → lunar → solarlunar`。
+  ② **关键约束：为什么不能按板块细拆**。内核之间是**同步 require**（`bazi→lunar→solarlunar`、`qimen→lunar+ganzhi`、`liuren→lunar+ganzhi`…），测绘发现**几乎全部内核都直接或间接依赖 solarlunar 这座底座**；而微信规定**分包之间不能同步 require**。底座与内核一旦分到两个包，就必然产生非法引用。⇒ 结论：**只能整包挪**（做到「主包只装起始页」，而不是「主包装一半算法」）。
+  ③ **主包缩到 8 个文件**（`tools/platform-modules.json` 的 `mp-weixin.files`）：`storage / settings / conversation / result-format / **cores-loader** / theme / safe-area / transition`，加起始页 UI（`pages/index`、`theme.wxss`、`static/icons`）。其余 67 项（CoreModule 全量含底座 + `features/registry.js` + `AnalyzerModule/*` + `ExportModule/*`）进分包 `occupy-cores`。
+  ④ **新增 `modules/HomeModule/cores-loader.js`**（算法取用器·单一真源）：`load('registry'|'analyzer'|'export')` → Promise。小程序端首次调用先 `wx.loadSubpackage` 确保分包已下载，再走官方 `require.async`（**路径必须静态字面量**，基础库 2.11.2+）取模块并缓存；Node / uni-app 同步 require；PWA 取全局 `NT.*`（PWA 本就全量同步加载，本文件不列进 PWA 清单）。**失败一律 resolve(null)、绝不 reject** —— 上层给「引擎未就绪」提示，不静默假装算得出。
+  ⑤ **壳的改法：懒取 + 重入，原有同步逻辑一行不动**（`dist/mp-weixin/pages/index/index.js`）：`send()` 发现 analyzer 未就位 → `Cores.load` 后建会话器再**重走一次 send()**；`exportImage()` 同理（首次导出先取导出模块再重入）；`openDetail('intro')` 先 `Settings.setRegistry()` 再重取 `about()`；`this.conv` 改为延迟创建（`gotoHome` 加判空保护）。主包壳的 require 只剩 8 个、全在主包内。
+  ⑥ **顺手拆掉 v3.1.32/37 的遗留**：`registry.js` 恢复为**纯同步 require**（它现在与内核同包，「主包引用分包」的非法场景从架构上消失），删掉 `warmAstro / warmZiwei / warmupByKeys / ASYNC_MODS / LAZY_KEYS / wx.requireAsync` 那一整套；`settings.js` 改为条件引用 registry，新增 `setRegistry()` 供壳注入。
+  ⑦ **生成器两处加固**（`tools/sync-mp.js`）：① `app.json` 的 `subPackages` 改为按清单**重建**而非追加——旧写法在分包改名/合并后，会把指向不存在目录的 root 留在 app.json 里，微信直接打包失败（本轮把两个分包合并成 occupy-cores 时正好踩到）；② `clearSubPackages()` 追加清理「清单外的历史 `occupy-*` 目录」并收掉空目录。
+  ⑧ **验证**：主包 **1.666MB → 0.267MB（红线占用 13.3%，降 84%）**；整包 2.639MB；五道护栏全绿（主包无静态引用分包 ✓、分包产物齐全 67 项 ✓、包体 ✓、WXML 模板传参 ✓、PWA 加载顺序 65 项 ✓）；**44 个测试文件全绿**；55 个功能块巡检全过；Node 端到端冒烟（懒取三件 → 提问今日宜忌/八字 → 功能介绍注入 → 紫微/占星出盘）全通。
+  ⑨ **仍存在的缺口（如实写）**：① **真机 / 开发者工具未验证**（本机无 miniprogram-ci）——请在微信开发者工具确认：首页秒开、首次提问 / 首次导出有约 1 秒「正在加载引擎 / 正在生成」提示、之后秒回；② **整包首次要下约 1.3MB**（问八字和问紫微一样，因为算法是一个整包）——这是「不细拆」的必然代价；若希望「问八字不下紫微」，得把内核的同步 require 改写成异步，那会动到引擎层，属大改，建议单独评估；③ `occupy-cores` 清单有重复项（`shensha.js` 登记两次），不影响产物，后续可清。
 
 - **v3.1.37**（🐛 修「小程序启动即崩」：主包静态 require 分包文件 + 用了不存在的 `wx.requireAsync`；并按主人要求去掉进首页的后台预下载）：
   ① **报错现场**：微信开发者工具里 `app.js` 一启动就抛 `module 'utils/modules/CoreModule/ziwei.js' is not defined, require args is '../CoreModule/ziwei.js'`，栈顶为 `settings.js:12 ← app.js:6`，连带 `Page "pages/index/index" has not been registered yet` —— 不是某个功能坏了，是**启动链整条断了**（`app.js → settings.js → registry.js`）。

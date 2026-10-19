@@ -295,10 +295,32 @@ function main() {
   //   故这里一并清干净再生成（同 clearFiles 约定：只删文件、不删空目录）。
   function clearSubPackages() {
     var map = subPackageMap();
+    // ① 清单内的分包：清掉旧文件（分包目录不在 clearFiles(MP) 的管辖范围内）
     Object.keys(map).forEach(function (pkg) {
       var dir = path.join(MP_DIST, pkg);
       if (fs.existsSync(dir)) clearFiles(dir);
     });
+    // ② 清单外、历史上生成过的分包目录（分包改名/合并后的残留，如 v3.1.38 前的 occupy-astro / occupy-ziwei）：
+    //    整目录清文件并收掉空目录，避免废弃产物继续占包体。
+    if (fs.existsSync(MP_DIST)) {
+      fs.readdirSync(MP_DIST).forEach(function (name) {
+        if (name.indexOf('occupy-') !== 0 || map[name]) return;
+        var dir = path.join(MP_DIST, name);
+        clearFiles(dir);
+        removeEmptyDirs(dir);
+        console.log('  清理废弃分包目录', name);
+      });
+    }
+  }
+
+  // 自底向上删除**空**目录（只删空的，绝不误删有内容的目录）
+  function removeEmptyDirs(dir) {
+    if (!fs.existsSync(dir)) return;
+    fs.readdirSync(dir).forEach(function (f) {
+      var fp = path.join(dir, f);
+      if (fs.lstatSync(fp).isDirectory()) removeEmptyDirs(fp);
+    });
+    try { if (!fs.readdirSync(dir).length) fs.rmdirSync(dir); } catch (e) { /* 非空或被占用则留着 */ }
   }
 
   function syncSubPackages() {
@@ -334,13 +356,12 @@ function main() {
     var appJsonPath = path.join(MP_DIST, 'app.json');
     if (fs.existsSync(appJsonPath)) {
       var appJson = JSON.parse(fs.readFileSync(appJsonPath, 'utf8'));
-      appJson.subPackages = appJson.subPackages || [];
-      pkgNames.forEach(function (pkg) {
+      // subPackages 按清单**重建**（不是追加）：历史上写过、而现在清单里没有的分包声明必须清掉，
+      //   否则微信会拿着指向不存在目录的 root 去打包，直接失败
+      //   （v3.1.38 把 occupy-astro/occupy-ziwei 合并成 occupy-cores 时就踩到了这个）。
+      appJson.subPackages = pkgNames.map(function (pkg) {
         var root = pkg + '/';
-        var already = appJson.subPackages.some(function (sp) { return sp.root === root; });
-        if (!already) {
-          appJson.subPackages.push({ root: root, name: pkg, pages: [root + 'pages/placeholder/placeholder'] });
-        }
+        return { root: root, name: pkg, pages: [root + 'pages/placeholder/placeholder'] };
       });
       // 不写 preloadRule（主人要求：主包之外的内容一律「用到才加载」——主包只装起始页，
       //   其他页面 / 算法 / 功能都在需要时才拉，进首页不后台预下载任何分包）。

@@ -7,13 +7,16 @@
  */
 var Conversation = require('../../utils/modules/HomeModule/conversation.js')
 var ResultFormat = require('../../utils/modules/HomeModule/result-format.js')
-var Analyzer = require('../../utils/modules/AnalyzerModule/analyzer.js')
+var Cores = require('../../utils/modules/HomeModule/cores-loader.js')
 var Storage = require('../../utils/modules/StorageModule/storage.js')
 var Settings = require('../../utils/modules/SettingsModule/settings.js')
 var SafeArea = require('../../utils/modules/UIModule/safe-area.js')
 var Theme = require('../../utils/modules/UIModule/theme.js')
 var Transition = require('../../utils/modules/UIModule/transition.js')
-var ExportImage = require('../../utils/modules/ExportModule/export-image.js')
+// v3.1.38：算法与导出模块都在分包 occupy-cores 里 —— 首次用到时才经 Cores.load 取（见 send / exportImage），
+//   本页启动阶段保持 null。主包**不能**静态 require 分包文件（微信判「主包引用分包」非法，启动即崩）。
+var Analyzer = null
+var ExportImage = null
 
 var EMPTY_RESULT = { title: '', lead: '', blocks: [], question: '' }
 
@@ -50,7 +53,9 @@ Page({
   },
 
   onLoad: function () {
-    this.conv = Conversation.createConversation({ analyzer: Analyzer, storage: Storage })
+    // 会话器**延迟创建**（v3.1.38）：analyzer 在分包里，首次提问时才经 Cores.load('analyzer') 取到，
+    //   取到后再建会话器、重走一次 send()。故这里先置空（调用处都有 conv 判空保护）。
+    this.conv = null
     // 主题：Theme.current 若缺失/异常 → 降级浅色，绝不崩页面（与 safe-area 同原则）
     var th = (Theme && typeof Theme.current === 'function') ? Theme.current() : 'light'
     // 安全区：SafeArea.calc 若缺失 → 降级 0（H5/无 wx API 端 safe-area.js 本就返回 0），不崩页面
@@ -165,6 +170,20 @@ Page({
       this.showToast()
       return
     }
+    // v3.1.38：算法在分包里 —— 首次提问先把 analyzer 取回来（约 1 秒，之后秒回），
+    //   取到后建会话器并**重走一次 send()**（这次 Analyzer 已就位，下面保持原有同步链路一行不变）。
+    if (!Analyzer) {
+      var self = this
+      wx.showLoading({ title: '正在加载引擎', mask: true })
+      Cores.load('analyzer').then(function (A) {
+        wx.hideLoading()
+        if (!A) { self.setData({ toastText: '引擎未就绪，请稍后重试' }); self.showToast(); return }
+        Analyzer = A
+        self.conv = Conversation.createConversation({ analyzer: Analyzer, storage: Storage })
+        self.send()
+      })
+      return
+    }
     var r = this.conv.ask(text)
     if (!r.ok) return
     this.go('result', { input: '', result: this.shape(r.question, r.answer) })
@@ -172,7 +191,7 @@ Page({
 
   // 返回输入页（清空当前结果）
   gotoHome: function () {
-    this.conv.clear()
+    if (this.conv) this.conv.clear()   // 会话器可能尚未创建（首次提问前就返回）
     this.go('home', { input: '', result: EMPTY_RESULT })
   },
 
@@ -192,7 +211,16 @@ Page({
     var self = this
     var r = this.data.result
     var has = r && (r.question || (r.blocks && r.blocks.length))
-    if (!has || !ExportImage) { this.setData({ toastText: '暂无可导出的内容' }); this.showToast(); return }
+    if (!has) { this.setData({ toastText: '暂无可导出的内容' }); this.showToast(); return }
+    // v3.1.38：导出模块在分包里 —— 首次导出先取回来，再**重走一次本函数**（这次 ExportImage 已就位）
+    if (!ExportImage) {
+      Cores.load('export').then(function (E) {
+        if (!E) { self.setData({ toastText: '导出模块未就绪，请重试' }); self.showToast(); return }
+        ExportImage = E
+        self.exportImage()
+      })
+      return
+    }
     var a = this.data.about || {}
     wx.showLoading({ title: '正在生成', mask: true })
 
@@ -268,6 +296,19 @@ Page({
 
   // 打开内容详情页：标题/正文/返回目标全取 settings.js 单一真源
   openDetail: function (id) {
+    var self = this
+    // v3.1.38：「功能介绍」的正文来自 features/registry.js（在分包里）——
+    //   先在主包侧把 registry 注入 settings，再重取 about()（这时 introPage 才拿得到功能清单）。
+    //   其余详情页（参考文献 / 关于我们等）正文都在主包内的 settings.js 里，不必等待。
+    if (id === 'intro' && !this._regInjected) {
+      Cores.load('registry').then(function (REG) {
+        if (REG && Settings.setRegistry) Settings.setRegistry(REG)
+        self._regInjected = true
+        self.setData({ about: Settings.about() })
+        self.openDetail(id)
+      })
+      return
+    }
     var a = this.data.about
     var items = (a.aboutNotes && a.aboutNotes[id]) || []
     var target = (a.backTarget && a.backTarget[id]) || 'about'

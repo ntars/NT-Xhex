@@ -9,7 +9,14 @@
  * 加载：UMD —— 小程序/uni-app/Node 被 require（storage 与 registry 相对路径注入）；浏览器挂到全局 NT.settings。
  */
 (function (root, factory) {
-  if (typeof module === 'object' && module.exports) module.exports = factory(require, require('../features/registry.js'));
+  if (typeof module === 'object' && module.exports) {
+    // 小程序端**不能**静态 require 分包里的 features/registry.js（微信判「主包引用分包」非法，启动即崩）；
+    //   故用「环境判定 + 间接调用」：小程序端传 null（改由壳在打开「功能介绍」前 setRegistry 注入），
+    //   Node / uni-app 源码树完整，照常同步 require（间接调用让微信的静态依赖分析看不到这个路径）。
+    var __isMP = (typeof wx !== 'undefined' && typeof wx.loadSubpackage === 'function');
+    var __opt = __isMP ? null : require;
+    module.exports = factory(require, __opt ? __opt('../features/registry.js') : null);
+  }
   else { root.NT = root.NT || {}; root.NT.settings = factory(null, root.NT.features || null); }
 })(typeof self !== 'undefined' ? self : this, function (require, REG) {
   // 跨模块依赖 storage：Node 用相对路径 require；浏览器用已挂载的全局 NT.storage
@@ -32,8 +39,13 @@
   //   为什么不在本文件写死清单：功能一增一减就会漏改，界面上就会出现「功能介绍里没有这个功能」。
   var CN_ORDER = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十'];
 
-  // 取功能总览：REG 是构建期/加载期注入的 registry（Node / 小程序 / uni-app 都走静态 require，
-  // 避免在 ESM 化的 uni-app 里 typeof module/require 判断失效）；浏览器在工厂调用时取 NT.features。
+  // 注入 registry（小程序端专用）：主包不能静态 require 分包里的 features/registry.js，
+  //   故壳在打开「功能介绍」前先 Cores.load('registry')，再把结果 setRegistry 进来。
+  function setRegistry(R) { if (R) REG = R; }
+
+  // 取功能总览：REG 是构建期/加载期注入的 registry（Node / uni-app 走静态 require，
+  // 避免在 ESM 化的 uni-app 里 typeof module/require 判断失效）；PWA 在工厂调用时取 NT.features；
+  // 小程序由壳经 setRegistry 注入。
   function catalogOf() {
     var R = REG;
     if (!R) {
@@ -77,7 +89,7 @@
   return {
     // 关于我们：版权/简介/版本/备案（统一品牌信息，单一真源）
     about: function () {
-      var version = 'v3.1.37'; // 唯一版本真值；由 tools/sync-version.js 从 version.json 同步，勿手改第二份
+      var version = 'v3.1.38'; // 唯一版本真值；由 tools/sync-version.js 从 version.json 同步，勿手改第二份
       return {
         name: '玄玖灵犀', en: 'NT-Xhex', version: version,
         desc: '算法演乾坤，一问知天命，以数据重现千年术数。',
@@ -278,6 +290,9 @@
 
     // 清除本地数据（对话结果缓存 / 主题偏好等）
     clearData: function () { if (S && S.clearAll) S.clearAll(); },
+
+    // 小程序端注入 registry（分包 occupy-cores 里的 features/registry.js），供「功能介绍」页取功能总览
+    setRegistry: setRegistry,
 
     // 「关于/设置卡 点下去去哪」单一真源（v3.1.0 去重：三端不再各写一份 if/else）。
     // 输入一张卡的行（{ id, danger, ... }），返回动作：
