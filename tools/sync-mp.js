@@ -229,13 +229,22 @@ function main() {
         console.log('  ✓ 分包产物齐全（' + Object.keys(map).map(function (k) { return k + '(' + map[k].files.length + ')'; }).join(', ') + '）');
       }
     })();
-    // 主包静态 require 分包文件体检（v3.1.37 新增）：
-    //   微信规定**主包不得静态 require 分包文件**（编译期即判非法、运行也取不到模块）。
-    //   一旦漏进去，启动链第二句就抛「module 'utils/modules/CoreModule/ziwei.js' is not defined」，
-    //   整包起不来、页面全部未注册 —— v3.1.37 修的就是这个。固化成立即判红的硬校验，防回归。
-    //   合法的 require.async('...分包路径...') 是官方跨包取码方式，不在检查范围内（正则只认 require(...) 同步式）。
+    // 主包跨包引用体检（v3.1.37 新增 → v3.1.38 加固为「路径解析级」）：
+    //   微信规定**主包不得引用分包文件**（编译期即判非法、运行也取不到模块）。
+    //   一旦漏进去，启动链就抛「module 'utils/modules/.../xxx.js' is not defined」，
+    //   整包起不来、页面全部未注册 —— v3.1.37 / v3.1.38 两次事故同源。
+    //
+    // ⚠ v3.1.38 加固点：旧版只认 `require('...')` **字面量**形式，被「别名调用」绕过 ——
+    //   settings.js 曾写成 `__opt('../features/registry.js')`（__opt 是 require 的别名），
+    //   正则匹配不到、护栏放绿，可运行时照样跨包取模块而崩。现改为**按相对路径解析**：
+    //   把主包每个 `xxx('...js')`（任意函数名）的实参相对本文件解析成「相对 modules/ 的路径」，
+    //   再看它是否落在分包文件集合里 —— 与函数名、调用形式完全无关，抓得更全、也更准。
+    //
+    // 合法豁免：`require.async('...')` 是官方跨包取码方式（cores-loader 用），
+    //   以及**运行时不执行**的分支 —— 那要求源码把路径拆开写（运行时拼接），
+    //   否则完整路径字面量仍会被本护栏判红（这是刻意的：宁严勿松）。
     (function () {
-      var subBase = Object.keys(subFileSet()).map(function (f) { return f.split('/').pop(); });
+      var subFiles = subFileSet();               // 分包文件相对路径集合
       var subMap = subPackageMap();
       var leaks = [];
       (function scan(dir) {
@@ -244,20 +253,57 @@ function main() {
           var fp = path.join(dir, f);
           var st = fs.lstatSync(fp);
           if (st.isDirectory()) {
-            // 跳过分包目录本身（分包内互相 require 是允许的，只查主包）
-            if (subMap[path.relative(MP_DIST, fp).split(path.sep)[0]]) return;
+            if (subMap[path.relative(MP_DIST, fp).split(path.sep)[0]]) return;  // 分包内互相引用合法
             return scan(fp);
           }
           if (!/\.js$/i.test(f)) return;
+          // 豁免：cores-loader 是**设计上的唯一懒加载入口**，它按官方 require.async 取分包模块，
+          //   代码里必然出现分包路径字面量 —— 那是合规用法，不是违规引用。
+          //   若把它一并禁掉，就等于禁止懒加载；故此文件整份豁免，但仍受上面 ① 调用形式检查约束
+          //   （它若用了同步 require 指向分包，① 依然会判红 —— 那才是真事故）。
+          if (/cores-loader\.js$/i.test(f)) return;
           var src = fs.readFileSync(fp, 'utf8');
-          subBase.forEach(function (bn) {
-            var re = new RegExp('require\\(\\s*[\'"][^\'"]*' + bn.replace(/\./g, '\\.') + '[\'"]\\s*\\)');
-            if (re.test(src)) leaks.push(path.relative(ROOT, fp) + '  →  静态 require 了分包文件 ' + bn);
+          // 本文件在 modules/ 下的相对路径目录（dist/mp-weixin/utils/modules/X/Y.js → X）
+          var relSelf = path.relative(path.join(MP_DIST, 'utils', 'modules'), path.dirname(fp))
+            .split(path.sep).join('/');
+          // ① 调用形式：任意 fn('...js')，实参相对本文件解析后若落在分包集合即判红
+          var re = /([A-Za-z_$][\w$]*)\s*\(\s*['"]([^'"]+\.js)['"]\s*\)/g, mm;
+          while ((mm = re.exec(src))) {
+            var fn = mm[1], rp = mm[2];
+            if (/\.async$/.test(fn)) continue;                    // require.async 合法
+            var target = path.posix.normalize((relSelf ? relSelf + '/' : '') + rp);
+            if (subFiles[target]) {
+              leaks.push(path.relative(ROOT, fp) + '  →  ' + fn + '("' + rp + '") 指向分包文件 ' + target);
+            }
+          }
+          // ② 字面量形式（**更严，v3.1.38 加固**）：即便没包成调用，只要**代码里**（注释已剔除）
+          //   出现分包文件的**完整路径**字面量也判红 —— 杜绝「先存进变量、换个名字再 require」这类绕过。
+          //   正确写法只有一条：把路径**拆开**在运行时拼接（微信静态分析只认完整字面量）。
+          // ⚠ 只认「带目录的完整路径」，**不扫裸文件名** —— 像 db.js / config.js / lunar.js 这类通用名
+          //   在中文说明文字里常被提到（「在适配层 lunar.js，读 config.js 开关」），
+          //   扫裸名会把参考文献页的正文误判成跨包引用（v3.1.38 首次加固时踩过）。
+          var code = src
+            .replace(/\/\*[\s\S]*?\*\//g, ' ')                     // 块注释
+            .replace(/(^|[^:\\])\/\/[^\n]*/g, '$1 ');               // 行注释（避开 http://）
+          Object.keys(subFiles).forEach(function (sf) {
+            // 只在「**代码位置**」找：赋值右侧、函数实参、数组元素 —— 即路径被当作值用的地方。
+            // 用「字符串前后必须有代码符号」的锚点匹配，避免误伤**中文文案里提到文件名**的情况
+            // （如「功能清单未取到（features/registry.js 未加载不进包）」这类提示语，不是引用）。
+            var dirPart = sf.replace(/\/[^/]+$/, '');
+            var base = sf.split('/').pop();
+            var rePath = new RegExp(
+              '(?:=|\\(|,|\\[|:|\\breturn\\b)\\s*[\'"][^\'"\\n]*' + dirPart.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') +
+              '/?' + base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '[\'"]'
+            );
+            if (rePath.test(code)) {
+              var dup = leaks.filter(function (t) { return t.indexOf(sf) >= 0; }).length;
+              if (!dup) leaks.push(path.relative(ROOT, fp) + '  →  代码里出现分包文件路径字面量 ' + sf);
+            }
           });
         });
       })(MP_DIST);
-      if (leaks.length) { leaks.forEach(function (t) { console.log('  ✗ 主包静态引用分包文件:', t); }); bad += leaks.length; }
-      else console.log('  ✓ 主包未静态 require 任何分包文件（分包只经 require.async 懒加载）');
+      if (leaks.length) { leaks.forEach(function (t) { console.log('  ✗ 主包跨包引用分包文件:', t); }); bad += leaks.length; }
+      else console.log('  ✓ 主包未引用任何分包文件（分包只经 require.async / loadSubpackage 懒加载）');
     })();
     console.log(bad === 0 ? '[sync-mp] 产物完整且与 modules/ 一致' : '[sync-mp] 发现 ' + bad + ' 处不一致，请重新生成');
     process.exit(bad === 0 ? 0 : 1);

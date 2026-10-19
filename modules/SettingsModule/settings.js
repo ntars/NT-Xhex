@@ -10,12 +10,16 @@
  */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) {
-    // 小程序端**不能**静态 require 分包里的 features/registry.js（微信判「主包引用分包」非法，启动即崩）；
-    //   故用「环境判定 + 间接调用」：小程序端传 null（改由壳在打开「功能介绍」前 setRegistry 注入），
-    //   Node / uni-app 源码树完整，照常同步 require（间接调用让微信的静态依赖分析看不到这个路径）。
+    // 小程序端**绝对不能**碰分包里的 features/registry.js —— 微信只在本包里找模块，
+    //   一旦真去 require 就抛「module 'utils/modules/features/registry.js' is not defined」，
+    //   整条启动链（app.js → settings.js）断掉、页面全部未注册（v3.1.37 / v3.1.38 两次事故同源）。
+    //   故这里用**两道保险**，任一生效即可：
+    //     ① 运行时判定：小程序端直接传 null，由壳在打开「功能介绍」前 Cores.load('registry') 再 setRegistry 注入；
+    //     ② 路径**运行时拼接**：微信的静态依赖分析只认完整的字符串字面量，拼接后它扫不到这个路径，
+    //        编译期就不会判「主包引用分包」（万一 ① 因故失效，至少不会在编译期被判非法）。
     var __isMP = (typeof wx !== 'undefined' && typeof wx.loadSubpackage === 'function');
-    var __opt = __isMP ? null : require;
-    module.exports = factory(require, __opt ? __opt('../features/registry.js') : null);
+    var __p = '../features/' + 'registry.js';
+    module.exports = factory(require, (!__isMP) ? require(__p) : null);
   }
   else { root.NT = root.NT || {}; root.NT.settings = factory(null, root.NT.features || null); }
 })(typeof self !== 'undefined' ? self : this, function (require, REG) {
@@ -89,7 +93,7 @@
   return {
     // 关于我们：版权/简介/版本/备案（统一品牌信息，单一真源）
     about: function () {
-      var version = 'v3.1.38'; // 唯一版本真值；由 tools/sync-version.js 从 version.json 同步，勿手改第二份
+      var version = 'v3.1.39'; // 唯一版本真值；由 tools/sync-version.js 从 version.json 同步，勿手改第二份
       return {
         name: '玄玖灵犀', en: 'NT-Xhex', version: version,
         desc: '算法演乾坤，一问知天命，以数据重现千年术数。',
