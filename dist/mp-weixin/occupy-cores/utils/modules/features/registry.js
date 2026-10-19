@@ -58,7 +58,8 @@
       require('../CoreModule/xiaocheng.js'),
       require('../CoreModule/shensha.js'),
       require('../CoreModule/ziwei-duanyu.js'),
-      require('../CoreModule/qizheng-duanyu.js')
+      require('../CoreModule/qizheng-duanyu.js'),
+      require('../CoreModule/astro-duanyu.js')
     );
   } else {
     root.NT = root.NT || {};
@@ -97,10 +98,11 @@
       root.NT.core && root.NT.core.xiaocheng,
       root.NT.core && root.NT.core.shensha,
       root.NT.core && root.NT.core.ziweiDuanyu,
-      root.NT.core && root.NT.core.qizhengDuanyu
+      root.NT.core && root.NT.core.qizhengDuanyu,
+      root.NT.core && root.NT.core.astroDuanyu
     );
   }
-})(typeof self !== 'undefined' ? self : this, function (FEI, NUM, NSTAR, ICE, BZH, XS, WX, N81, CORE, BAZI, ZD, ZW, ASTRO, QM, LR, LY, TY, YZ, XSH, QW, CZ, QF, BP, ZR, QG, LBF, LWS, ZHW, AH, BSS, ZWS, JK, QMR, QMK, QNY, XCO, SHEN, ZWD, QZD) {
+})(typeof self !== 'undefined' ? self : this, function (FEI, NUM, NSTAR, ICE, BZH, XS, WX, N81, CORE, BAZI, ZD, ZW, ASTRO, QM, LR, LY, TY, YZ, XSH, QW, CZ, QF, BP, ZR, QG, LBF, LWS, ZHW, AH, BSS, ZWS, JK, QMR, QMK, QNY, XCO, SHEN, ZWD, QZD, AAD) {
 
   // 占星/紫微五件与其他内核一视同仁：形参直接注入（v3.1.32 曾因分包把它们拆成「工厂内可变变量」，
   //   v3.1.38 改为整体分包后不再需要，恢复形参、去掉那一层间接。）
@@ -964,8 +966,49 @@
             return k + '「' + (x ? x.判 : '平常') + '」';
           }).join('、'));
           lines.push('（紫炁/凯龙：七政四余第 11 曜，定义有「日拱点 vs Chiron 小行星」两说，需权威裁定后补。落二十八宿走「等宫近似」（角初度对齐春分·宿度《淮南子》），庙旺取《果老星宗卷一》庙/旺/喜/乐/垣 五态查表。）');
-          // ── 「解」层（v3.1.46 新增 qizheng-duanyu 断语库）──
-          //   在此之前本块只有「落座/落宿/庙旺」三行**排盘**结果，无任何断语。
+          // ── 占星本命解读（v3.1.48 新增，astro-duanyu 断语库）──
+          //   在此之前「占星」侧只有「落座/落宿/庙旺」排盘，无任何解读。
+          if (AAD && AAD.PLANET_SIGN) {
+            var west = ['太阳', '太阴', '水星', '金星', '火星', '木星', '土星'];
+            var psign = [];
+            west.forEach(function (k) {
+              var sg = p.星座[k] && p.星座[k].星座;
+              var dy = AAD.planSignOf(k, sg);
+              if (dy) psign.push(dy);
+            });
+            if (psign.length) lines.push('行星落座解读：' + psign.join('；') + '。');
+            // 主相位（合/六合/刑/拱/冲；取容许度较大的前五），配通行性质
+            if (ASTRO.aspects) {
+              try {
+                var ar = ASTRO.aspects({ y: y, m: m, d: d, h: h, tz: 8 });
+                var AP = { 合: '合相', 六合: '六合', 刑: '刑', 拱: '拱', 冲: '对冲' };
+                var ma = (ar && ar.相位 ? ar.相位 : []).filter(function (x) {
+                    return AP[x.类型] && west.indexOf(x.a) >= 0 && west.indexOf(x.b) >= 0;
+                  }).slice(0, 5);   // 占星相位只看 7 实际行星，不掺虚星（罗/计/孛/气归七政侧）
+                if (ma.length) {
+                  lines.push('主相位：' + ma.map(function (x) {
+                    return x.a + '与' + x.b + AP[x.类型] + '（' + x.夹角 + '°' + (x.精准 ? '·精准' : '') + '）';
+                  }).join('、') + '。');
+                }
+                lines.push('相位性质：合0°融合 / 六合60°机会 / 刑90°张力 / 拱120°顺畅 / 冲180°对立（软相六合三合偏吉，硬相刑冲为成长课题）。');
+              } catch (e) { /* 相位算不出不阻断 */ }
+            }
+            // 三要素：日/月（升需出生地经纬度，离线版暂不取，如实说明）
+            lines.push('三要素（日月升）：' + AAD.vitalOf('太阳', p.星座['太阳'].星座) + '；' + AAD.vitalOf('太阴', p.星座['太阴'].星座) + '；上升需出生地经纬度，本离线版暂不取。');
+            // 元素 / 模式分布（统计 7 政落座）
+            var el = {}, mo = {};
+            west.forEach(function (k) {
+              var sg = p.星座[k] && p.星座[k].星座;
+              var s2 = AAD.SIGN[sg] || AAD.SIGN[sg + '座'];   // registry 星座值不带「座」，SIGN 键带「座」
+              if (!s2) return;
+              el[s2.元素] = (el[s2.元素] || 0) + 1;
+              mo[s2.模式] = (mo[s2.模式] || 0) + 1;
+            });
+            lines.push('元素/模式分布：' + Object.keys(el).map(function (e) { return e + '象' + el[e]; }).join('、') + '；' + Object.keys(mo).map(function (mm) { return mm + mo[mm]; }).join('、'));
+            lines.push('占星口径：行星落座/相位/三要素/元素模式为**通行占星学**体系（非单一古籍），定位是「自我认知工具」，不作命运定论；行星落宫逐格、推运、合盘、印占解读待补。');
+          }
+
+          // ── 七政四余断语层（v3.1.47 新增，qizheng-duanyu）──
           if (QZD && QZD.YAO11) {
             lines.push('十一曜星性：' + order.map(function (k) {
               var y = QZD.yaoOf(k);
