@@ -495,7 +495,7 @@ node tools/sync-mp.js --check      # dist 与 modules 一致性 + WXML <template
   ⑤ **壳的改法：懒取 + 重入，原有同步逻辑一行不动**（`dist/mp-weixin/pages/index/index.js`）：`send()` 发现 analyzer 未就位 → `Cores.load` 后建会话器再**重走一次 send()**；`exportImage()` 同理（首次导出先取导出模块再重入）；`openDetail('intro')` 先 `Settings.setRegistry()` 再重取 `about()`；`this.conv` 改为延迟创建（`gotoHome` 加判空保护）。主包壳的 require 只剩 8 个、全在主包内。
   ⑥ **顺手拆掉 v3.1.32/37 的遗留**：`registry.js` 恢复为**纯同步 require**（它现在与内核同包，「主包引用分包」的非法场景从架构上消失），删掉 `warmAstro / warmZiwei / warmupByKeys / ASYNC_MODS / LAZY_KEYS / wx.requireAsync` 那一整套；`settings.js` 改为条件引用 registry，新增 `setRegistry()` 供壳注入。
   ⑦ **生成器两处加固**（`tools/sync-mp.js`）：① `app.json` 的 `subPackages` 改为按清单**重建**而非追加——旧写法在分包改名/合并后，会把指向不存在目录的 root 留在 app.json 里，微信直接打包失败（本轮把两个分包合并成 occupy-cores 时正好踩到）；② `clearSubPackages()` 追加清理「清单外的历史 `occupy-*` 目录」并收掉空目录。
-  ⑧ **验证**：主包 **1.666MB → 0.267MB（红线占用 13.3%，降 84%）**；整包 2.639MB；五道护栏全绿（主包无静态引用分包 ✓、分包产物齐全 67 项 ✓、包体 ✓、WXML 模板传参 ✓、PWA 加载顺序 65 项 ✓）；**44 个测试文件全绿**；55 个功能块巡检全过；Node 端到端冒烟（懒取三件 → 提问今日宜忌/八字 → 功能介绍注入 → 紫微/占星出盘）全通。
+  ⑧ **验证**：主包 **1.666MB → 0.267MB（红线占用 13.3%，降 84%）**；整包 2.639MB；五道护栏全绿（主包无静态引用分包 ✓、分包产物齐全 67 项 ✓、包体 ✓、WXML 模板传参 ✓、PWA 加载顺序 65 项 ✓）；**45 个测试文件全绿**（含新增 `cores-loader.test.js` 15 项：接口 / 取不到即 resolve(null) 不 reject / loadAll / 缓存只取一次 / 端到端算出四柱）；55 个功能块巡检全过；Node 端到端冒烟（懒取三件 → 提问今日宜忌、八字 → 功能介绍注入 → 紫微/占星出盘）全通。
   ⑨ **仍存在的缺口（如实写）**：① **真机 / 开发者工具未验证**（本机无 miniprogram-ci）——请在微信开发者工具确认：首页秒开、首次提问 / 首次导出有约 1 秒「正在加载引擎 / 正在生成」提示、之后秒回；② **整包首次要下约 1.3MB**（问八字和问紫微一样，因为算法是一个整包）——这是「不细拆」的必然代价；若希望「问八字不下紫微」，得把内核的同步 require 改写成异步，那会动到引擎层，属大改，建议单独评估；③ `occupy-cores` 清单有重复项（`shensha.js` 登记两次），不影响产物，后续可清。
 
 - **v3.1.38**（📦 完成 v3.1.37 ⑩ 里挂着的「下一阶段」：**主包只装起始页 UI**，主包 1.666MB → **0.267MB（13.3%）**）：
