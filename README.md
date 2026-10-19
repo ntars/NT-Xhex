@@ -489,7 +489,7 @@ node tools/sync-mp.js --check      # dist 与 modules 一致性 + WXML <template
 
 - **v3.1.40**（🐛 修「启动即崩」第 3 次（同一报错）——**真因是判据本身在启动链上不成立**：`wx.loadSubpackage` 在 `app.js` require 阶段尚未注入，`settings.js` 误判成 Node 端）：
   ① **报错与前两次完全一致**（主人实测）：`module 'utils/modules/features/registry.js' is not defined, require args is '../features/registry.js'`，栈 `app.js:6 → settings.js:26 → Module.f`，`Page "pages/index/index" has not been registered yet`。**但报错行号从 22 变成 26** —— 说明 v3.1.39 的新代码**确实已生效**，只是**判据没起作用**。
-  ② **真因（本次才想通）**：`app.js` 第 6 行 `require('.../settings.js')` 执行时，**`App()` 还没跑**，微信**尚未注入 `wx.loadSubpackage`** → `typeof wx.loadSubpackage === 'function'` 为 **false** → `__isMP` 误判为「非小程序」→ 走进 `require('../features/registry.js')` → 崩。**前两次「加了判定却没修好」的根本原因：判定条件本身在启动链上就���成立**。
+  ② **真因（本次才想通）**：`app.js` 第 6 行 `require('.../settings.js')` 执行时，**`App()` 还没跑**，微信**尚未注入 `wx.loadSubpackage`** → `typeof wx.loadSubpackage === 'function'` 为 **false** → `__isMP` 误判为「非小程序」→ 走进 `require('../features/registry.js')` → 崩。**前两次「加了判定却没修好」的根本原因：判定条件本身在启动链上就不成立**。
   ③ **修法一：判据换成「存在 `wx` 全局」**（`settings.js` 与 `cores-loader.js` **同步**改）。`wx` 在 `app.js` 执行前**已注入**，在整个启动链上恒为真，不依赖任何尚未就绪的 API。`cores-loader.js` 原来也用 `wx.loadSubpackage` 判 `isMP`，是**同一颗雷**（它同样在 app.js 的 require 序列里），一并修掉。
   ④ **修法二：保留「路径运行时拼接」** `'../features/' + 'registry.js'` 作编译期保险 —— 微信静态依赖分析只认完整字面量，拼接后扫不到、不会判「主包引用分包」。两条保险互补：`__isMP` 管**运行时不取**，拼接管**编译期不判非法**。
      ⚠ 中途试过「把路径改回完整字面量 + 只靠判据」，**立刻被自己的护栏判红**（`✗ 主包跨包引用分包文件 … require("../features/registry.js")`）—— 证明编译期这条保险确实必要，不是多余的。
@@ -501,7 +501,7 @@ node tools/sync-mp.js --check      # dist 与 modules 一致性 + WXML <template
 
 - **v3.1.40**（🐛 修「启动即崩」第 3 次（同一报错）——**真因是判据本身在启动链上不成立**：`wx.loadSubpackage` 在 `app.js` require 阶段尚未注入，`settings.js` 误判成 Node 端）：
   ① **报错与前两次完全一致**（主人实测）：`module 'utils/modules/features/registry.js' is not defined, require args is '../features/registry.js'`，栈 `app.js:6 → settings.js:26 → Module.f`，`Page "pages/index/index" has not been registered yet`。**但报错行号从 22 变成 26** —— 说明 v3.1.39 的新代码**确实已生效**，只是**判据没起作用**。
-  ② **真因（本次才想通）**：`app.js` 第 6 行 `require('.../settings.js')` 执行时，**`App()` 还没跑**，微信**尚未注入 `wx.loadSubpackage`** → `typeof wx.loadSubpackage === 'function'` 为 **false** → `__isMP` 误判为「非小程序」→ 走进 `require('../features/registry.js')` → 崩。**前两次「加了判定却没修好」的根本原因：判定条件本身在启动链上就���成立**。
+  ② **真因（本次才想通）**：`app.js` 第 6 行 `require('.../settings.js')` 执行时，**`App()` 还没跑**，微信**尚未注入 `wx.loadSubpackage`** → `typeof wx.loadSubpackage === 'function'` 为 **false** → `__isMP` 误判为「非小程序」→ 走进 `require('../features/registry.js')` → 崩。**前两次「加了判定却没修好」的根本原因：判定条件本身在启动链上就不成立**。
   ③ **修法一：判据换成「存在 `wx` 全局」**（`settings.js` 与 `cores-loader.js` **同步**改）。`wx` 在 `app.js` 执行前**已注入**，在整个启动链上恒为真，不依赖任何尚未就绪的 API。`cores-loader.js` 原来也用 `wx.loadSubpackage` 判 `isMP`，是**同一颗雷**（它同样在 app.js 的 require 序列里），一并修掉。
   ④ **修法二：保留「路径运行时拼接」** `'../features/' + 'registry.js'` 作编译期保险 —— 微信静态依赖分析只认完整字面量，拼接后扫不到、不会判「主包引用分包」。两条保险互补：`__isMP` 管**运行时不取**，拼接管**编译期不判非法**。
      ⚠ 中途试过「把路径改回完整字面量 + 只靠判据」，**立刻被自己的护栏判红**（`✗ 主包跨包引用分包文件 … require("../features/registry.js")`）—— 证明编译期这条保险确实必要，不是多余的。
