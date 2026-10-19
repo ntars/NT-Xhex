@@ -11,9 +11,12 @@
     "postcss": true,
     "minified": true,
     "babelSetting": {
-      "ignore": [],
+      "ignore": [
+        "occupy-cores/utils/modules/CoreModule/vendor/*",
+        "utils/modules/CoreModule/vendor/*"
+      ],
       "disablePlugins": [],
-      "outputPath": "./dist/."
+      "outputPath": ""
     },
     "compileWorklet": false,
     "uglifyFileName": false,

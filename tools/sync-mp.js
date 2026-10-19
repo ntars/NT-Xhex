@@ -305,6 +305,38 @@ function main() {
       if (leaks.length) { leaks.forEach(function (t) { console.log('  ✗ 主包跨包引用分包文件:', t); }); bad += leaks.length; }
       else console.log('  ✓ 主包未引用任何分包文件（分包只经 require.async / loadSubpackage 懒加载）');
     })();
+
+    // 第六道：project.config.json 的 babelSetting 必须忽略 vendor（v3.1.42 新增）
+    //   病因：微信开发者工具默认「增强编译」(setting.enhance) 会用 Babel 把 ES6+ 转 ES5，
+    //     并给转译结果注入 `require('@babel/runtime/helpers/...')`。分包里的 iztro.min.js /
+    //     astronomy.js 是 ES6+ 的 UMD 大包，一旦被转译，就会 require 一堆 runtime helper ——
+    //     而小程序包里**永远不会**有 @babel/runtime（那是 npm 包，不是我们放的），
+    //     于是真机/IDE 一用到紫微、占星就抛：
+    //       module '@babel/runtime/helpers/arrayWithHoles.js' is not defined
+    //   解法：在 babelSetting.ignore 里列出 vendor 目录，让 Babel **跳过**它们。
+    //   ⚠ 官方口径：ignore 里写目录要**带 /* 通配**（示例 "utils/already_handle/*"）；
+    //     只写到 'vendor/' 是不匹配的（v3.1.41 试过，没生效，白等一轮）。
+    //   ⚠ 另外 outputPath 是「Babel 辅助函数的输出目录」，别乱填（曾写成 './dist/.'，
+    //     相对项目根会变成 dist/mp-weixin/dist/.，错乱）—— 置空用官方默认即可。
+    (function () {
+      var pcfg = path.join(MP_DIST, 'project.config.json');
+      if (!fs.existsSync(pcfg)) { console.log('  ✗ 缺 project.config.json（微信项目配置）'); bad++; return; }
+      var cfg;
+      try { cfg = JSON.parse(fs.readFileSync(pcfg, 'utf8')); }
+      catch (e) { console.log('  ✗ project.config.json 不是合法 JSON: ' + e.message); bad++; return; }
+      var bs = (cfg.setting && cfg.setting.babelSetting) || {};
+      var ig = bs.ignore || [];
+      var need = ['occupy-cores/utils/modules/CoreModule/vendor/*', 'utils/modules/CoreModule/vendor/*'];
+      var miss = need.filter(function (n) { return ig.indexOf(n) < 0; });
+      var badPath = !!bs.outputPath;   // 非空即视为错填（应为空 = 用官方默认 @babel/runtime）
+      if (miss.length || badPath) {
+        if (miss.length) console.log('  ✗ babelSetting.ignore 缺 vendor 通配：' + miss.join('、'));
+        if (badPath) console.log("  ✗ babelSetting.outputPath 应为空串，实际为 '" + bs.outputPath + "'");
+        bad++;
+      } else {
+        console.log('  ✓ babelSetting 已忽略 vendor（Babel 不转译 iztro/astronomy，避免 @babel/runtime 缺失）');
+      }
+    })();
     console.log(bad === 0 ? '[sync-mp] 产物完整且与 modules/ 一致' : '[sync-mp] 发现 ' + bad + ' 处不一致，请重新生成');
     process.exit(bad === 0 ? 0 : 1);
     return;
@@ -418,6 +450,38 @@ function main() {
     }
   }
 
+  /**
+   * 保证 project.config.json 的 babelSetting 正确（v3.1.42）。
+   *
+   * 为什么不只手写、还要脚本兜底：微信开发者工具会自己改写 project.config.json（加 multiPlatform、
+   *   条件编译等字段），手写的 ignore 有可能被冲掉或写错路径；而一旦错了，**只有真机点紫微/占星时
+   *   才会以「module '@babel/runtime/helpers/...' is not defined」的形式暴露**（v3.1.41 就是这么
+   *   白等一轮的）。故在生成产物时顺手把这两个字段校正回来，其余字段一律保留不动。
+   *
+   * 规则（官方口径）：
+   *   · babelSetting.ignore —— 要跳过 Babel 转译的文件/目录；**目录必须带 `/*` 通配**，
+   *     只写到 'vendor/' 不匹配。这里列 vendor 整个目录（iztro.min.js / astronomy.js 都是 ES6+ 大包）。
+   *   · babelSetting.outputPath —— Babel 辅助函数的输出目录，**必须为空串**（用官方默认 @babel/runtime）；
+   *     曾错写成 './dist/.'（相对项目根 → dist/mp-weixin/dist/.，错乱）。
+   */
+  function ensureBabelSetting() {
+    var pcfg = path.join(MP_DIST, 'project.config.json');
+    if (!fs.existsSync(pcfg)) return;
+    var raw, cfg;
+    try { raw = fs.readFileSync(pcfg, 'utf8'); cfg = JSON.parse(raw); } catch (e) { return; }
+    cfg.setting = cfg.setting || {};
+    var want = {
+      ignore: ['occupy-cores/utils/modules/CoreModule/vendor/*', 'utils/modules/CoreModule/vendor/*'],
+      disablePlugins: [],
+      outputPath: ''
+    };
+    var cur = cfg.setting.babelSetting;
+    if (cur && JSON.stringify(cur) === JSON.stringify(want)) return;   // 已正确，不动文件（避免无谓改动）
+    cfg.setting.babelSetting = want;
+    fs.writeFileSync(pcfg, JSON.stringify(cfg, null, 2) + '\n', 'utf8');
+    console.log('  校正 project.config.json 的 babelSetting（忽略 vendor / outputPath 置空）');
+  }
+
   clearFiles(MP);
   clearSubPackages();
   NEEDED.forEach(function (rel) {
@@ -429,6 +493,7 @@ function main() {
   syncSubPackages();
   syncTheme();
   syncStatics();
+  ensureBabelSetting();
   // 壳体检（生成模式只告警不中断，便于边改边看；CI 用 --check 会硬失败）
   var problems = lintWxmlTemplates();
   if (problems.length) {

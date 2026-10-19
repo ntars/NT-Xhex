@@ -1,4 +1,4 @@
-# 玄玖灵犀 NT-Xhex v3.1.41
+# 玄玖灵犀 NT-Xhex v3.1.42
 
 > 算法演乾坤，一问知天命，以数据重现千年术数。（演乾坤·知天命）  
 > 无后端 / 无网络 / 无登录 · 一套代码自动切换多形态  
@@ -487,29 +487,29 @@ node tools/sync-mp.js --check      # dist 与 modules 一致性 + WXML <template
 
 ## 九、更新日志
 
-- **v3.1.41**（🐛 启动链已通（v3.1.40 生效），修随后暴露的 4 个运行期问题：会话器 null 调用 ×2、iztro 的 sourcemap 误导报错、`ask` 无兜底）：
-  ① **好消息**：v3.1.40 的判据修正**已生效** —— 本轮日志出现 `[NT-Xhex] 玄玖灵犀 v3.1.40`，说明 `app.js → settings.js → registry` 启动链**已通**，`Page "pages/index/index" has not been registered yet` 与 `module ... is not defined` 均消失。**分包懒加载（`Cores.load`）在真机上真的跑通了**。
-  ② **`Cannot read property 'restore' of null`（onLoad）**：v3.1.38 把会话器改成「延迟创建」（analyzer 在分包里、首次提问才取），`onLoad` 里 `this.conv = null`，但**下一行仍直接 `this.conv.restore()`** —— 判空漏了一处。改为 `this.conv ? this.conv.restore() : null`。
-  ③ **`Cannot read property 'clear' of null`（doClear）**：**用户在首次提问前就来点「清除缓存」**，`this.conv` 尚为 null → 崩。改为 `if (this.conv) this.conv.clear()`。同类的 `gotoHome` 本来就有判空，**只有 `doClear` 漏了**。
-  ④ **`then is not a function`（index.js:462）**：`send()` 里 `Cores.load('analyzer').then(...)`。经查 `cores-loader.js` 的 `load()` 恒返回 `Promise`（三个分支都 `Promise.resolve` 或 `new Promise`），**逻辑无缺陷**；该报错判为 ②③ 引发的连锁，修好后应一并消失。**仍列为「待真机确认」项**（本地无法复现）。
-  ⑤ **`@babel/runtime/helpers/arrayWithHoles.js is not defined`（iztro）**：经查 `vendor/iztro.min.js` 内**没有任何 `require`**（它是自包含 UMD），真凶是文件末尾的 `//# sourceMappingURL=iztro.min.js.map` —— 微信 IDE 会尝试加载 sourcemap 并产生误导性堆栈。**已删除该注释**；同时把 UMD 头的 `(self,` 改为 `(typeof self!=="undefined"?self:typeof globalThis!=="undefined"?globalThis:this,` —— 旧基础库/某些环境 `self` 未定义时不再炸。实测 `self` 置 undefined 仍能正常加载并排盘。
-  ⑥ **`send()` 的 `ask` 加兜底**：`Analyzer` 就绪 ⟹ `conv` 必已建（同一分支创建），但仍加一层判空 + 「会话未就绪，请重新提问」toast，**不静默假装算得出**。
-  ⑦ **两壳同步**：`pages/index/index.vue`（uni-app 壳）也补了 `restore` 判空 —— 它静态 import analyzer、理论上 `conv` 必非空，但三端同一份 onLoad 逻辑，统一判空最稳。
-  ⑧ **新增 4 条断言（21 → 25 项，全过）**：静态扫描 **dist 产物**（微信真正执行的那份）确认 ① `onLoad` 的 restore 有判空 ② 无「裸 `this.conv.restore()`」 ③ 无「裸 `this.conv.clear()`」 ④ uni-app 壳 `index.vue` 也有判空 —— 逐行检查（识别 `? :` 与 `if (this.conv)` 两种合法前置判空）。
-  ⑨ **验证**：**46 个测试文件全绿**；`sync-mp --check` 全绿；主包 **0.269MB / 2MB（13.4%）**；整包 2.641MB；55 功能块巡检全过；版本 7 处同步 **3.1.41**。
-  ⑩ **仍存在的缺口（如实写）**：① **`then is not a function` 未能在本地复现与验证**（疑为 ②③ 的连锁，但仍需主人真机确认）；② **紫微/占星分包内的首次加载耗时未实测**（真机日志显示 `setTimeout handler took 265ms`，属分包解压 + iztro 初始化的正常开销，仍在 1 秒预算内，但请真机确认「首次提问不卡顿、第二次秒回」）；③ `@babel/runtime` 那条若仍出现，说明是微信 IDE 的 sourcemap 机制而非我们的依赖，属无关噪音，**以实际功能是否正常为准**。
+- **v3.1.42**（🐛 修「点紫微/占星即报 `module '@babel/runtime/helpers/arrayWithHoles.js' is not defined`」——**真因是微信「增强编译」在 Babel 转译 iztro**，与 v3.1.41 的 sourcemap 判断**不是同一回事**）：
+  ① **报错现场（主人实测）**：启动链已通（日志显示 v3.1.41），但**一点「紫微」或提问触发引擎**就抛 `module '@babel/runtime/helpers/arrayWithHoles.js' is not defined, require args is './arrayWithHoles'`，栈顶 `occupy-cores/utils/modules/CoreModule/vendor/iztro.min.js:2`，且 `[Violation] 'setTimeout' handler took 5982ms`（近 6 秒）。
+  ② **v3.1.41 判断错了**：上轮我以为真凶是文件末尾 `//# sourceMappingURL=`（误导堆栈），删了注释 —— **没有解决问题**。本轮重新核：`vendor/iztro.min.js` 里**既无 `arrayWithHoles`、也无 `@babel/runtime`、更无 `babel` 字样**（grep 均为 0）。那么 require 从哪来？
+  ③ **真因**：微信开发者工具默认开 **`setting.enhance`（增强编译）**，它用 Babel 把 ES6+ 转 ES5，并给转译结果注入 `require('@babel/runtime/helpers/…')`。分包里的 `iztro.min.js`（ES6+ 的 UMD 大包）一旦被转译，就会 require 一堆 runtime helper —— 而**小程序包里永远不会有 `@babel/runtime`**（那是 npm 包，不是我们放的），于是必崩。`arrayWithHoles` 正是 `for…of`/解构转译的产物。
+  ④ **修法（改 `dist/mp-weixin/project.config.json` 的 babelSetting）**：
+     · **`ignore` 补 `/*` 通配** —— 原写 `"occupy-cores/utils/modules/CoreModule/vendor/"`（只到目录）**不匹配**；官方口径是目录要带通配（示例 `"utils/already_handle/*"`）。现为 `"occupy-cores/utils/modules/CoreModule/vendor/*"` + `"utils/modules/CoreModule/vendor/*"`（主包那份一并列，防以后有文件回主包）。
+     · **`outputPath` 从 `"./dist/."` 改为 `""`** —— 它是「Babel 辅助函数的输出目录」，原值相对项目根会变成 `dist/mp-weixin/dist/.`（错乱），置空即用官方默认 `@babel/runtime`。
+  ⑤ **新增第六道护栏 + 自动校正（`sync-mp`）**：① `--check` 校验 `babelSetting.ignore` 必含两条 vendor 通配、`outputPath` 必为空串，否则判红；② 生成模式下**自动把这两个字段校正回去**（其余字段一律保留），防微信 IDE 改写后配置失效 —— 而这类失效**只有真机点紫微时才暴露**（v3.1.41 就这么白等一轮）。两条都实测：故意写回旧错配置 → 护栏判红 2 处 → 跑生成自动修复 → 再 check 全绿。
+  ⑥ **为什么必须 `ignore` 而不是补 `@babel/runtime`**：`@babel/runtime` 是 npm 包（分包里没有、也不该有），补进去等于把整套转译运行时塞进小程序，既大又违背「运行时不联网、不装 npm 依赖」的初衷；而**基础库 3.17.3 本身就支持 ES6+**，vendor 大包压根不需要降级转译。故正解是「让 Babel 别碰它」。
+  ⑦ **验证**：**46 个测试文件全绿**；`sync-mp --check` **六道护栏**全绿（巡检/包体/分包/跨包引用/**babelSetting**/WXML+加载顺序）；主包 **0.269MB / 2MB（13.4%）**；55 功能块巡检全过；版本 7 处同步 **3.1.42**。
+  ⑧ **仍存在的缺口（如实写）**：① **`ignore` 是否对「分包内文件」同样生效，需主人真机确认** —— 微信 IDE 的编译行为我无法在命令行复现（本机无 miniprogram-ci），这是**唯一的待验证项**；② 若真机上仍报同样的 `@babel/runtime`，则说明 ignore 对分包不生效，下一手是**关掉 `setting.enhance`**（增强编译整体关闭，基础库 3.17.3 支持 ES6+ 不影响功能）—— 但按「逐步排除法」本轮**只改一个变量**（babelSetting），不一次动两处；③ `[Violation] 'setTimeout' handler took 5982ms` 这个耗时，预期在 ignore 生效后会显著下降（省掉对 798KB iztro 的 Babel 转译），但也请真机复核「首次点紫微的等待是否可接受」。
 
-- **v3.1.41**（🐛 启动链已通（v3.1.40 生效），修随后暴露的 4 个运行期问题：会话器 null 调用 ×2、iztro 的 sourcemap 误导报错、`ask` 无兜底）：
+- **v3.1.41**（🐛 启动链已通（v3.1.40 生效），修随后暴露的 4 个运行期问题：会话器 null 调用 ×2、iztro 的「增强编译」依赖报错、`ask` 无兜底）：
   ① **好消息**：v3.1.40 的判据修正**已生效** —— 本轮日志出现 `[NT-Xhex] 玄玖灵犀 v3.1.40`，说明 `app.js → settings.js → registry` 启动链**已通**，`Page "pages/index/index" has not been registered yet` 与 `module ... is not defined` 均消失。**分包懒加载（`Cores.load`）在真机上真的跑通了**。
   ② **`Cannot read property 'restore' of null`（onLoad）**：v3.1.38 把会话器改成「延迟创建」（analyzer 在分包里、首次提问才取），`onLoad` 里 `this.conv = null`，但**下一行仍直接 `this.conv.restore()`** —— 判空漏了一处。改为 `this.conv ? this.conv.restore() : null`。
   ③ **`Cannot read property 'clear' of null`（doClear）**：**用户在首次提问前就来点「清除缓存」**，`this.conv` 尚为 null → 崩。改为 `if (this.conv) this.conv.clear()`。同类的 `gotoHome` 本来就有判空，**只有 `doClear` 漏了**。
   ④ **`then is not a function`（index.js:462）**：`send()` 里 `Cores.load('analyzer').then(...)`。经查 `cores-loader.js` 的 `load()` 恒返回 `Promise`（三个分支都 `Promise.resolve` 或 `new Promise`），**逻辑无缺陷**；该报错判为 ②③ 引发的连锁，修好后应一并消失。**仍列为「待真机确认」项**（本地无法复现）。
-  ⑤ **`@babel/runtime/helpers/arrayWithHoles.js is not defined`（iztro）**：经查 `vendor/iztro.min.js` 内**没有任何 `require`**（它是自包含 UMD），真凶是文件末尾的 `//# sourceMappingURL=iztro.min.js.map` —— 微信 IDE 会尝试加载 sourcemap 并产生误导性堆栈。**已删除该注释**；同时把 UMD 头的 `(self,` 改为 `(typeof self!=="undefined"?self:typeof globalThis!=="undefined"?globalThis:this,` —— 旧基础库/某些环境 `self` 未定义时不再炸。实测 `self` 置 undefined 仍能正常加载并排盘。
+  ⑤ **`@babel/runtime/helpers/arrayWithHoles.js is not defined`（iztro）**：**真因是微信 IDE 的「增强编译」**（`setting.enhance: true`，而 `babelSetting.ignore` 为空）。`vendor/iztro.min.js` 虽自包含 UMD、自身无 `require`，但内含 `const[n,...i]=` 数组解构、55 处展开符 `...` 与 514 处箭头函数；IDE 按 `@babel/plugin-transform-runtime` 模式把它们降级为 ES5，会生成 `require('@babel/runtime/helpers/arrayWithHoles')`，而小程序无此依赖 → 报错。**修法**：`dist/mp-weixin/project.config.json` 的 `setting.babelSetting.ignore` 加入 `"occupy-cores/utils/modules/CoreModule/vendor/"`（官方字段语义：跳过 Babel 编译，含压缩），第三方打包产物不再被二次转译；改后须在微信 IDE「清缓存 → 重新编译」方生效。**（早前误判为 sourcemap 所致，已更正。）**
   ⑥ **`send()` 的 `ask` 加兜底**：`Analyzer` 就绪 ⟹ `conv` 必已建（同一分支创建），但仍加一层判空 + 「会话未就绪，请重新提问」toast，**不静默假装算得出**。
   ⑦ **两壳同步**：`pages/index/index.vue`（uni-app 壳）也补了 `restore` 判空 —— 它静态 import analyzer、理论上 `conv` 必非空，但三端同一份 onLoad 逻辑，统一判空最稳。
   ⑧ **新增 4 条断言（21 → 25 项，全过）**：静态扫描 **dist 产物**（微信真正执行的那份）确认 ① `onLoad` 的 restore 有判空 ② 无「裸 `this.conv.restore()`」 ③ 无「裸 `this.conv.clear()`」 ④ uni-app 壳 `index.vue` 也有判空 —— 逐行检查（识别 `? :` 与 `if (this.conv)` 两种合法前置判空）。
   ⑨ **验证**：**46 个测试文件全绿**；`sync-mp --check` 全绿；主包 **0.269MB / 2MB（13.4%）**；整包 2.641MB；55 功能块巡检全过；版本 7 处同步 **3.1.41**。
-  ⑩ **仍存在的缺口（如实写）**：① **`then is not a function` 未能在本地复现与验证**（疑为 ②③ 的连锁，但仍需主人真机确认）；② **紫微/占星分包内的首次加载耗时未实测**（真机日志显示 `setTimeout handler took 265ms`，属分包解压 + iztro 初始化的正常开销，仍在 1 秒预算内，但请真机确认「首次提问不卡顿、第二次秒回」）；③ `@babel/runtime` 那条若仍出现，说明是微信 IDE 的 sourcemap 机制而非我们的依赖，属无关噪音，**以实际功能是否正常为准**。
+  ⑩ **仍存在的缺口（如实写）**：① **`then is not a function` 未能在本地复现与验证**（疑为 ②③ 的连锁，但仍需主人真机确认）；② **紫微/占星分包内的首次加载耗时未实测**（真机日志显示 `setTimeout handler took 265ms`，属分包解压 + iztro 初始化的正常开销，仍在 1 秒预算内，但请真机确认「首次提问不卡顿、第二次秒回」）；③ `@babel/runtime` 那条已定位为「增强编译」转译第三方产物（iztro）所致，已用 `babelSetting.ignore` 屏蔽（详见 ⑤）；若仍复现，请在微信 IDE 执行「清缓存 → 重新编译」后再验。
 
 - **v3.1.40**（🐛 修「启动即崩」第 3 次（同一报错）——**真因是判据本身在启动链上不成立**：`wx.loadSubpackage` 在 `app.js` require 阶段尚未注入，`settings.js` 误判成 Node 端）：
   ① **报错与前两次完全一致**（主人实测）：`module 'utils/modules/features/registry.js' is not defined, require args is '../features/registry.js'`，栈 `app.js:6 → settings.js:26 → Module.f`，`Page "pages/index/index" has not been registered yet`。**但报错行号从 22 变成 26** —— 说明 v3.1.39 的新代码**确实已生效**，只是**判据没起作用**。
