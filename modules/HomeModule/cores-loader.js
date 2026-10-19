@@ -35,7 +35,11 @@
  */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) {
-    var isMP = (typeof wx !== 'undefined' && typeof wx.loadSubpackage === 'function');
+    // ⚠ 判据只能是「存在 wx 全局」，**不能**用 `wx.loadSubpackage`：
+    //   本文件同样在 app.js 的 require 序列里（App() 尚未执行），此时微信还没注入
+    //   wx.loadSubpackage，用它判定会误判成 Node 端 → 传进同步 require → 走错分支。
+    //   v3.1.40 在 settings.js 上踩过这个坑，这里同步修正（详见 settings.js 里的详细说明）。
+    var isMP = (typeof wx !== 'undefined');
     // 小程序端两个参数都不注入（它只能走 require.async 拉分包）；
     // Node / uni-app 注入同步 require（源码树完整，直接加载）。
     module.exports = factory(root, isMP, isMP ? null : require);

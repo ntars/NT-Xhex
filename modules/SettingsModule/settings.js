@@ -11,15 +11,23 @@
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) {
     // 小程序端**绝对不能**碰分包里的 features/registry.js —— 微信只在本包里找模块，
-    //   一旦真去 require 就抛「module 'utils/modules/features/registry.js' is not defined」，
-    //   整条启动链（app.js → settings.js）断掉、页面全部未注册（v3.1.37 / v3.1.38 两次事故同源）。
-    //   故这里用**两道保险**，任一生效即可：
-    //     ① 运行时判定：小程序端直接传 null，由壳在打开「功能介绍」前 Cores.load('registry') 再 setRegistry 注入；
-    //     ② 路径**运行时拼接**：微信的静态依赖分析只认完整的字符串字面量，拼接后它扫不到这个路径，
-    //        编译期就不会判「主包引用分包」（万一 ① 因故失效，至少不会在编译期被判非法）。
-    var __isMP = (typeof wx !== 'undefined' && typeof wx.loadSubpackage === 'function');
+    //   一取就抛「module 'utils/modules/features/registry.js' is not defined」，
+    //   整条启动链（app.js → settings.js）断掉、页面全部未注册（v3.1.37~v3.1.40 连续三次同源事故）。
+    //
+    // ⚠⚠ v3.1.40 血泪教训：**判定小程序端绝不能用 `wx.loadSubpackage` 做判据**。
+    //   本文件是被 **app.js 第 6 行 require 的**，那时 `App()` 还没执行、微信尚未注入
+    //   `wx.loadSubpackage` → `typeof wx.loadSubpackage === 'function'` 为 **false**
+    //   → 误判成 Node/浏览器 → 走进 require 分支 → 启动即崩。
+    //   这正是前两次「加了判定却没修好」的真因：**判定条件本身在启动链上就不成立**。
+    //
+    // ✅ 正确判据：**存在 `wx` 全局即小程序端**。它在 app.js 执行前就已注入，
+    //   在整个启动链上恒为真，且不依赖任何尚未就绪的 API。
+    var __isMP = (typeof wx !== 'undefined');
+    // 路径**运行时拼接**：微信静态依赖分析只认完整字符串字面量，拼接后编译期扫不到这个路径，
+    //   不会判「主包引用分包」（构建期护栏 sync-mp --check 第五道也按此口径放行）。
+    //   两条保险互补：__isMP 保证**运行时不取**（小程序端），拼接保证**编译期不判非法**。
     var __p = '../features/' + 'registry.js';
-    module.exports = factory(require, (!__isMP) ? require(__p) : null);
+    module.exports = factory(require, __isMP ? null : require(__p));
   }
   else { root.NT = root.NT || {}; root.NT.settings = factory(null, root.NT.features || null); }
 })(typeof self !== 'undefined' ? self : this, function (require, REG) {
@@ -93,7 +101,7 @@
   return {
     // 关于我们：版权/简介/版本/备案（统一品牌信息，单一真源）
     about: function () {
-      var version = 'v3.1.39'; // 唯一版本真值；由 tools/sync-version.js 从 version.json 同步，勿手改第二份
+      var version = 'v3.1.40'; // 唯一版本真值；由 tools/sync-version.js 从 version.json 同步，勿手改第二份
       return {
         name: '玄玖灵犀', en: 'NT-Xhex', version: version,
         desc: '算法演乾坤，一问知天命，以数据重现千年术数。',

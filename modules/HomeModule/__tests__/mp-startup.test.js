@@ -47,9 +47,17 @@ function ok(name, cond, extra) {
 }
 
 // —— 搭建「小程序运行时」：wx 存在，且模块系统只认主包 ——
+// ⚠ 关键：这里**刻意不给 wx.loadSubpackage**（只有 getSystemInfoSync / setBackgroundColor 等基础 API）。
+//   因为真实微信里，app.js 的 require 序列执行时 App() 还没跑、wx.loadSubpackage 尚未注入 ——
+//   v3.1.40 的事故正是「拿 wx.loadSubpackage 当小程序判据」而它在启动链上不成立，
+//   于是 settings.js 误判成 Node 端、拉分包文件、启动即崩。
+//   本测试复刻这个「半初始化」时刻，确保判据在**最早期**也正确。
 global.wx = {
-  loadSubpackage: function (opt) { (global.__loadedSubPkgs = global.__loadedSubPkgs || []).push(opt && opt.package); },
-  getSystemInfoSync: function () { return { SDKVersion: '3.17.3' }; }
+  getSystemInfoSync: function () { return { SDKVersion: '3.17.3', platform: 'devtools' }; },
+  setBackgroundColor: function () {},
+  getStorageSync: function () { return ''; },
+  setStorageSync: function () {},
+  // 注意：故意**不提供** loadSubpackage —— 见上方说明
 };
 
 var origResolve = Module._resolveFilename;
@@ -86,10 +94,10 @@ ok('about() 可用且有版本号', !!(loaded['utils/modules/SettingsModule/sett
 ok('setRegistry 注入口存在（功能介绍页靠它拿清单）',
   typeof loaded['utils/modules/SettingsModule/settings.js'].setRegistry === 'function');
 
-console.log('\nC. cores-loader 在小程序端的表现');
+console.log('\nC. cores-loader 在小程序端的表现（wx 半初始化：loadSubpackage 未注入）');
 var Cores = loaded['utils/modules/HomeModule/cores-loader.js'];
 ok('cores-loader 加载成功', !!Cores);
-ok('isMP = true（识别出小程序环境）', Cores.isMP === true, String(Cores.isMP));
+ok('isMP = true（仅凭 wx 全局即可判定，不依赖 loadSubpackage）', Cores.isMP === true, String(Cores.isMP));
 ok('PKG = occupy-cores', Cores.PKG === 'occupy-cores', Cores.PKG);
 
 console.log('\nD. 分包不可得时「返回 null 而不是抛」（不静默假装算得出、也不崩）');
@@ -102,10 +110,22 @@ Cores.load('registry').then(function (R) {
   console.log('\nE. 源码形态：路径必须运行时拼接（微信静态分析只认完整字面量）');
   var fs = require('fs');
   var src = fs.readFileSync(path.join(ROOT, 'modules/SettingsModule/settings.js'), 'utf8');
-  ok("settings.js 源码不含完整字面量 '../features/registry.js'",
-    src.indexOf("'../features/registry.js'") < 0 && src.indexOf('"../features/registry.js"') < 0);
-  ok("settings.js 用运行时拼接 '../features/' + 'registry.js'",
-    src.indexOf("'../features/' + 'registry.js'") >= 0);
+  ok('settings.js 判据是「typeof wx !== undefined」（不依赖 loadSubpackage）',
+    /var __isMP = \(typeof wx !== 'undefined'\);/.test(src));
+  // 只查**代码**（剔除注释后再找）——注释里可以、也应该解释「为何不能用 loadSubpackage」
+  function codeOnly(t) {
+    return t.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:\\])\/\/[^\n]*/g, '$1 ');
+  }
+  ok('settings.js 代码里不出现 wx.loadSubpackage（启动链上尚未注入）',
+    codeOnly(src).indexOf('wx.loadSubpackage') < 0);
+  // cores-loader 的**判据处**（UMD 头部算 isMP 那行）不许依赖 loadSubpackage；
+  // 但它 load() 里的防御性检查「typeof wx.loadSubpackage === 'function'」是**合法且必要**的
+  // —— 那时 App 已启动、API 已就绪，属运行时保护，不在禁止之列。
+  var cloader = fs.readFileSync(path.join(ROOT, 'modules/HomeModule/cores-loader.js'), 'utf8');
+  ok('cores-loader 判据处是「typeof wx !== undefined」（UMD 头部不算 loadSubpackage）',
+    /var isMP = \(typeof wx !== 'undefined'\);/.test(cloader));
+  ok('cores-loader 的 isMP 赋值行本身不含 loadSubpackage',
+    !/var isMP = \([^\n]*loadSubpackage/.test(cloader));
 
   console.log('\n=== mp-startup 自测：' + pass + ' 通过 / ' + fail + ' 失败 ===');
   process.exit(fail ? 1 : 0);
