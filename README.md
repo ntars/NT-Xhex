@@ -487,6 +487,16 @@ node tools/sync-mp.js --check      # dist 与 modules 一致性 + WXML <template
 
 ## 九、更新日志
 
+- **v3.1.39**（🐛 修「微信开发者工具启动即崩」：`settings.js` 跨包 require `features/registry.js` —— v3.1.37 同类事故第 2 次，护栏加固 + 新增「模拟真机」启动链测试）：
+  ① **报错现场（主人实测）**：`module 'utils/modules/features/registry.js' is not defined, require args is '../features/registry.js'`，栈 `app.js:6 → settings.js:22 → Module.f`，连带 `Page "pages/index/index" has not been registered yet`。**根因**：`SettingsModule/settings.js`（主包）为「功能介绍」页取功能清单，**静态 require 了分包里的 `features/registry.js`**。微信只在本包里找模块，一取就抛，整条启动链断掉。
+  ② **为什么 v3.1.37 的护栏没抓到**：旧护栏正则只认 `require('...')` **字面量**，而事故代码写的是 `__opt('../features/registry.js')`（`__opt` 是 `require` 的别名）→ **匹配不到、放绿、运行时照样崩**。护栏漏报比不写护栏更危险——它给了假安全感。
+  ③ **修法一（settings.js 两道保险）**：① **运行时判定**——小程序端直接传 `null`，由壳在打开「功能介绍」前 `Cores.load('registry')` 再 `setRegistry` 注入（Node / uni-app 走同步 require）；② **路径运行时拼接** `'../features/' + 'registry.js'` —— 微信静态依赖分析只认完整字符串字面量，拼接后它**编译期就扫不到**这个路径，不会被判「主包引用分包」。二者任一生效即可。
+  ④ **修法二（护栏从「认函数名」升级为「认路径解析」· 本次最大收获）**：`sync-mp --check` 第五道改为 ① **按相对路径解析**——主包每个 `xxx('...js')`（**任意函数名**）的实参解析成「相对 `modules/` 的路径」，落在分包集合即判红，与函数名/调用形式完全无关；② **字面量兜底**——即使没包成调用，剔除注释后代码里出现分包文件的**完整路径字面量**也判红（杜绝「先存变量、换个名字再 require」的绕过）。**豁免**：`cores-loader.js`（设计上的唯一懒加载入口，按官方 `require.async` 取分包，必然含路径字面量）与 `require.async` 调用。
+  ⑤ **护栏三绕过回归实测全抓**（护栏可信的关键证据）：故意往 settings.js 注入 ① 别名调用 `__o(__p)` ② 纯变量赋值 ③ 直接 `require('...')` —— 三种绕过**逐一被抓**；真实产物**全绿**。
+  ⑥ **新增「模拟真机」启动链测试 `HomeModule/__tests__/mp-startup.test.js`（19 项，本项目最该早有的测试）**：Node 里 45 个测试全绿**也照不出**这个错——源码树里分包文件存在，只有产物包里才缺。该测试用 `Module._resolveFilename` 把**主包以外的文件全部藏起来**（与微信「只在本包里找模块」一致），然后：① 主包 8 文件逐个 require 不报错（模拟 `app.js` 启动序列）② `settings.js` 不触发任何跨包 require ③ `setRegistry` 注入口存在 ④ `cores-loader.isMP=true / PKG=occupy-cores` ⑤ 分包不可得时 `load()` 返回 `null` 而非 throw/reject（不静默假装算得出、也不让壳崩）⑥ 源码确为「运行时拼接」形态。
+  ⑦ **验证**：新增测试 **19 项全过**；**46 个测试文件全绿**；`sync-mp --check` 全绿；主包 **0.267MB / 2MB**；55 功能块巡检全过；版本 7 处同步 **3.1.39**。
+  ⑧ **仍存在的缺口（如实写）**：**真机 / 微信开发者工具仍需主人重新编译确认**（本机无 miniprogram-ci）：① 启动不再抛 `module ... is not defined`；② 页面正常注册；③ 首次提问先拉分包（约 1 秒）再出结果、第二次秒回。若仍有残留，把新报错栈发我，按栈顶文件+行号可快速定位。③ **同类隐患的架构根子**是「主包不该需要算法内核」——若后续某主包模块确需内核，应经 `cores-loader` 懒注入改设计，而不是加一条 require。
+
 - **v3.1.38**（主人要求「**主包只加载起始页 UI，其他页面 / 算法 / 功能都在需要时才加载**」——算法整体挪进分包 `occupy-cores`，主包缩到 0.267MB）：
   ① **测绘先行（先量后改）**：主包原 1.666MB，前两大件 = **solarlunar 427KB**（历法底座）+ **registry.js 190KB**（功能注册表）。有两条「被迫带上全部算法」的锁链：`index.js → settings.js → registry.js → 32 个内核`，以及 `index.js → analyzer.js → AnalyzerModule/bazi.js → CoreModule/bazi.js → lunar → solarlunar`。
   ② **关键约束：为什么不能按板块细拆**。内核之间是**同步 require**（`bazi→lunar→solarlunar`、`qimen→lunar+ganzhi`、`liuren→lunar+ganzhi`…），测绘发现**几乎全部内核都直接或间接依赖 solarlunar 这座底座**；而微信规定**分包之间不能同步 require**。底座与内核一旦分到两个包，就必然产生非法引用。⇒ 结论：**只能整包挪**（做到「主包只装起始页」，而不是「主包装一半算法」）。
