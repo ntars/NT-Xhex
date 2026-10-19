@@ -487,17 +487,17 @@ node tools/sync-mp.js --check      # dist 与 modules 一致性 + WXML <template
 
 ## 九、更新日志
 
-- **v3.1.40**（🐛 修「启动即崩」第 3 次（同一报错）——**真因是判据本身在启动链上不成立**：`wx.loadSubpackage` 在 `app.js` require 阶段尚未注入，`settings.js` 误判成 Node 端）：
-  ① **报错与前两次完全一致**（主人实测）：`module 'utils/modules/features/registry.js' is not defined, require args is '../features/registry.js'`，栈 `app.js:6 → settings.js:26 → Module.f`，`Page "pages/index/index" has not been registered yet`。**但报错行号从 22 变成 26** —— 说明 v3.1.39 的新代码**确实已生效**，只是**判据没起作用**。
-  ② **真因（本次才想通）**：`app.js` 第 6 行 `require('.../settings.js')` 执行时，**`App()` 还没跑**，微信**尚未注入 `wx.loadSubpackage`** → `typeof wx.loadSubpackage === 'function'` 为 **false** → `__isMP` 误判为「非小程序」→ 走进 `require('../features/registry.js')` → 崩。**前两次「加了判定却没修好」的根本原因：判定条件本身在启动链上就不成立**。
-  ③ **修法一：判据换成「存在 `wx` 全局」**（`settings.js` 与 `cores-loader.js` **同步**改）。`wx` 在 `app.js` 执行前**已注入**，在整个启动链上恒为真，不依赖任何尚未就绪的 API。`cores-loader.js` 原来也用 `wx.loadSubpackage` 判 `isMP`，是**同一颗雷**（它同样在 app.js 的 require 序列里），一并修掉。
-  ④ **修法二：保留「路径运行时拼接」** `'../features/' + 'registry.js'` 作编译期保险 —— 微信静态依赖分析只认完整字面量，拼接后扫不到、不会判「主包引用分包」。两条保险互补：`__isMP` 管**运行时不取**，拼接管**编译期不判非法**。
-     ⚠ 中途试过「把路径改回完整字面量 + 只靠判据」，**立刻被自己的护栏判红**（`✗ 主包跨包引用分包文件 … require("../features/registry.js")`）—— 证明编译期这条保险确实必要，不是多余的。
-  ⑤ **测试升级为「复刻半初始化时刻」**：`mp-startup.test.js` 的 mock `wx` **刻意不提供 `loadSubpackage`**（只给 `getSystemInfoSync`/`setStorageSync` 等基础 API），精确模拟「app.js require 阶段、App 未启动」的真实环境；同时新增两条断言把判据形态钉死（settings.js 判据为 `typeof wx !== 'undefined'` 且代码中不出现 `wx.loadSubpackage`；cores-loader 的 `isMP` 赋值行同样不含它）。**测试从 19 项扩到 21 项，全过。**
-     · 附带说明：`cores-loader.load()` 里那句 `typeof wx.loadSubpackage === 'function'` 是**合法且必要**的运行时防御（那时 App 已启动、API 已就绪），断言已精确区分「判据处」与「运行时保护处」，不误伤。
-  ⑥ **验证**：**46 个测试文件全绿**；`sync-mp --check`（巡检/包体/分包/跨包引用/WXML/加载顺序）全绿；主包 **0.267MB / 2MB**；55 功能块巡检全过；产物与源码 sha 一致；版本 7 处同步 **3.1.40**。
-  ⑦ **仍存在的缺口（如实写）**：**真机 / 微信开发者工具仍需主人重新编译确认**（本机无 miniprogram-ci，且前两次教训说明：**只有真机能暴露「启动链时序」类问题**）。若这次仍有残留，请把**完整报错栈（含行号列号）**发我 —— 行号变化能直接告诉我读到的是哪一版代码。
-  ⑧ **沉淀为项目铁律（已写进源码注释）**：**在启动链上（app.js / UMD 头部）判断运行环境时，只能用「此时必然已就绪」的特征**（如 `wx` 全局、`module.exports` 存在）；**绝不能用尚未注入的 API**（如 `wx.loadSubpackage`、`wx.getSystemInfoSync` 等，它们要等 `App()` 启动后才可用）。
+- **v3.1.41**（🐛 启动链已通（v3.1.40 生效），修随后暴露的 4 个运行期问题：会话器 null 调用 ×2、iztro 的 sourcemap 误导报错、`ask` 无兜底）：
+  ① **好消息**：v3.1.40 的判据修正**已生效** —— 本轮日志出现 `[NT-Xhex] 玄玖灵犀 v3.1.40`，说明 `app.js → settings.js → registry` 启动链**已通**，`Page "pages/index/index" has not been registered yet` 与 `module ... is not defined` 均消失。**分包懒加载（`Cores.load`）在真机上真的跑通了**。
+  ② **`Cannot read property 'restore' of null`（onLoad）**：v3.1.38 把会话器改成「延迟创建」（analyzer 在分包里、首次提问才取），`onLoad` 里 `this.conv = null`，但**下一行仍直接 `this.conv.restore()`** —— 判空漏了一处。改为 `this.conv ? this.conv.restore() : null`。
+  ③ **`Cannot read property 'clear' of null`（doClear）**：**用户在首次提问前就来点「清除缓存」**，`this.conv` 尚为 null → 崩。改为 `if (this.conv) this.conv.clear()`。同类的 `gotoHome` 本来就有判空，**只有 `doClear` 漏了**。
+  ④ **`then is not a function`（index.js:462）**：`send()` 里 `Cores.load('analyzer').then(...)`。经查 `cores-loader.js` 的 `load()` 恒返回 `Promise`（三个分支都 `Promise.resolve` 或 `new Promise`），**逻辑无缺陷**；该报错判为 ②③ 引发的连锁，修好后应一并消失。**仍列为「待真机确认」项**（本地无法复现）。
+  ⑤ **`@babel/runtime/helpers/arrayWithHoles.js is not defined`（iztro）**：经查 `vendor/iztro.min.js` 内**没有任何 `require`**（它是自包含 UMD），真凶是文件末尾的 `//# sourceMappingURL=iztro.min.js.map` —— 微信 IDE 会尝试加载 sourcemap 并产生误导性堆栈。**已删除该注释**；同时把 UMD 头的 `(self,` 改为 `(typeof self!=="undefined"?self:typeof globalThis!=="undefined"?globalThis:this,` —— 旧基础库/某些环境 `self` 未定义时不再炸。实测 `self` 置 undefined 仍能正常加载并排盘。
+  ⑥ **`send()` 的 `ask` 加兜底**：`Analyzer` 就绪 ⟹ `conv` 必已建（同一分支创建），但仍加一层判空 + 「会话未就绪，请重新提问」toast，**不静默假装算得出**。
+  ⑦ **两壳同步**：`pages/index/index.vue`（uni-app 壳）也补了 `restore` 判空 —— 它静态 import analyzer、理论上 `conv` 必非空，但三端同一份 onLoad 逻辑，统一判空最稳。
+  ⑧ **新增 4 条断言（21 → 25 项，全过）**：静态扫描 **dist 产物**（微信真正执行的那份）确认 ① `onLoad` 的 restore 有判空 ② 无「裸 `this.conv.restore()`」 ③ 无「裸 `this.conv.clear()`」 ④ uni-app 壳 `index.vue` 也有判空 —— 逐行检查（识别 `? :` 与 `if (this.conv)` 两种合法前置判空）。
+  ⑨ **验证**：**46 个测试文件全绿**；`sync-mp --check` 全绿；主包 **0.269MB / 2MB（13.4%）**；整包 2.641MB；55 功能块巡检全过；版本 7 处同步 **3.1.41**。
+  ⑩ **仍存在的缺口（如实写）**：① **`then is not a function` 未能在本地复现与验证**（疑为 ②③ 的连锁，但仍需主人真机确认）；② **紫微/占星分包内的首次加载耗时未实测**（真机日志显示 `setTimeout handler took 265ms`，属分包解压 + iztro 初始化的正常开销，仍在 1 秒预算内，但请真机确认「首次提问不卡顿、第二次秒回」）；③ `@babel/runtime` 那条若仍出现，说明是微信 IDE 的 sourcemap 机制而非我们的依赖，属无关噪音，**以实际功能是否正常为准**。
 
 - **v3.1.40**（🐛 修「启动即崩」第 3 次（同一报错）——**真因是判据本身在启动链上不成立**：`wx.loadSubpackage` 在 `app.js` require 阶段尚未注入，`settings.js` 误判成 Node 端）：
   ① **报错与前两次完全一致**（主人实测）：`module 'utils/modules/features/registry.js' is not defined, require args is '../features/registry.js'`，栈 `app.js:6 → settings.js:26 → Module.f`，`Page "pages/index/index" has not been registered yet`。**但报错行号从 22 变成 26** —— 说明 v3.1.39 的新代码**确实已生效**，只是**判据没起作用**。
