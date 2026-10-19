@@ -1,4 +1,4 @@
-# 玄玖灵犀 NT-Xhex v3.1.43
+# 玄玖灵犀 NT-Xhex v3.1.44
 
 > 算法演乾坤，一问知天命，以数据重现千年术数。（演乾坤·知天命）  
 > 无后端 / 无网络 / 无登录 · 一套代码自动切换多形态  
@@ -486,6 +486,19 @@ node tools/sync-mp.js --check      # dist 与 modules 一致性 + WXML <template
 ---
 
 ## 九、更新日志
+
+- **v3.1.44**（🐛 修「功能介绍页 / 搜索结果页**无报错但永远进不去**」—— 真凶：`require.async` 被当成「带回调」用，**回调被静默忽略 → Promise 永久 pending**）：
+  ① **报错现场（主人实测）**：启动正常、**没有任何报错**，但一点「功能介绍」或提问触发结果页，**页面就卡住进不去**（超时）。这个「无报错但卡死」的形态是决定性线索 —— 说明**不是异常，而是 `Cores.load()` 的 Promise 永远不会 settle**。
+  ② **真凶（官方口径）**：《分包异步化》文档写得很清楚 —— 跨分包取码有**两种风格，绝不能混**：
+     · **回调风格**：`require(path, onSuccess, onFail)` —— 是 `require`，**3 个参数**
+     · **Promise 风格**：`require.async(path).then(...).catch(...)` —— **`require.async` 只接 1 个参数（path），返回 Promise**
+     而 `cores-loader.js` 写的是 `require.async(path, callback)`（v3.1.40 起）→ **第二个参数被静默忽略** → 回调永不触发 → `loadMP` 的 Promise 永远 pending → `load()` 永不 settle → 页面卡死。**这就是「超时无法进入」的直接原因。**
+  ③ **同日发现的第二个坑（同一处代码）**：路径原本存在 `def.path` 里、调用时传**变量** `require.async(def.path)` —— 但微信要在**编译期静态分析**出「主包依赖哪个分包文件」，**写成变量它认不出**，不会登记这条依赖，运行时同样永远拿不到（且不报错）。现改为**把字符串字面量直接写在 `require.async(...)` 实参位置**（`mp: function () { return require.async('../../../occupy-cores/…'); }`），编译期可见。
+  ④ **第三个加固：加载超时兜底（双保险）**：`loadMP` 新增 `LOAD_TIMEOUT_MS = 6000` —— 即便将来 `require.async` 因任何原因不回调，**6 秒后也必定 settle(null)**，页面走「引擎未就绪，请稍后重试」提示，**绝不再出现「无报错但永远进不去」**。`finish()` 做了幂等（超时与回调竞态时只 settle 一次），并顺手把「`require.async` 只传 1 个参数」的注释写在代码里防后人再踩。
+  ⑤ **为什么前几轮没发现**：v3.1.38 引入分包懒加载时，Node 端测试全绿（Node 走同步 `require` 分支，**根本不碰 `require.async`**）；而小程序端只有**真机操作**才会走到这条路径。**这是本项目第四类「只有真机能暴露」的问题**（前两类：启动链时序、编译期 Babel、分包路径声明）。
+  ⑥ **新增 4 条源码形态断言（`cores-loader.test.js`）**：① 至少有一处 `require.async`；② **每处实参都是字符串字面量**（不是变量）；③ **均只传 1 个参数**（未传 callback）；④ `loadMP` 必须有 `LOAD_TIMEOUT_MS` + `setTimeout` 超时保护。这样这三点**再被改回去就会立刻判红**。该文件断言 **15 → 19 项全过**。
+  ⑦ **验证**：**46 个测试文件全绿**；`sync-mp --check` **七道护栏**全绿；主包 **0.27MB / 2MB（13.5%）**；55 功能块巡检全过；版本 7 处同步 **3.1.44**。
+  ⑧ **仍存在的缺口（如实写）**：**必须真机复核**（本机无 miniprogram-ci，前几轮教训已反复证明这点）—— 请在微信开发者工具里确认：① 「功能介绍」页能打开、列出功能板块；② 提问后结果页能出盘；③ 首次约 1 秒（分包下载）、第二次秒回。若仍有问题，**把控制台完整日志发我**（尤其是有没有 `require.async` 相关 warning）。
 
 - **v3.1.43**（🐛 又逮到一个「分包套分包」真 bug：`app.json` 的 `subPackages[].pages` 误写成 `root + 'pages/…'`（重复了 root）—— 与 v3.1.42 的 babel 问题**同轮发现、独立成因**）：
   ① **症状**：`git status` 里冒出一条 `D dist/mp-weixin/occupy-cores/occupy-cores/pages/placeholder/placeholder.wxml` —— **分包里套了一层同名目录**。这与 v3.1.38 修过的 `occupy-astro/occupy-astro/` 是**同一个坑**，只是换了个分包名又犯了一次。

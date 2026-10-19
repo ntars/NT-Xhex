@@ -25,6 +25,30 @@ ok('导出 load / loadAll / isMP / PKG', !!(C.load && C.loadAll && 'isMP' in C &
 ok('PKG 为分包名 occupy-cores', C.PKG === 'occupy-cores', C.PKG);
 ok('isMP 为布尔（Node 端应为 false）', typeof C.isMP === 'boolean', typeof C.isMP);
 
+console.log('\nA2. 源码形态：require.async 的两个硬约束（v3.1.43 真机「页面永远进不去」的根因）');
+(function () {
+  var fs = require('fs'), path = require('path');
+  var src = fs.readFileSync(path.join(__dirname, '../cores-loader.js'), 'utf8');
+  function codeOnly(t) {
+    return t.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:\\])\/\/[^\n]*/g, '$1 ');
+  }
+  var code = codeOnly(src);
+  // ① 实参必须是字符串字面量（微信要静态分析；写成变量它认不出 → 永不返回）
+  var calls = [];
+  var re = /require\.async\(([^)]*)\)/g, m;
+  while ((m = re.exec(code))) calls.push(m[1].trim());
+  ok('cores-loader 里至少有一处 require.async', calls.length > 0, String(calls.length));
+  ok('每处 require.async 的实参都是字符串字面量（不是变量）',
+    calls.every(function (a) { return /^'[^']+'$/.test(a) || /^"[^"]+"$/.test(a); }),
+    JSON.stringify(calls));
+  // ② 不能给 require.async 传第二个参数（它只接 1 个，多传被静默忽略 → 零回调）
+  ok('require.async 均只传 1 个参数（未传 callback）',
+    calls.every(function (a) { return a.indexOf(',') < 0; }), JSON.stringify(calls));
+  // ③ loadMP 必须有超时兜底（防回调不来时永久 pending）
+  ok('loadMP 有超时保护（LOAD_TIMEOUT_MS + setTimeout）',
+    /LOAD_TIMEOUT_MS/.test(code) && /setTimeout\(/.test(code));
+})();
+
 console.log('\nB. 取内核（Node 端走同步 require 包一层 Promise）');
 
 C.load('analyzer').then(function (A) {

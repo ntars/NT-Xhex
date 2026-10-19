@@ -63,17 +63,23 @@
    */
   var MODS = {
     registry: {
-      mp: function (ok, fail) { require.async('../../../occupy-cores/utils/modules/features/registry.js', ok, fail); },
+      // ⚠⚠ 两个必须同时满足的硬约束（v3.1.43 真机「页面永远进不去」的根因）：
+      //   ① **路径必须是字符串字面量、直接写在 require.async(...) 实参位置** ——
+      //      微信要在编译期静态分析出「主包依赖哪个分包文件」；写成变量（如 def.path）它认不出，
+      //      不会登记这条依赖 → 运行时永远拿不到（且不报错）。
+      //   ② **require.async 只接 1 个参数，返回 Promise**（官方《分包异步化》口径）——
+      //      回调风格是 require(path, ok, fail)，两者别混；给 require.async 传 callback 会被静默忽略。
+      mp: function () { return require.async('../../../occupy-cores/utils/modules/features/registry.js'); },
       sync: '../features/registry.js',
       global: 'features'
     },
     analyzer: {
-      mp: function (ok, fail) { require.async('../../../occupy-cores/utils/modules/AnalyzerModule/analyzer.js', ok, fail); },
+      mp: function () { return require.async('../../../occupy-cores/utils/modules/AnalyzerModule/analyzer.js'); },
       sync: '../AnalyzerModule/analyzer.js',
       global: 'analyzer'
     },
     export: {
-      mp: function (ok, fail) { require.async('../../../occupy-cores/utils/modules/ExportModule/export-image.js', ok, fail); },
+      mp: function () { return require.async('../../../occupy-cores/utils/modules/ExportModule/export-image.js'); },
       sync: '../ExportModule/export-image.js',
       global: 'exportImage'
     }
@@ -90,20 +96,43 @@
     return (g && g[def.global]) || null;
   }
 
-  // 小程序路径：先确保分包下载完成，再 require.async 取模块
+  // 加载兜底超时（毫秒）。正常路径：分包下载 + 模块执行，实测约 1 秒内完成；
+  //   取 6 秒是为了容忍弱网下的分包下载。**超时必须存在**：require.async 没有 fail 回调，
+  //   一旦模块加载出问题就零回调，没有超时就会「无报错但页面永远进不去」（v3.1.43 真机实测）。
+  var LOAD_TIMEOUT_MS = 6000;
+
+  // 小程序路径：先确保分包下载完成，再 require.async 取模块。
+  //   返回的 Promise **保证在 LOAD_TIMEOUT_MS 内 settle**（要么拿到模块/ null，要么超时 null），
+  //   绝不永久 pending —— 上层的「正在加载引擎」提示与兜底文案才有机会出现。
   function loadMP(key) {
     var def = MODS[key];
     if (!def || typeof require.async !== 'function') return Promise.resolve(null);
     return new Promise(function (resolve) {
+      // resolve 幂等：超时后回调又来了，也不会重复 settle（Promise 本身只认第一次，这里显式标记便于早退）
+      var done = false;
+      var finish = function (m) { if (done) return; done = true; clearTimeout(timer); resolve(m || null); };
+      var timer = setTimeout(function () { finish(null); }, LOAD_TIMEOUT_MS);
+
       var take = function () {
-        try { def.mp(function (m) { resolve(m || null); }, function () { resolve(null); }); }
-        catch (e) { resolve(null); }
+        try {
+          // def.mp() 内部就是 `return require.async('<字面量>')`，返回 Promise（见 MODS 注释）。
+          var r = def.mp();
+          if (r && typeof r.then === 'function') {
+            r.then(function (m) { finish(m); }, function () { finish(null); });
+          } else {
+            finish(r || null);   // 兜底：万一某环境 require.async 直接返回模块
+          }
+        } catch (e) { finish(null); }
       };
       if (typeof wx !== 'undefined' && typeof wx.loadSubpackage === 'function') {
-        // 首次会走网络下载分包；已下载则立即回调。失败就放弃这次，由上层提示。
-        try { wx.loadSubpackage({ name: PKG, success: take, fail: function () { resolve(null); } }); }
-        catch (e) { take(); }
-      } else { take(); }
+        // 首次会走网络下载分包；已下载则立即回调。
+        try {
+          wx.loadSubpackage({ name: PKG, success: take, fail: function () { finish(null); } });
+        } catch (e) { take(); }
+      } else {
+        // 没有 loadSubpackage（如某些环境）→ 直接试 require.async
+        take();
+      }
     });
   }
 
