@@ -57,7 +57,8 @@
       require('../CoreModule/qimen-nianyue.js'),
       require('../CoreModule/xiaocheng.js'),
       require('../CoreModule/shensha.js'),
-      require('../CoreModule/ziwei-duanyu.js')
+      require('../CoreModule/ziwei-duanyu.js'),
+      require('../CoreModule/qizheng-duanyu.js')
     );
   } else {
     root.NT = root.NT || {};
@@ -95,10 +96,11 @@
       root.NT.core && root.NT.core.qimenNianYue,
       root.NT.core && root.NT.core.xiaocheng,
       root.NT.core && root.NT.core.shensha,
-      root.NT.core && root.NT.core.ziweiDuanyu
+      root.NT.core && root.NT.core.ziweiDuanyu,
+      root.NT.core && root.NT.core.qizhengDuanyu
     );
   }
-})(typeof self !== 'undefined' ? self : this, function (FEI, NUM, NSTAR, ICE, BZH, XS, WX, N81, CORE, BAZI, ZD, ZW, ASTRO, QM, LR, LY, TY, YZ, XSH, QW, CZ, QF, BP, ZR, QG, LBF, LWS, ZHW, AH, BSS, ZWS, JK, QMR, QMK, QNY, XCO, SHEN, ZWD) {
+})(typeof self !== 'undefined' ? self : this, function (FEI, NUM, NSTAR, ICE, BZH, XS, WX, N81, CORE, BAZI, ZD, ZW, ASTRO, QM, LR, LY, TY, YZ, XSH, QW, CZ, QF, BP, ZR, QG, LBF, LWS, ZHW, AH, BSS, ZWS, JK, QMR, QMK, QNY, XCO, SHEN, ZWD, QZD) {
 
   // 占星/紫微五件与其他内核一视同仁：形参直接注入（v3.1.32 曾因分包把它们拆成「工厂内可变变量」，
   //   v3.1.38 改为整体分包后不再需要，恢复形参、去掉那一层间接。）
@@ -962,6 +964,29 @@
             return k + '「' + (x ? x.判 : '平常') + '」';
           }).join('、'));
           lines.push('（紫炁/凯龙：七政四余第 11 曜，定义有「日拱点 vs Chiron 小行星」两说，需权威裁定后补。落二十八宿走「等宫近似」（角初度对齐春分·宿度《淮南子》），庙旺取《果老星宗卷一》庙/旺/喜/乐/垣 五态查表。）');
+          // ── 「解」层（v3.1.46 新增 qizheng-duanyu 断语库）──
+          //   在此之前本块只有「落座/落宿/庙旺」三行**排盘**结果，无任何断语。
+          if (QZD && QZD.YAO11) {
+            lines.push('十一曜星性：' + order.map(function (k) {
+              var y = QZD.yaoOf(k);
+              return y ? (y.曜 + '（' + y.象 + '）' + y.白 + '〔归垣' + y.归垣 + '〕') : k;
+            }).join('；') + '。');
+            // 昼夜取用：果老「论星先分昼夜」，按出生时辰判昼/夜（6–18 时为昼）
+            lines.push('昼夜取用（' + (h >= 6 && h < 18 ? '昼生' : '夜生') + '）：' + QZD.YIN_YANG.白);
+            // 星格**相关提示**（不是命中）：《果老星宗》星格须「同宫/同度/入宿/居宫」条件，
+            //   当前排盘层无果老十二宫定位，故只按曜组合筛出相关格并**明标待校验**，绝不误报为「命中」。
+            var ge = QZD.gejuList(order);
+            if (ge.length) {
+              lines.push('星格提示（曜已出现，宫位/同度条件待核，非判定）：' + ge.map(function (g) {
+                return g.名 + '（' + g.吉凶 + '·待核）' + g.断 + '〔' + g.源 + '〕';
+              }).join(' ') + '。');
+            }
+            // 庙旺五态含义（让「庙旺」从符号变成能读懂的话）
+            lines.push('庙旺五态：' + Object.keys(QZD.MIAO_TEXT).map(function (k) {
+              return k + '＝' + QZD.MIAO_TEXT[k];
+            }).join(' '));
+            lines.push('断语口径：十一曜星性与星格均引《果老星宗》卷七、卷八（通微赋等篇）原文义；星格须宫位/同度/宿位条件方可判定，本轮只作「相关提示」；「曜入十二宫」断语待果老十二宫定位补齐后接（不臆造）。');
+          }
           return { text: lines.join('\n') };
         } catch (e) {
           return { text: '【占星】排盘失败：' + String(e && e.message ? e.message : e) + '（内核暂不可用，不影响其他功能）。' };
