@@ -161,11 +161,61 @@
   var SANHE_TRIO = [['申', '子', '辰'], ['亥', '卯', '未'], ['寅', '午', '戌'], ['巳', '酉', '丑']];
   var GAN_HE = { 甲: '己', 己: '甲', 乙: '庚', 庚: '乙', 丙: '辛', 辛: '丙', 丁: '壬', 壬: '丁', 戊: '癸', 癸: '戊' };
   var GAN_CHONG = { 甲: '庚', 庚: '甲', 乙: '辛', 辛: '乙', 丙: '壬', 壬: '丙', 丁: '癸', 癸: '丁' };
-  // 地支相刑（三刑/自刑简化表）
-  var XING = { 子: ['卯'], 卯: ['子'], 寅: ['巳', '申'], 巳: ['寅', '申'], 申: ['寅', '巳'], 丑: ['戌', '未'], 戌: ['丑', '未'], 未: ['丑', '戌'], 辰: ['辰'], 午: ['午'], 酉: ['酉'], 亥: ['亥'] };
+  // 地支相刑（自刑 + 寅巳申三刑 + 丑戌未三刑 + 子卯无礼刑）。
+  //   ⚠ 主流「三刑」本含「恃势之刑（刑中带刑）」与「无礼之刑」等细分，此处用通行简化表；
+  //     竞品问真八字对本例给出「寅巳相刑 + 寅巳相害 + 子巳暗合」三项，本站须一致，故相刑表取通行口径。
+  var XING = {
+    子: ['卯'], 卯: ['子'],                                        // 子卯无礼刑
+    寅: ['巳', '申'], 巳: ['寅', '申'], 申: ['寅', '巳'],          // 寅巳申三刑
+    丑: ['戌', '未'], 戌: ['丑', '未'], 未: ['丑', '戌'],          // 丑戌未三刑
+    辰: ['辰'], 午: ['午'], 酉: ['酉'], 亥: ['亥']                  // 自刑
+  };
+  // 地支暗合（藏干之间的天干五合，隐而不显）。口径 = 5 源交叉一致（bazi.tw / bazitalk / yuceju /
+  //   asklingxi / dearmoney，2026-10-19 核）：分「通合」（两地支藏干全部相合）与「通禄合」（所合天干的禄支藏干相合）。
+  //   值 = 暗合类型 + 对应天干五合；辰酉本是六合、寅午又属三合半局，均如实标注（流派重叠，不合并）。
+  // ⚠ 用「无序对 → 类型」的双向表，而不是双向对象：同一支会出现在多组里（如寅 参与 寅丑 与 寅午），
+  //   写成 {寅:{丑:…}} 会因重复键把前一组覆盖掉（本轮就踩了这个坑，寅丑/寅午 全丢）。
+  var ANHE_PAIRS = [
+    ['寅', '丑', '通合（甲己·丙辛·戊癸）'],
+    ['午', '亥', '通合（丁壬·甲己）'],
+    ['卯', '申', '通禄合（乙庚）'],
+    ['子', '巳', '通禄合（戊癸）'],
+    ['寅', '午', '通禄合（甲己，兼三合半局）'],
+    ['巳', '酉', '通禄合（丙辛）'],
+    ['辰', '酉', '暗合（乙庚，本已六合）']
+  ];
+  var ANHE = (function () {
+    var m = {};
+    ANHE_PAIRS.forEach(function (p) {
+      m[p[0]] = m[p[0]] || {}; m[p[0]][p[1]] = p[2];
+      m[p[1]] = m[p[1]] || {}; m[p[1]][p[0]] = p[2];   // 反向也记一份（关系对称）
+    });
+    return m;
+  })();
 
   var WX_SHENG = { 木: '火', 火: '土', 土: '金', 金: '水', 水: '木' };
   var WX_KE = { 木: '土', 土: '水', 水: '火', 火: '金', 金: '木' };
+
+  /**
+   * 两支之间的**全部**关系（可并存多个）。
+   * 为什么另起一个函数：同一对地支可能同时构成多种关系（如 寅巳 既相刑又相害、辰酉既六合又暗合），
+   *   relOf() 只回一个（按六合→六冲→六害→三合→相刑→暗合的优先级），用于合婚打分类场合；
+   *   而排盘「地支留意」要把并存的关系**全列出来**（对拍问真八字：巳寅 = 相刑 + 相害并存），故用本函数。
+   * @returns {Array<{关系:string, 明细:string}>}
+   */
+  function relsOf(a, b) {
+    var out = [];
+    if (!a || !b || a === b) return out;
+    if (LIUHE[a] === b) out.push({ 关系: '六合', 明细: '' });
+    if (LIUCHONG[a] === b) out.push({ 关系: '六冲', 明细: '' });
+    if (LIUHAI[a] === b) out.push({ 关系: '六害', 明细: '' });
+    for (var i = 0; i < SANHE_TRIO.length; i++) {
+      if (SANHE_TRIO[i].indexOf(a) >= 0 && SANHE_TRIO[i].indexOf(b) >= 0) { out.push({ 关系: '三合', 明细: '（' + a + b + SANHE_TRIO[i].filter(function (x) { return x !== a && x !== b; })[0] + '局）' }); break; }
+    }
+    if ((XING[a] || []).indexOf(b) >= 0) out.push({ 关系: '相刑', 明细: '' });
+    if (ANHE[a] && ANHE[a][b]) out.push({ 关系: '暗合', 明细: ANHE[a][b] });
+    return out;
+  }
 
   function relOf(a, b) {
     if (a === b) return '同支';
@@ -174,7 +224,13 @@
     if (LIUHAI[a] === b) return '六害';
     for (var i = 0; i < SANHE_TRIO.length; i++) if (SANHE_TRIO[i].indexOf(a) >= 0 && SANHE_TRIO[i].indexOf(b) >= 0) return '三合';
     if ((XING[a] || []).indexOf(b) >= 0) return '相刑';
+    if (ANHE[a] && ANHE[a][b]) return '暗合';   // 暗合：藏干之间的天干五合（隐而不显）
     return '无涉';
+  }
+
+  /** 暗合明细（含类型与所合天干）；非暗合返回 '' */
+  function anheOf(a, b) {
+    return (ANHE[a] && ANHE[a][b]) || '';
   }
 
   /**
@@ -284,6 +340,7 @@
     JIESHA: JIESHA, ZAISHA: ZAISHA, WANGSHEN: WANGSHEN,
     HONGLUAN: HONGLUAN, GUCHEN: GUCHEN, GUASU: GUASU,
     LU: LU, YANGREN: YANGREN, JINYU: JINYU,
-    relOf: relOf, LIUHE: LIUHE, LIUCHONG: LIUCHONG, LIUHAI: LIUHAI
+    relOf: relOf, relsOf: relsOf, anheOf: anheOf, ANHE: ANHE, ANHE_PAIRS: ANHE_PAIRS,
+    LIUHE: LIUHE, LIUCHONG: LIUCHONG, LIUHAI: LIUHAI, XING: XING, SANHE_TRIO: SANHE_TRIO
   };
 });

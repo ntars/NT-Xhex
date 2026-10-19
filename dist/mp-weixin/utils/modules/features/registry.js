@@ -264,7 +264,26 @@
         lines.push('四柱：年' + P.年.干支 + ' / 月' + P.月.干支 + ' / 日' + P.日.干支 + ' / 时' + P.时.干支 + '。');
         lines.push('藏干：年' + P.年.藏干.join('') + ' 月' + P.月.藏干.join('') + ' 日' + P.日.藏干.join('') + ' 时' + P.时.藏干.join('') + '。');
         lines.push('十神：年' + P.年.十神 + ' 月' + P.月.十神 + ' 时' + P.时.十神 + '（日主' + c.dayMaster.干 + '·' + c.dayMaster.五行 + '）。');
+        // 十二长生逐柱（v3.1.36 对拍问真八字后补）：星运=日主在各柱地支的状态；自坐=各柱天干坐本地支的状态。
+        //   口径 = 阴阳干分列、阳顺阴逆（八字）；与六壬「水土同宫」异说已在 CoreModule/bazi.js 注释留痕。
+        var CS = (BAZI && BAZI.changSheng) ? BAZI.changSheng : function () { return ''; };
+        lines.push('十二长生：星运 ' + [CS(c.dayMaster.干, P.年.支), CS(c.dayMaster.干, P.月.支), CS(c.dayMaster.干, P.日.支), CS(c.dayMaster.干, P.时.支)].join(' ')
+          + '；自坐 ' + [CS(P.年.干, P.年.支), CS(P.月.干, P.月.支), CS(P.日.干, P.日.支), CS(P.时.干, P.时.支)].join(' ') + '（年/月/日/时）。');
         lines.push('纳音：' + c.纳音.年 + ' ' + c.纳音.月 + ' ' + c.纳音.日 + ' ' + c.纳音.时 + '；胎元' + c.胎元 + ' 命宫' + c.命宫 + ' 身宫' + c.身宫 + '。');
+        // 地支关系（六合/六冲/六害/三合/相刑/暗合）。暗合 = 藏干之间的天干五合，隐而不显（5 源核对口径）。
+        // 同一对支可能并存多种关系（如寅巳既相刑又相害），故用 relsOf 全列，不只回一个。
+        if (BSS && typeof BSS.relsOf === 'function') {
+          var POS = [['年', P.年.支], ['月', P.月.支], ['日', P.日.支], ['时', P.时.支]];
+          var rels = [];
+          for (var i = 0; i < POS.length; i++) {
+            for (var j = i + 1; j < POS.length; j++) {
+              (BSS.relsOf(POS[i][1], POS[j][1]) || []).forEach(function (r) {
+                rels.push(POS[i][0] + POS[j][0] + POS[i][1] + POS[j][1] + r.关系 + (r.明细 || ''));
+              });
+            }
+          }
+          lines.push('地支关系：' + (rels.length ? rels.join('、') + '。' : '四支之间无六合、六冲、六害、三合、相刑或暗合。'));
+        }
         lines.push('五行：' + Object.keys(c.五行.统计).map(function (k) { return k + c.五行.统计[k]; }).join(' / ') + '，' + c.五行.缺文本 + '。');
         lines.push('旺衰：' + c.旺衰.判 + '（' + c.旺衰.加权分 + '分，得令' + (c.旺衰.得令 ? '是' : '否') + ' 得地' + c.旺衰.得地 + ' 得势' + c.旺衰.得势 + '）；用神' + c.旺衰.用神.第一用神 + '、喜' + c.旺衰.用神.喜神 + '、忌' + c.旺衰.用神.忌神 + '。');
         return { text: lines.join('\n') };

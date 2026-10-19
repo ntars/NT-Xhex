@@ -23,6 +23,35 @@
   var SHENG_WO = { 木: '水', 火: '木', 土: '火', 金: '土', 水: '金' }; // 生我者（印）
   var KE_WO = { 木: '金', 火: '水', 土: '木', 金: '火', 水: '土' };   // 克我者（官杀）
 
+  // —— 十二长生（八字口径：**阴阳干分列、阳顺阴逆**）——
+  // 来源：传统命理十二长生表（《三命通会》《滴天髓》一路；与问真八字排盘同口径，已对拍一致）。
+  // ⚠ 与六壬的「水土同宫·长生在申」**是两套口径**（liuren-bifa.js 用后者），属流派分歧：
+  //    八字分阴阳干（戊土长生寅、己土长生酉），六壬合水土同宫（长生申）。此处按八字口径，注释留痕。
+  // 每行 = 该干从「长生」起、顺/逆数 12 位的地支序列（index 0=长生 … 11=养）。
+  var CS12_NAMES = ['长生', '沐浴', '冠带', '临官', '帝旺', '衰', '病', '死', '墓', '绝', '胎', '养'];
+  var CS12_GAN = {
+    甲: '亥子丑寅卯辰巳午未申酉戌',  // 阳木：长生亥，顺行
+    乙: '午巳辰卯寅丑子亥戌酉申未',  // 阴木：长生午，逆行
+    丙: '寅卯辰巳午未申酉戌亥子丑',  // 阳火：长生寅，顺行
+    丁: '酉申未午巳辰卯寅丑子亥戌',  // 阴火：长生酉，逆行
+    戊: '寅卯辰巳午未申酉戌亥子丑',  // 阳土：长生寅，顺行（与六壬「长生申」异说，见上注）
+    己: '酉申未午巳辰卯寅丑子亥戌',  // 阴土：长生酉，逆行
+    庚: '巳午未申酉戌亥子丑寅卯辰',  // 阳金：长生巳，顺行
+    辛: '子亥戌酉申未午巳辰卯寅丑',  // 阴金：生子，逆行
+    壬: '申酉戌亥子丑寅卯辰巳午未',  // 阳水：长生申，顺行
+    癸: '卯寅丑子亥戌酉申未午巳辰'   // 阴水：长生卯，逆行
+  };
+  /**
+   * 某天干在某地支的十二长生状态名（八字口径）。
+   * @returns {string} 长生…养 之一；查不到返回 ''
+   */
+  function changSheng(gan, zhi) {
+    var seq = CS12_GAN[gan];
+    if (!seq || !zhi) return '';
+    var idx = seq.indexOf(zhi);
+    return idx >= 0 ? CS12_NAMES[idx] : '';
+  }
+
   /**
    * 完整排盘。
    * @param {Object} inp { y, m, d, h, i, s, gender, name, cityLon? }
@@ -35,16 +64,20 @@
     var lu = solar.getLunar();
     var ec = lu.getEightChar();
 
-    // 四柱（含藏干/十神/纳音/旬空）
-    function pillar(gan, zhi, shiShenGan, hideGan, shiShenZhi, naYin, xunKong) {
+    // 四柱（含藏干/十神/纳音/旬空/星运/自坐）
+    // 星运 = 日干（日主）在该柱地支的长生状态；自坐 = 该柱天干坐该柱地支的长生状态。
+    function pillar(gan, zhi, shiShenGan, hideGan, shiShenZhi, naYin, xunKong, dayGan) {
       return { 干: gan, 支: zhi, 干支: gan + zhi, 干五行: GAN_W[gan] || '', 支五行: ZHI_W[zhi] || '',
-        十神: shiShenGan || '', 藏干: hideGan || [], 藏干十神: shiShenZhi || [], 纳音: naYin || '', 旬空: xunKong || '' };
+        十神: shiShenGan || '', 藏干: hideGan || [], 藏干十神: shiShenZhi || [], 纳音: naYin || '', 旬空: xunKong || '',
+        星运: dayGan ? changSheng(dayGan, zhi) : '',   // 日主在此柱地支的长生状态
+        自坐: changSheng(gan, zhi) };                  // 本柱天干坐本柱地支
     }
+    var dayGanAll = ec.getDayGan();
     var pillars = {
-      年: pillar(ec.getYearGan(), ec.getYearZhi(), ec.getYearShiShenGan(), ec.getYearHideGan(), ec.getYearShiShenZhi(), ec.getYearNaYin(), ec.getYearXunKong()),
-      月: pillar(ec.getMonthGan(), ec.getMonthZhi(), ec.getMonthShiShenGan(), ec.getMonthHideGan(), ec.getMonthShiShenZhi(), ec.getMonthNaYin(), ec.getMonthXunKong()),
-      日: pillar(ec.getDayGan(), ec.getDayZhi(), '日主', ec.getDayHideGan(), ec.getDayShiShenZhi(), ec.getDayNaYin(), ec.getDayXunKong()),
-      时: pillar(ec.getTimeGan(), ec.getTimeZhi(), ec.getTimeShiShenGan(), ec.getTimeHideGan(), ec.getTimeShiShenZhi(), ec.getTimeNaYin(), ec.getTimeXunKong())
+      年: pillar(ec.getYearGan(), ec.getYearZhi(), ec.getYearShiShenGan(), ec.getYearHideGan(), ec.getYearShiShenZhi(), ec.getYearNaYin(), ec.getYearXunKong(), dayGanAll),
+      月: pillar(ec.getMonthGan(), ec.getMonthZhi(), ec.getMonthShiShenGan(), ec.getMonthHideGan(), ec.getMonthShiShenZhi(), ec.getMonthNaYin(), ec.getMonthXunKong(), dayGanAll),
+      日: pillar(ec.getDayGan(), ec.getDayZhi(), '日主', ec.getDayHideGan(), ec.getDayShiShenZhi(), ec.getDayNaYin(), ec.getDayXunKong(), dayGanAll),
+      时: pillar(ec.getTimeGan(), ec.getTimeZhi(), ec.getTimeShiShenGan(), ec.getTimeHideGan(), ec.getTimeShiShenZhi(), ec.getTimeNaYin(), ec.getTimeXunKong(), dayGanAll)
     };
 
     // 五行统计（天干 + 地支本气，共 8 字）
@@ -237,6 +270,7 @@
     chart: chart, wangshuai: wangshuai, dayun: dayun,
     xiaoyun: xiaoyun, liuyue: liuyue, liuri: liuri, shishen: shishen,
     GANZHI60: GANZHI60, JIE12: JIE12,
+    changSheng: changSheng, CS12_NAMES: CS12_NAMES, CS12_GAN: CS12_GAN,   // 八字口径十二长生（阴阳干分列）
     WUXING: { GAN_W: GAN_W, ZHI_W: ZHI_W, SHENG: SHENG, KE: KE }
   };
 });

@@ -127,5 +127,49 @@ ok('神煞对随机 30 盘不抛错且恒 21 类', (function () {
   return true;
 })(), 'ok');
 
+// ===== v3.1.36 对拍问真八字（pcbz.iwzwh.com）后补：十二长生（星运/自坐）+ 地支暗合 =====
+console.log('\nD. 十二长生（星运/自坐）与地支暗合（对拍问真八字，1990-01-01 00:00 女）');
+var B = require('../bazi.js');
+ok('changSheng(丙,子)=胎', B.changSheng('丙', '子') === '胎', 'ok');
+ok('changSheng(丙,寅)=长生', B.changSheng('丙', '寅') === '长生', 'ok');
+ok('changSheng(丙,巳)=临官', B.changSheng('丙', '巳') === '临官', 'ok');
+ok('changSheng(己,巳)=帝旺', B.changSheng('己', '巳') === '帝旺', 'ok');
+ok('阴阳干分列：戊土长生寅、己土长生酉', B.changSheng('戊', '寅') === '长生' && B.changSheng('己', '酉') === '长生', 'ok');
+ok('十二长生名 12 个齐全', (B.CS12_NAMES || []).length === 12, 'ok');
+ok('10 天干 × 12 地支全覆盖无空', (function () {
+  for (var g = 0; g < B.CS12_GAN && Object.keys(B.CS12_GAN).length; g++) { /* 占位 */ }
+  var gans = '甲乙丙丁戊己庚辛壬癸', zhis = '子丑寅卯辰巳午未申酉戌亥', miss = [];
+  for (var i = 0; i < 10; i++) for (var j = 0; j < 12; j++) if (!B.changSheng(gans[i], zhis[j])) miss.push(gans[i] + zhis[j]);
+  return miss.length === 0;
+})(), 'ok');
+// 对拍：己巳/丙子/丙寅/戊子 → 星运 临官 胎 长生 胎；自坐 帝旺 胎 长生 胎（与问真八字逐格一致）
+ok('对拍星运：临官 胎 长生 胎', (function () {
+  var c = B.chart({ y: 1990, m: 1, d: 1, h: 0, gender: 'female' });
+  var dm = c.dayMaster.干;
+  var star = [c.pillars.年.支, c.pillars.月.支, c.pillars.日.支, c.pillars.时.支].map(function (z) { return B.changSheng(dm, z); }).join(' ');
+  return star === '临官 胎 长生 胎';
+})(), 'ok');
+ok('对拍自坐：帝旺 胎 长生 胎', (function () {
+  var c = B.chart({ y: 1990, m: 1, d: 1, h: 0, gender: 'female' });
+  var P = c.pillars;
+  return [P.年, P.月, P.日, P.时].map(function (p) { return B.changSheng(p.干, p.支); }).join(' ') === '帝旺 胎 长生 胎';
+})(), 'ok');
+// 暗合（5 源核对口径：通合 2 组 + 通禄合 4 组 + 辰酉六合兼暗合）
+ok('暗合 子巳=通禄合（戊癸）', S.anheOf('子', '巳') === '通禄合（戊癸）' && S.relOf('子', '巳') === '暗合', 'ok');
+ok('暗合 寅丑=通合（甲己·丙辛·戊癸）', S.anheOf('寅', '丑').indexOf('通合') === 0, 'ok');
+ok('暗合 午亥=通合（丁壬·甲己）', S.anheOf('午', '亥').indexOf('通合') === 0, 'ok');
+ok('暗合 卯申=通禄合（乙庚）', S.anheOf('卯', '申').indexOf('通禄合') === 0, 'ok');
+ok('暗合对称（丑寅 / 亥午 同判）', S.relOf('丑', '寅') === '暗合' && S.relOf('亥', '午') === '暗合', 'ok');
+ok('辰酉 六合兼暗合（两关系并存）', S.relOf('辰', '酉') === '六合' && S.anheOf('辰', '酉').indexOf('暗合') >= 0, 'ok');
+ok('relsOf 列全并存关系（寅巳 = 相刑 + 六害）', (function () {
+  var r = S.relsOf('寅', '巳').map(function (x) { return x.关系; });
+  return r.indexOf('相刑') >= 0 && r.indexOf('六害') >= 0;
+})(), 'ok');
+ok('暗合组 7 对齐全', (S.ANHE_PAIRS || []).length === 7, 'ok');
+ok('未暗合之支返回空', S.anheOf('子', '午') === '' && S.relOf('子', '午') === '六冲', 'ok');
+// 十二长生命名（防回归：八字阴阳干分列 与 六壬水土同宫是两套口径，必须并存不混用）
+ok('八字口径戊土长生在寅；六壬口径土长生在申（两套口径并存，各守其用）',
+  B.changSheng('戊', '寅') === '长生' && require('../liuren-bifa.js').CHANG_SHENG['土'][0] === '申', 'ok');
+
 console.log('\n=== bazi-shensha 自测：' + pass + ' 通过 / ' + fail + ' 失败 ===');
 if (fail) process.exit(1);

@@ -3,13 +3,13 @@
  * 纯函数，平台无关。输入出生信息 → 输出完整分析文字（不返回原始字段）。
  * 四柱走精确离线历法（ganzhi.js 委托 lunar.js：立春换年 / 节气定月 / 甲子纪日 / 五鼠遁）；
  * 日主强弱按得令/得地/得势计分（口径见《功能与算法归纳》§2.8）。
- * 依赖：db.js、ganzhi.js
+ * 依赖：db.js、ganzhi.js、CoreModule/bazi.js（十二长生 changSheng，阴阳干分列口径）
  * 加载：UMD —— 小程序被 require；浏览器挂到全局 NT.bazi。
  */
 (function (root, factory) {
-  if (typeof module === 'object' && module.exports) module.exports = factory(require('./db.js'), require('./ganzhi.js'));
-  else { root.NT = root.NT || {}; root.NT.bazi = factory(root.NT.db, root.NT.ganzhi); }
-})(typeof self !== 'undefined' ? self : this, function (DB, GZ) {
+  if (typeof module === 'object' && module.exports) module.exports = factory(require('./db.js'), require('./ganzhi.js'), require('../CoreModule/bazi.js'));
+  else { root.NT = root.NT || {}; root.NT.bazi = factory(root.NT.db, root.NT.ganzhi, root.NT.core && root.NT.core.bazi); }
+})(typeof self !== 'undefined' ? self : this, function (DB, GZ, CORE_BAZI) {
 
   // 从自然语言里提取出生信息：姓名/性别/年/月/日/时
   function parseBazi(input) {
@@ -34,6 +34,15 @@
 
     var siju = '年柱 ' + year.干支 + '、月柱 ' + month.干支 + '、日柱 ' + day.干支 + '、时柱 ' + hour.干支 + '（' + hour.名 + ' ' + hour.段 + '）';
 
+    // 十二长生逐柱（八字口径：阴阳干分列、阳顺阴逆；与六壬「水土同宫」异说已注明）
+    // 星运 = 日主在该柱地支的状态；自坐 = 该柱天干坐该柱地支的状态。
+    function csOf(g) { return (CORE_BAZI && CORE_BAZI.changSheng) ? CORE_BAZI.changSheng(g.干, g.支) : ''; }
+    var 星运 = [csOf(year), csOf(month), csOf(day), csOf(hour)].join(' ');
+    var 自坐 = [CORE_BAZI ? CORE_BAZI.changSheng(year.干, year.支) : '',
+      CORE_BAZI ? CORE_BAZI.changSheng(month.干, month.支) : '',
+      CORE_BAZI ? CORE_BAZI.changSheng(day.干, day.支) : '',
+      CORE_BAZI ? CORE_BAZI.changSheng(hour.干, hour.支) : ''].join(' ');
+
     // 日主强弱：得令/得地/得势 计分（口径见归纳文档 §2.8）
     var dayWx = day.干五行;
     var strength = GZ.precise.dayStrength(dayWx, {
@@ -51,6 +60,7 @@
 
     var text = '【八字排盘】' + p.name + '（' + p.gender + '），' + p.y + '年' + p.mo + '月' + p.d + '日' + (p.h < 10 ? '0' + p.h : p.h) + '时。';
     text += '四柱：' + siju + '。';
+    text += '十二长生：星运（日主' + day.干 + '在四柱地支）' + 星运 + '；自坐（各柱天干坐本地支）' + 自坐 + '。';
     text += '日主为「' + day.干 + '」（' + dayWx + '），月建「' + strength.月建 + '」当' + (strength.得令 ? '令' : '非令') + '，得地 ' + strength.得地 + '、得势 ' + strength.得势 + '，综合' + strength.判 + '。';
     text += '喜用神：' + xiyong + '。';
     text += '简批：命局以' + dayWx + '为体，' +
