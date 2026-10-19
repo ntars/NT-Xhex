@@ -69,7 +69,10 @@ Page({
     this.syncWindowBg(th === 'dark')
     this.runSplash()
     // 恢复上次这一问（刷新/重进不丢）——直接落位，不播转场（两层都置为目标页）
-    var last = this.conv.restore()
+    // ⚠ v3.1.41：会话器现在是「延迟创建」（analyzer 在分包里，首次提问才取），
+    //   onLoad 时 this.conv 还是 null —— 必须先判空，否则启动即抛
+    //   「Cannot read property 'restore' of null」（真机实测，v3.1.40 刚崩过）。
+    var last = this.conv ? this.conv.restore() : null
     if (last) {
       this.setData({
         view: 'result', layerFront: 'result', layerBack: 'result',
@@ -183,6 +186,11 @@ Page({
         self.send()
       })
       return
+    }
+    // ⚠ v3.1.41：Analyzer 就绪 ⟹ conv 必已建（上面同一分支里创建）；此处仍兜一层判空，
+    //   万一将来调整了创建时机，也不会变成「undefined 上调 ask」的崩溃。
+    if (!this.conv) {
+      this.setData({ toastText: '会话未就绪，请重新提问' }); this.showToast(); return
     }
     var r = this.conv.ask(text)
     if (!r.ok) return
@@ -356,7 +364,9 @@ Page({
   // 否则清完后主题看着没变（「清除缓存达不到效果」根因修复）
   doClear: function () {
     Settings.clearData()
-    this.conv.clear()
+    // ⚠ v3.1.41：会话器是「延迟创建」的（analyzer 在分包里），用户可能在首次提问前就来清缓存
+    //   → this.conv 还是 null，直接 .clear() 会抛（真机实测崩过）。先判空。
+    if (this.conv) this.conv.clear()
     var th = (Theme && typeof Theme.current === 'function') ? Theme.current() : 'light'
     var self = this
     this.closeModal(function () {

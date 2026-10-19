@@ -84,11 +84,14 @@ export default {
   },
   onLoad() {
     // 共享问答实例（与 HomeModule 用同一份装配方式，返回时清空它）
+    // ⚠ v3.1.41：加判空。小程序壳的 analyzer 在分包里、会话器是「延迟创建」的，onLoad 时可能是 null；
+    //   uni-app/H5 壳静态 import 了 analyzer、此处必成功。但**三端同一份 onLoad 逻辑**，统一判空最稳
+    //   （真机实测：null 上直接 .restore() 会抛「Cannot read property 'restore' of null」整页崩）。
     this.conv = Conversation.createConversation({ analyzer: Analyzer, storage: Storage })
     this.syncWindowTheme()
     this.runSplash()
     // 恢复上次这一问（刷新/重进不丢）
-    var last = this.conv.restore()
+    var last = this.conv ? this.conv.restore() : null
     if (last) {
       var f = ResultFormat.format(last.answer)
       f.question = last.question

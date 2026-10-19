@@ -107,8 +107,34 @@ Cores.load('registry').then(function (R) {
   return Cores.loadAll();
 }).then(function (m) {
   ok('loadAll() 在不可得时也 resolve 而非 throw', !!m);
-  console.log('\nE. 源码形态：路径必须运行时拼接（微信静态分析只认完整字面量）');
+  console.log('\nD2. 会话器「延迟创建」后的判空（真机实测崩过两处）');
+  // v3.1.41 真机实测：
+  //   ① onLoad 里 this.conv.restore() —— 分包懒加载前 conv 还是 null → 「Cannot read property 'restore' of null」
+  //   ② gotoHome / doClear 里 this.conv.clear()  —— 同因 → 「Cannot read property 'clear' of null」
+  // 故两处必须判空。这里静态扫描 dist 产物（微信真正执行的那份）确认。
   var fs = require('fs');
+  var idxJs = fs.readFileSync(path.join(DIST, 'pages/index/index.js'), 'utf8');
+  var code2 = idxJs.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:\\])\/\/[^\n]*/g, '$1 ');
+  ok('dist 壳 onLoad 里 restore 前判空', /this\.conv \? this\.conv\.restore\(\)/.test(code2));
+  // 逐行查：任何一行若出现 this.conv.xxx(，其前面 12 个字符内必须有判空（? : if (this.conv)）
+  function bareCalls(src, meth) {
+    var bad = [];
+    src.split('\n').forEach(function (line, i) {
+      var m = line.match(new RegExp('this\\.conv\\.' + meth + '\\('));
+      if (!m) return;
+      var head = line.slice(0, m.index);
+      if (head.indexOf('?') < 0 && head.indexOf('if (this.conv)') < 0) bad.push(i + 1);
+    });
+    return bad;
+  }
+  ok('dist 壳无裸 this.conv.restore() 调用', bareCalls(code2, 'restore').length === 0,
+    '行号 ' + bareCalls(code2, 'restore').join(','));
+  ok('dist 壳无裸 this.conv.clear() 调用', bareCalls(code2, 'clear').length === 0,
+    '行号 ' + bareCalls(code2, 'clear').join(','));
+  var vueJs = fs.readFileSync(path.join(ROOT, 'pages/index/index.vue'), 'utf8');
+  ok('uni-app 壳 index.vue 里 restore 前判空（两壳同步）', /this\.conv \? this\.conv\.restore\(\)/.test(vueJs));
+
+  console.log('\nE. 源码形态：路径必须运行时拼接（微信静态分析只认完整字面量）');
   var src = fs.readFileSync(path.join(ROOT, 'modules/SettingsModule/settings.js'), 'utf8');
   ok('settings.js 判据是「typeof wx !== undefined」（不依赖 loadSubpackage）',
     /var __isMP = \(typeof wx !== 'undefined'\);/.test(src));
