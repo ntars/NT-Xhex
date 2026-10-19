@@ -487,15 +487,17 @@ node tools/sync-mp.js --check      # dist 与 modules 一致性 + WXML <template
 
 ## 九、更新日志
 
-- **v3.1.39**（🐛 修「微信开发者工具启动即崩」：`settings.js` 跨包 require `features/registry.js` —— v3.1.37 同类事故第 2 次，护栏加固 + 新增「模拟真机」启动链测试）：
-  ① **报错现场（主人实测）**：`module 'utils/modules/features/registry.js' is not defined, require args is '../features/registry.js'`，栈 `app.js:6 → settings.js:22 → Module.f`，连带 `Page "pages/index/index" has not been registered yet`。**根因**：`SettingsModule/settings.js`（主包）为「功能介绍」页取功能清单，**静态 require 了分包里的 `features/registry.js`**。微信只在本包里找模块，一取就抛，整条启动链断掉。
-  ② **为什么 v3.1.37 的护栏没抓到**：旧护栏正则只认 `require('...')` **字面量**，而事故代码写的是 `__opt('../features/registry.js')`（`__opt` 是 `require` 的别名）→ **匹配不到、放绿、运行时照样崩**。护栏漏报比不写护栏更危险——它给了假安全感。
-  ③ **修法一（settings.js 两道保险）**：① **运行时判定**——小程序端直接传 `null`，由壳在打开「功能介绍」前 `Cores.load('registry')` 再 `setRegistry` 注入（Node / uni-app 走同步 require）；② **路径运行时拼接** `'../features/' + 'registry.js'` —— 微信静态依赖分析只认完整字符串字面量，拼接后它**编译期就扫不到**这个路径，不会被判「主包引用分包」。二者任一生效即可。
-  ④ **修法二（护栏从「认函数名」升级为「认路径解析」· 本次最大收获）**：`sync-mp --check` 第五道改为 ① **按相对路径解析**——主包每个 `xxx('...js')`（**任意函数名**）的实参解析成「相对 `modules/` 的路径」，落在分包集合即判红，与函数名/调用形式完全无关；② **字面量兜底**——即使没包成调用，剔除注释后代码里出现分包文件的**完整路径字面量**也判红（杜绝「先存变量、换个名字再 require」的绕过）。**豁免**：`cores-loader.js`（设计上的唯一懒加载入口，按官方 `require.async` 取分包，必然含路径字面量）与 `require.async` 调用。
-  ⑤ **护栏三绕过回归实测全抓**（护栏可信的关键证据）：故意往 settings.js 注入 ① 别名调用 `__o(__p)` ② 纯变量赋值 ③ 直接 `require('...')` —— 三种绕过**逐一被抓**；真实产物**全绿**。
-  ⑥ **新增「模拟真机」启动链测试 `HomeModule/__tests__/mp-startup.test.js`（19 项，本项目最该早有的测试）**：Node 里 45 个测试全绿**也照不出**这个错——源码树里分包文件存在，只有产物包里才缺。该测试用 `Module._resolveFilename` 把**主包以外的文件全部藏起来**（与微信「只在本包里找模块」一致），然后：① 主包 8 文件逐个 require 不报错（模拟 `app.js` 启动序列）② `settings.js` 不触发任何跨包 require ③ `setRegistry` 注入口存在 ④ `cores-loader.isMP=true / PKG=occupy-cores` ⑤ 分包不可得时 `load()` 返回 `null` 而非 throw/reject（不静默假装算得出、也不让壳崩）⑥ 源码确为「运行时拼接」形态。
-  ⑦ **验证**：新增测试 **19 项全过**；**46 个测试文件全绿**；`sync-mp --check` 全绿；主包 **0.267MB / 2MB**；55 功能块巡检全过；版本 7 处同步 **3.1.39**。
-  ⑧ **仍存在的缺口（如实写）**：**真机 / 微信开发者工具仍需主人重新编译确认**（本机无 miniprogram-ci）：① 启动不再抛 `module ... is not defined`；② 页面正常注册；③ 首次提问先拉分包（约 1 秒）再出结果、第二次秒回。若仍有残留，把新报错栈发我，按栈顶文件+行号可快速定位。③ **同类隐患的架构根子**是「主包不该需要算法内核」——若后续某主包模块确需内核，应经 `cores-loader` 懒注入改设计，而不是加一条 require。
+- **v3.1.40**（🐛 修「启动即崩」第 3 次（同一报错）——**真因是判据本身在启动链上不成立**：`wx.loadSubpackage` 在 `app.js` require 阶段尚未注入，`settings.js` 误判成 Node 端）：
+  ① **报错与前两次完全一致**（主人实测）：`module 'utils/modules/features/registry.js' is not defined, require args is '../features/registry.js'`，栈 `app.js:6 → settings.js:26 → Module.f`，`Page "pages/index/index" has not been registered yet`。**但报错行号从 22 变成 26** —— 说明 v3.1.39 的新代码**确实已生效**，只是**判据没起作用**。
+  ② **真因（本次才想通）**：`app.js` 第 6 行 `require('.../settings.js')` 执行时，**`App()` 还没跑**，微信**尚未注入 `wx.loadSubpackage`** → `typeof wx.loadSubpackage === 'function'` 为 **false** → `__isMP` 误判为「非小程序」→ 走进 `require('../features/registry.js')` → 崩。**前两次「加了判定却没修好」的根本原因：判定条件本身在启动链上就���成立**。
+  ③ **修法一：判据换成「存在 `wx` 全局」**（`settings.js` 与 `cores-loader.js` **同步**改）。`wx` 在 `app.js` 执行前**已注入**，在整个启动链上恒为真，不依赖任何尚未就绪的 API。`cores-loader.js` 原来也用 `wx.loadSubpackage` 判 `isMP`，是**同一颗雷**（它同样在 app.js 的 require 序列里），一并修掉。
+  ④ **修法二：保留「路径运行时拼接」** `'../features/' + 'registry.js'` 作编译期保险 —— 微信静态依赖分析只认完整字面量，拼接后扫不到、不会判「主包引用分包」。两条保险互补：`__isMP` 管**运行时不取**，拼接管**编译期不判非法**。
+     ⚠ 中途试过「把路径改回完整字面量 + 只靠判据」，**立刻被自己的护栏判红**（`✗ 主包跨包引用分包文件 … require("../features/registry.js")`）—— 证明编译期这条保险确实必要，不是多余的。
+  ⑤ **测试升级为「复刻半初始化时刻」**：`mp-startup.test.js` 的 mock `wx` **刻意不提供 `loadSubpackage`**（只给 `getSystemInfoSync`/`setStorageSync` 等基础 API），精确模拟「app.js require 阶段、App 未启动」的真实环境；同时新增两条断言把判据形态钉死（settings.js 判据为 `typeof wx !== 'undefined'` 且代码中不出现 `wx.loadSubpackage`；cores-loader 的 `isMP` 赋值行同样不含它）。**测试从 19 项扩到 21 项，全过。**
+     · 附带说明：`cores-loader.load()` 里那句 `typeof wx.loadSubpackage === 'function'` 是**合法且必要**的运行时防御（那时 App 已启动、API 已就绪），断言已精确区分「判据处」与「运行时保护处」，不误伤。
+  ⑥ **验证**：**46 个测试文件全绿**；`sync-mp --check`（巡检/包体/分包/跨包引用/WXML/加载顺序）全绿；主包 **0.267MB / 2MB**；55 功能块巡检全过；产物与源码 sha 一致；版本 7 处同步 **3.1.40**。
+  ⑦ **仍存在的缺口（如实写）**：**真机 / 微信开发者工具仍需主人重新编译确认**（本机无 miniprogram-ci，且前两次教训说明：**只有真机能暴露「启动链时序」类问题**）。若这次仍有残留，请把**完整报错栈（含行号列号）**发我 —— 行号变化能直接告诉我读到的是哪一版代码。
+  ⑧ **沉淀为项目铁律（已写进源码注释）**：**在启动链上（app.js / UMD 头部）判断运行环境时，只能用「此时必然已就绪」的特征**（如 `wx` 全局、`module.exports` 存在）；**绝不能用尚未注入的 API**（如 `wx.loadSubpackage`、`wx.getSystemInfoSync` 等，它们要等 `App()` 启动后才可用）。
 
 - **v3.1.39**（🐛 修「微信开发者工具启动即崩」：`settings.js` 跨包 require `features/registry.js` —— v3.1.37 同类事故第 2 次，护栏加固 + 新增「模拟真机」启动链测试）：
   ① **报错现场（主人实测）**：`module 'utils/modules/features/registry.js' is not defined, require args is '../features/registry.js'`，栈 `app.js:6 → settings.js:22 → Module.f`，连带 `Page "pages/index/index" has not been registered yet`。**根因**：`SettingsModule/settings.js`（主包）为「功能介绍」页取功能清单，**静态 require 了分包里的 `features/registry.js`**。微信只在本包里找模块，一取就抛，整条启动链断掉。
