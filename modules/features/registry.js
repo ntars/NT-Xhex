@@ -56,7 +56,8 @@
       require('../CoreModule/qimen-ke.js'),
       require('../CoreModule/qimen-nianyue.js'),
       require('../CoreModule/xiaocheng.js'),
-      require('../CoreModule/shensha.js')
+      require('../CoreModule/shensha.js'),
+      require('../CoreModule/ziwei-duanyu.js')
     );
   } else {
     root.NT = root.NT || {};
@@ -93,10 +94,11 @@
       root.NT.core && root.NT.core.qimenKe,
       root.NT.core && root.NT.core.qimenNianYue,
       root.NT.core && root.NT.core.xiaocheng,
-      root.NT.core && root.NT.core.shensha
+      root.NT.core && root.NT.core.shensha,
+      root.NT.core && root.NT.core.ziweiDuanyu
     );
   }
-})(typeof self !== 'undefined' ? self : this, function (FEI, NUM, NSTAR, ICE, BZH, XS, WX, N81, CORE, BAZI, ZD, ZW, ASTRO, QM, LR, LY, TY, YZ, XSH, QW, CZ, QF, BP, ZR, QG, LBF, LWS, ZHW, AH, BSS, ZWS, JK, QMR, QMK, QNY, XCO, SHEN) {
+})(typeof self !== 'undefined' ? self : this, function (FEI, NUM, NSTAR, ICE, BZH, XS, WX, N81, CORE, BAZI, ZD, ZW, ASTRO, QM, LR, LY, TY, YZ, XSH, QW, CZ, QF, BP, ZR, QG, LBF, LWS, ZHW, AH, BSS, ZWS, JK, QMR, QMK, QNY, XCO, SHEN, ZWD) {
 
   // 占星/紫微五件与其他内核一视同仁：形参直接注入（v3.1.32 曾因分包把它们拆成「工厂内可变变量」，
   //   v3.1.38 改为整体分包后不再需要，恢复形参、去掉那一层间接。）
@@ -454,16 +456,56 @@
             var mn = c.命宫.辅星.split('、').map(function (nm) { return ZWS.lineMinor(nm) || (nm + '（星情未收录）'); });
             lines.push('命宫辅星：' + mn.join('；') + '。');
           }
-          // 落宫简断：星 × 宫合成（明标合成，不当古籍断语）
+          // 落宫断语（v3.1.46）：**优先取断语库**（ziwei-duanyu：古籍要点 + 白话），无则回落机械合成。
+          //   有古籍明文者「『原文』+ 白话」并列展示（遵项目铁律：原文必配白话）；无明文者标「推演」。
           var comb = [];
           ['命宫', '财帛', '官禄'].forEach(function (g) {
             var p = P[g];
             if (!p) return;
             var arr = (g === '命宫' && !p.主星.length && 借) ? 借.split('、') : p.主星;
-            arr.forEach(function (nm) { var x = ZWS.comb(nm, g); if (x) comb.push(x); });
+            arr.forEach(function (nm) {
+              var dy = (ZWD && ZWD.duanyuOf) ? ZWD.duanyuOf(nm, g) : null;
+              if (dy) {
+                comb.push(nm + '坐' + g + '：' + (dy.原文 ? '『' + dy.原文 + '』' + dy.白 : dy.白 + '（推演）'));
+              } else {
+                var x = ZWS.comb(nm, g); if (x) comb.push(x);
+              }
+            });
           });
-          if (comb.length) lines.push('落宫：' + comb.join('；') + '。');
-          lines.push('星情口径：十四主星五行/化气取五源一致处（中華民國紫微斗數協會／新浪／易德轩／明明观止／《紫微斗数全书》），分歧处并列「一说」；「落宫」为星性与宫义的机械合成，非古籍逐条断语。');
+          if (comb.length) lines.push('落宫断语：' + comb.join('；') + '。');
+          // 生年四化落宫解读（v3.1.46）：把十二宫里各星四化收齐，逐条给「落何宫、主何事」。
+          if (ZWD && ZWD.SIHUA_TEXT) {
+            var shi = [];
+            c.十二宫.forEach(function (p) {
+              (p.四化项 || []).forEach(function (it) {
+                shi.push(it.星 + '化' + it.化 + '入' + p.宫 + '宫（' + ZWD.SIHUA_TEXT[it.化] + '）');
+              });
+            });
+            if (shi.length) lines.push('四化解读：' + shi.join(' ') + '。');
+          }
+          // 格局初判（v3.1.46）：命宫 + 三方四正主星组合与格局条件做匹配（初判，非精确判定）。
+          if (ZWD && ZWD.GEJU) {
+            var pool = {};
+            ['命宫', '财帛', '官禄', '迁移'].forEach(function (g) {
+              var p = P[g]; if (!p) return;
+              var arr = (g === '命宫' && !p.主星.length && 借) ? 借.split('、') : p.主星;
+              arr.forEach(function (nm) { pool[nm] = 1; });
+            });
+            // 命盘已出现的星（命宫 + 三方四正），用于格局命中的「必备星」核对
+            var ALL = ['紫微', '天机', '太阳', '武曲', '天同', '廉贞', '天府', '太阴', '贪狼', '巨门',
+              '天相', '天梁', '七杀', '破军', '左辅', '右弼', '文昌', '文曲', '天魁', '天钺',
+              '擎羊', '陀罗', '火星', '铃星', '地空', '地劫', '禄存', '天马'];
+            var hits = [];
+            ZWD.GEJU.forEach(function (gj) {
+              // 取格局条件里提到的星名，**要求全部命中**才算成立（避免只命中一两颗就误报）
+              var req = ALL.filter(function (s) { return gj.条件.indexOf(s) >= 0; });
+              if (req.length >= 2 && req.every(function (s) { return pool[s]; })) hits.push(gj);
+            });
+            if (hits.length) {
+              lines.push('格局初判：' + hits.map(function (gj) { return gj.名 + '（' + gj.吉凶 + '）' + gj.断; }).join(' ') + '。');
+            }
+          }
+          lines.push('断语口径：落宫断语优先取《紫微斗数全书》诸星问答论等古籍要点（有明文者「原文+白话」并列），古籍无逐条明文者按星性×宫义推演并标「推演」；四化依 iztro 年干四化落宫；格局为「命宫+三方四正主星组合」初判，仅供参详，非精确格局判定。');
         }
         return { text: lines.join('\n') };
       }
