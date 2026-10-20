@@ -1,10 +1,14 @@
 玄玖灵犀 NT-Xhex
-Copyright (c) 2026 星玖工作室 Ntarstudio
+Copyright (C) 2026 星玖工作室 (Ntarstudio)
 
-本项目代码以 MIT 协议开源（见 LICENSE）；界面、品牌「玄玖灵犀 NT-Xhex」、
-版式与设计归 Ntarstudio 所有。
+本项目代码以 GNU Affero 通用公共许可证第 3 版（AGPL-3.0）开源，全文见 LICENSE；
+界面、品牌「玄玖灵犀 NT-Xhex」、版式与设计归 Ntarstudio 所有。
 
-本项目内嵌/引用以下第三方开源项目（均为 MIT 许可，其版权声明随源码保留在对应文件内）：
+依 AGPL-3.0 第 13 条（远程网络交互），通过本应用提供的网络服务与其交互的使用者，
+有权获得对应的完整源码，源码仓库地址：https://github.com/ntars/NT-Xhex
+
+本项目内嵌/引用以下第三方开源项目（均为 MIT 许可，其版权声明随源码保留在对应文件内；
+MIT 与 AGPL-3.0 兼容，可一并再分发）：
 
 * lunar-javascript —— 历法内核参考（干支 / 节气 / 四柱 / 建除 的精确离线算法口径）
   https://github.com/6tail/lunar-javascript
@@ -14,4 +18,5 @@ Copyright (c) 2026 星玖工作室 Ntarstudio
   https://github.com/cosinekitty/astronomy   内嵌于 modules/CoreModule/vendor/astronomy.js
 * opencc-js（MIT + Apache-2.0）—— 简→繁字形映射（姓名学按繁体康熙计数，故先转繁再查）
 
-使用或再分发本项目时，请连同本 NOTICE 与 MIT 协议文本一并保留。
+使用或再分发本项目时，请连同本 NOTICE 与 AGPL-3.0 协议文本一并保留；
+内嵌的第三方文件的版权声明与许可不得删除。
