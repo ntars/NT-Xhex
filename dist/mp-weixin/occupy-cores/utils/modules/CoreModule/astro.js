@@ -579,7 +579,7 @@
       回归黄经: p.黄经, 恒星黄经: sidereal, 二十七宿: nak,
       月亮宿: moonNak ? (moonNak.宿名 + '·' + moonNak.守护星) : null,
       Vimshottari: { 起限星: startLord, 大限序: si.map(function (x) { return x[0] + x[1] + '年'; }), 总年: 120 },
-      缺料: 'Vedic 岁差已按 IAU2006 黄经岁差 + Lahiri 官方 2000 基准计算（未逐点核对官方年表，估计差 <0.05°）；Nakshatra/Vimshottari 取印占标准 27 宿与 9 曜大限序；分盘制(Default/Bhava)未定，待权威星历校准。'
+      缺料: 'Vedic 岁差已按 IAU2006 黄经岁差 + Lahiri 官方 2000 基准计算（未逐点核对官方年表，估计差 <0.05°）；Nakshatra/Vimshottari 取印占标准 27 宿与 9 曜大限序；分宫（Bhava）见 astro-house.js 的 vedicHouses()——已补自然宫(Whole Sign·Default)、等宫(Equal)、Sripati 不等宫 三套并列；Sripati 高纬不退化（象限和恒 180°），仅 MC 与 ASC 重合时无解，出生地未给按北京。'
     };
   }
 

@@ -58,7 +58,10 @@ ok('单人印占不触发 Tara（仍是本命盘）',
 var compOut = String(ANA.analyze('1990年8月15日12时 与 1992年3月20日6时 合盘 中点'));
 ok('Composite 输出 7 行星落座', /中点盘行星落座：太阳/.test(compOut) && /土星/.test(compOut));
 ok('Composite 有关系语境解读', /中点盘解读：.*这段关系的核心气质/.test(compOut));
-ok('Composite 有口径行（说明暂借释义、上升不置）', /Composite 口径/.test(compOut) && /只给行星不置宫位/.test(compOut));
+ok('Composite 有口径行（标注现代通行技法、非单一古籍权威）', /Composite 口径/.test(compOut) && /◆非单一古籍权威/.test(compOut));
+ok('Composite 补关系主轴与中点相位', /关系主轴/.test(compOut) && /中点盘内部相位/.test(compOut));
+// v3.1.56：上升/宫位已补（度数中点法），并如实注明另有时空中点法
+ok('Composite 补上升/宫位（度数中点法）并注明时空中点法', /Composite 上升\/宫位（度数中点法）/.test(compOut) && /时空中点法/.test(compOut));
 ok('合盘不带「中点」仍是比较盘', /合盘解读/.test(String(ANA.analyze('1990年8月15日12时 与 1992年3月20日6时 合盘'))));
 console.log('\n=== 三库+功能自测：' + pass + ' 通过 / ' + fail + ' 失败 ===');
 if (fail) process.exit(1);

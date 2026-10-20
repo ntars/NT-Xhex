@@ -50,8 +50,10 @@ var a = D.duanyuOf('紫微', '夫妻');
 ok('紫微·夫妻 有原文', a && !!a.原文);
 ok('紫微·夫妻 源标古籍', a && /古籍/.test(a.源));
 ok('紫微·夫妻 非推演', a && a.推 === false);
-var b = D.duanyuOf('天机', '官禄');
-ok('天机·官禄 无原文 → 标推演', b && b.推 === true && b.原文 === '');
+var b = D.duanyuOf('七杀', '财帛');
+ok('七杀·财帛 有古本断语（星曜飞躔十二宫 4 源一致）', b && b.推 === false && !!b.原文);
+ok('七杀·财帛 如实注明来源层级（非卷二）', b && b.原文.indexOf('非《全书》卷二') >= 0, (b && b.原文 || '').slice(-30));
+ok('天机·官禄 现有原文（v3.1.55 卷二补）', !!D.duanyuOf('天机', '官禄').原文 && D.duanyuOf('天机', '官禄').推 === false);
 ok('吃异名：交友 = 仆役', D.duanyuOf('天府', '交友') && D.duanyuOf('天府', '仆役') &&
   D.duanyuOf('天府', '交友').白 === D.duanyuOf('天府', '仆役').白);
 ok('吃俗称：紫微星 = 紫微', D.duanyuOf('紫微星', '命宫') && D.duanyuOf('紫微星', '命宫').白 === D.duanyuOf('紫微', '命宫').白);
@@ -81,20 +83,23 @@ ok('无参返回全部格局', D.gejuOf('').length === D.GEJU.length);
 console.log('\nG. 行式断语');
 var line = D.lineDuanyu('紫微', '夫妻');
 ok('lineDuanyu 含星名/宫名/白话', line.indexOf('紫微坐夫妻') === 0 && line.length > 10);
-ok('推演格标注「（推演）」', D.lineDuanyu('天机', '官禄').indexOf('（推演）') >= 0);
+// 推演标注机制回归：库内已 168 格全覆盖、无纯推演格，故临时注入一颗无原文的星验证 tag 逻辑仍工作
+D.STAR12.__回归测 = { 词: '测', 断: { 命: '机制回归用' }, 原文: [] };
+ok('推演格标注「（推演）」（tag 机制回归）', D.lineDuanyu('__回归测', '命').indexOf('（推演）') >= 0, D.lineDuanyu('__回归测', '命'));
+delete D.STAR12.__回归测;
 ok('古籍格标注「（古籍）」', D.lineDuanyu('紫微', '夫妻').indexOf('（古籍）') >= 0);
 
 
-console.log('\nF. 古籍原文覆盖（v3.1.53 起）');
-var covYuan = 0;
+console.log('\nF. 古籍原文覆盖（v3.1.55 补至 168/168 全覆盖）');
+var covYuan = 0, tuiyan = [];
 Object.keys(D.STAR12).forEach(function (st) {
-  PAL.forEach(function (g) { var d = D.duanyuOf(st, g); if (d && d.原文) covYuan++; });
+  PAL.forEach(function (g) { var d = D.duanyuOf(st, g); if (d && d.原文) covYuan++; else tuiyan.push(st + '·' + g); });
 });
-ok('原文覆盖不少于 111 格（v3.1.53 实测，防回归丢失）', covYuan >= 111, '当前 ' + covYuan);
+ok('原文覆盖 168 格全覆盖（v3.1.55，防回归丢失）', covYuan === 168, '当前 ' + covYuan);
 ok('巨门十二宫全有原文', PAL.every(function (g) { return D.duanyuOf('巨门', g).原文; }));
 ok('破军十二宫全有原文', PAL.every(function (g) { return D.duanyuOf('破军', g).原文; }));
-ok('无原文格如实标「推」', D.duanyuOf('天机', '财').推 === true);
-console.log('  当前原文覆盖：' + covYuan + ' / 168 格');
+ok('已无纯推演格（每格都有古本断语照引）', tuiyan.length === 0, tuiyan.join(','));
+console.log('  当前原文覆盖：' + covYuan + ' / 168 格；纯推演格：' + (tuiyan.length ? tuiyan.join('、') : '无'));
 
 console.log('\n=== 紫微断语库自测：' + pass + ' 通过 / ' + fail + ' 失败 ===');
 if (fail) process.exit(1);

@@ -484,7 +484,7 @@
             arr.forEach(function (nm) {
               var dy = (ZWD && ZWD.duanyuOf) ? ZWD.duanyuOf(nm, g) : null;
               if (dy) {
-                comb.push(nm + '坐' + g + '：' + (dy.原文 ? '『' + dy.原文 + '』' + dy.白 : dy.白 + '（推演）'));
+                comb.push(nm + '坐' + g + '：' + (dy.原文 ? '『' + dy.原文 + '』' + dy.白 + '（古籍）' : dy.白 + '（推演）'));
               } else {
                 var x = ZWS.comb(nm, g); if (x) comb.push(x);
               }
@@ -646,7 +646,7 @@
       key: 'xiaocheng', 名: '小成图（霍斐然《周易小成图简述》）',
       板块: '三式推演', 短名: '排小成图',
       触发词: ['小成图', '小成图预测', '天地数起卦', '归藏法'],
-      说明: '报 4 个数（天地数 1-10→乾坤艮兑坎离震巽乾坤，前 2 位本卦·后 2 位之卦）或给本/之四单卦 → 装进洛书九宫地盘出完整小成图：四正（本/之上下卦）/四隅（本/之互卦）/中宫（归藏「同阴异阳」异或）/取用神宫+应期/阴阳得配。霍老原论只用象数不涉五行，本内核只做结构定位、不硬下五行吉凶断语。',
+      说明: '报 4 个数（天地数 1-10→乾坤艮兑坎离震巽乾坤，前 2 位本卦·后 2 位之卦）或给本/之四单卦 → 装进洛书九宫地盘出完整小成图：四正（本/之上下卦）/四隅（本/之互卦）/中宫（归藏「同阴异阳」异或）/取用神宫+应期/阴阳得配/阖辟往来四势（霍老原文纲要级）。霍老原论只用象数不涉五行，本内核守原论不涉五行生克吉凶。',
       run: function (ent, text) {
         var t = String(text || '');
         if (!XCO || !XCO.图) return { text: '【小成图】内核未加载，暂不可用。' };
@@ -663,6 +663,13 @@
         L.push('本卦「' + c.本卦 + '」之「' + c.之卦 + '」，中宫归藏 ' + c.中宫.中宫 + '（本归藏 ' + c.中宫.本归藏 + '·之归藏 ' + c.中宫.之归藏 + '）。');
         L.push('四正（本/之上下卦）：离9 ' + c.四正[9] + '·坎1 ' + c.四正[1] + '·震3 ' + c.四正[3] + '·兑7 ' + c.四正[7] + '。');
         L.push('四隅（本/之互卦·霍老方位）：巽4 ' + c.四隅[4] + '·坤2 ' + c.四隅[2] + '·艮8 ' + c.四隅[8] + '·乾6 ' + c.四隅[6] + '。');
+        // 阖辟往来四势（v3.1.56 补，霍老原文明文·≥4 源一致）
+        if (c.四势 && c.四势.本卦) {
+          function 势线(tag, r) {
+            return tag + '「' + r.势 + '」' + r.式 + '，' + (r.得配 ? '阴阳得配' : '阴阳失配') + '→ ' + r.断;
+          }
+          L.push('阖辟往来四势（霍老原文·纲要级）：' + 势线('本卦', c.四势.本卦) + '；' + 势线('之卦', c.四势.之卦) + '。');
+        }
         if (c.用神落 && c.用神落.length) {
           c.用神落.filter(Boolean).forEach(function (x) {
             L.push('用神' + (问 ? '（问' + 问 + '）' : '') + '：' + x.宫 + ' 落 ' + x.落卦 + '，' + x.得配 + '，主 ' + x.事 + '，应期 ' + x.期 + '。');
@@ -670,7 +677,8 @@
         } else {
           L.push('用神（未指明所问，列全八宫·地盘宫取用与应期）：' + Object.keys(XCO.YONG_SHEN).map(function (gn) { return gn + '主' + XCO.YONG_SHEN[gn].事 + '·应' + XCO.YONG_SHEN[gn].期; }).join('、') + '。');
         }
-        L.push('小成图只做象数结构定位：起图、取用、应期、阴阳得配。同时「阖辟往来」四势吉凶与五行生克断语，因霍老原论只用象数、转述版互斥，本内核不硬下。' + c.缺口);
+        L.push('小成图口径：本内核守霍老原论「只用象数、不涉五行」，故**不涉五行生克吉凶**（原文本就如此，非缺漏）。'
+          + '「阖辟往来」四势吉凶已据霍老原文补入（纲要级，霍老明言须结合正配/旁配、顺配/逆配具体情况通辨发挥，非绝对断语）。' + c.缺口);
         return { text: L.join('\n') };
       }
     },
@@ -1076,12 +1084,13 @@
             }).join('；') + '。');
             // 昼夜取用：果老「论星先分昼夜」，按出生时辰判昼/夜（6–18 时为昼）
             lines.push('昼夜取用（' + (h >= 6 && h < 18 ? '昼生' : '夜生') + '）：' + QZD.YIN_YANG.白);
-            // 星格**相关提示**（不是命中）：《果老星宗》星格须「同宫/同度/入宿/居宫」条件，
-            //   当前排盘层无果老十二宫定位，故只按曜组合筛出相关格并**明标待校验**，绝不误报为「命中」。
+            // 星格**相关提示**（兜底，非判定）：仅按「曜是否在场」筛出**可能相关**的格局。
+            //   v3.1.55 起已有下方「星格·已判定成立」（结构化条件逐条核），此处仅列相关格供参照，
+            //   明标「待核」，绝不与「已判定成立」混淆。
             var ge = QZD.gejuList(order);
             if (ge.length) {
-              lines.push('星格提示（曜已出现，宫位/同度条件待核，非判定）：' + ge.map(function (g) {
-                return g.名 + '（' + g.吉凶 + '·待核）' + g.断 + '〔' + g.源 + '〕';
+              lines.push('星格相关提示（仅按曜在场筛出，未逐条核条件，非判定）：' + ge.map(function (g) {
+                return g.名 + '（' + g.吉凶 + '·待核）';
               }).join(' ') + '。');
             }
             // 庙旺五态含义（让「庙旺」从符号变成能读懂的话）
@@ -1096,16 +1105,39 @@
                 var hp2 = AH.houses({ y: y, m: m, d: d, h: h, tz: 8 });
                 if (hp2 && hp2.落宫 && !hp2.err) {
                   var gh = [];
+                  var chart = {};   // 供 gejuJudge 精确判定的排盘数据（口径与排盘层一致）
+                  var ZHI = ASTRO.ZHI_OF_SIGN || [];
                   order.forEach(function (k) {
                     var no = hp2.落宫[k] && hp2.落宫[k].整宫;
                     var dy = QZD.gongDuanOf(k, GL[no]);
                     if (dy) gh.push(k + '入' + GL[no] + '宫：' + dy);
+                    if (p.黄经[k] != null) {
+                      chart[k] = {
+                        宫: no,
+                        支: ZHI[Math.floor(p.黄经[k] / 30) % 12],
+                        宿: p.二十八宿[k] && p.二十八宿[k].宿,
+                        经: p.黄经[k]
+                      };
+                    }
                   });
                   if (gh.length) lines.push('曜入十二宫（果老·整宫制近似）：' + gh.join('；') + '。');
+                  // 「夹命/夹身」度央的被夹点 = 上升黄经（宫央用宫号即可，度央要黄经）
+                  chart.__度中 = { 经: hp2.上升黄经 };
+                  // 星格精确判定（v3.1.55 新增）：结构化条件（同宫/同度/入宿/居支/坐命/夹）逐条核，命中的才报
+                  if (QZD.gejuJudge) {
+                    var hit = QZD.gejuJudge(chart);
+                    if (hit.length) {
+                      lines.push('星格·已判定成立（结构化条件逐条核中）：' + hit.map(function (g) {
+                        return '【' + g.名 + '】（' + g.吉凶 + '）' + g.断 + '〔' + g.源 + '〕';
+                      }).join(' ') + '。');
+                    } else {
+                      lines.push('星格·已判定成立：本轮无（诸星格的结构化条件均未全部满足，见下方相关提示）。');
+                    }
+                  }
                 }
               } catch (e) { /* 不阻断 */ }
             }
-            lines.push('断语口径：十一曜星性与星格均引《果老星宗》卷七、卷八（通微赋等篇）原文义；星格须宫位/同度/宿位条件方可判定，本轮只作「相关提示」；「曜入十二宫」走**整宫制 30° 等分近似**（果老宫分所属与不等宿度为流派差异，未锁），须结合庙旺与昼夜综合断。');
+            lines.push('断语口径：十一曜星性与星格均引《果老星宗》卷七、卷八（通微赋等篇）原文义；星格已按结构化条件（同宫/同度/入宿/居支/坐命/夹）**逐条精确判定**，只报「已判定成立」者，含「且坐命」的星格须该组曜落命宫方成立，「夹」按宫夹+度央（≤30°）并列判定；「曜入十二宫」走**整宫制 30° 等分近似**（果老宫分所属与不等宿度为流派差异，未锁），行星近宫/支边界时判定勿当绝对，须结合庙旺与昼夜综合断。');
           }
           return { text: lines.join('\n') };
         } catch (e) {
@@ -1311,7 +1343,7 @@
           L.push('旬空（空亡）' + (c.旬空.join('') || '无') + '；驿马' + (c.驿马 || '无') + '。');
           // 六壬细分（v3.1.24）：天马 / 连茹 / 孤虚 / 应期（古籍口径，缺口如实标注）
           L.push('细分：天马（驿马）' + c.天马.天马 + (c.天马.三传带马 ? '，三传带马' : '，三传不带马')
-            + '；连茹' + (c.连茹.是 ? c.连茹.名 + '（三传' + c.发用.三传.join('') + '在地支环相连）' : '非连茹（三传不相连）') + '。');
+            + '；连茹' + (c.连茹.是 ? c.连茹.名 + '（三传' + c.发用.三传.join('') + '在地支环相连）' + (c.连茹.真连茹 ? '·**真连茹**（同属' + c.连茹.季节[0] + '季一路·连珠格）' : '·非真连茹（跨' + c.连茹.季节.join('/') + '不同季）') : '非连茹（三传不相连）') + '。');
           L.push('孤虚（《戎事类占》太岁法·以月建/日支代太岁）：日孤' + c.孤虚.日.孤.join('') + '、日虚' + c.孤虚.日.虚.join('')
             + '；月孤' + c.孤虚.月.孤.join('') + '、月虚' + c.孤虚.月.虚.join('') + '。');
           L.push('应期（《东方朔射覆秘诀》初传所合成期·末传所冲散期）：成期' + (c.应期.成期 || '—')
@@ -1339,7 +1371,7 @@
       key: 'taiyi', 名: '太乙神数',
       板块: '三式推演', 短名: '排太乙',
       触发词: ['太乙', '太乙神数', '太乙式', '十六神', '文昌', '计神', '始击', '天目', '阳九百六'],
-      说明: '某年太乙岁计局：积年/入局/元阴阳遁/十六神/天目(文昌)/计神/客目(始击)/太乙落宫（C17 内核，落宫与主客算标待黄金盘验证）。',
+      说明: '某年太乙岁计局：积年/入局/元阴阳遁/十六神/天目(文昌)/计神/客目(始击)/太乙落宫（C17 内核；落宫两说「三年一宫／九局一宫」并列不合并，主客算流派分歧未锁）。',
       run: function (ent, text) {
         var y = yearOf(ent, text);
         if (!TY || !TY.chart) return { text: '【太乙】内核未加载，暂不可用。' };
@@ -1349,7 +1381,7 @@
           var L = ['【太乙神数】' + y + ' 年（岁计）：'];
           L.push('积年 ' + c.积年 + '；入局数 ' + c.入局数 + '（入纪元数 ' + c.入纪元数 + '）；' + c.元 + '·' + c.阴阳遁 + '。');
           L.push('天目(文昌)：' + c.天目文昌 + '；计神：' + c.计神 + '；客目(始击)：' + c.客目始击 + '。');
-          L.push('太乙落宫：' + c.太乙落宫 + '。');
+          L.push('太乙落宫（三年一宫·主口径）：' + c.太乙落宫 + '；九局一宫（流派异说）：' + (c.落宫_九局一宫 || '—') + '。');
           L.push('（' + c.缺料 + '）');
           // 解局层（v3.1.49 新增，taiyi-duanyu）：仅对**确定性输出**的二目二神给象意，落宫/主客算待验证不断
           if (TID && TID.SHEN) {
@@ -1361,7 +1393,8 @@
             });
             if (sv.length) L.push('二目二神象意：' + sv.join('；') + '。');
             L.push('太乙口径：主客算与掩迫关囚击格对等格局须「太乙落宫 + 主客算」确定后方可断；'
-              + '本内核落宫与主客算已标【待黄金盘验证】，流派公式分歧（移宫 3 年/9 年异说）未锁，故**不硬断**。');
+              + '落宫两说（三年一宫／九局一宫）已并列输出、未合并——三年一宫周期结构五源一致且自洽已验，'
+              + '但具体某年落几宫尚待独立黄金盘逐宫锁定；主客算流派公式分歧大，故对落宫/主客算**不硬断**。');
           }
           return { text: L.join('\n') };
         } catch (e) {
@@ -1740,22 +1773,73 @@
           });
           LC.push('中点盘行星落座：' + P7.filter(function (k) { return mid[k] != null; })
             .map(function (k) { var g = ASTRO.signOf(mid[k]); return k + ' ' + g.星座 + ' ' + g.度数 + '°'; }).join('，'));
-          // 解读：借用行星落座通行释义，语境换成「这段关系的」
+          // 解读（v3.1.55 补 Composite 专属结构）：行星落座 + 关系主轴（日月）+ 中点行星彼此相位
           if (AAD) {
             var cl = [];
+            var CTX = { 太阳: '核心气质', 太阴: '情感模式', 水星: '表达面', 金星: '吸引力', 火星: '行动力', 木星: '扩张面', 土星: '责任面' };
             P7.forEach(function (k) {
               if (mid[k] == null) return;
               var g = ASTRO.signOf(mid[k]);
               var dy = AAD.planSignOf(k, g.星座);
-              var CTX = { 太阳: '核心气质', 太阴: '情感模式', 水星: '表达面', 金星: '吸引力', 火星: '行动力', 木星: '扩张面', 土星: '责任面' };
               if (dy) cl.push(k + '（这段关系的' + CTX[k] + '）：' + dy);
             });
             if (cl.length) LC.push('中点盘解读：' + cl.slice(0, 5).join(' '));
+            // Composite 专属框架（◆现代 Composite 通行技法，非单一古籍权威）：日/月定关系主轴
+            var cs = mid['太阳'] != null ? ASTRO.signOf(mid['太阳']).星座 : null;
+            var cm = mid['太阴'] != null ? ASTRO.signOf(mid['太阴']).星座 : null;
+            var fr = [];
+            if (cs) fr.push('Composite 太阳落' + cs + '＝这段关系的核心意志与共同目标（关系「为何存在」）');
+            if (cm) fr.push('Composite 月亮落' + cm + '＝关系的情感基调与彼此的内在安全感');
+            if (fr.length) LC.push('关系主轴（Composite 日月，◆通行释）：' + fr.join('；') + '。');
+          }
+          // Composite 中点相位：中点行星彼此的主相位 = 关系自身的内在动力结构（Composite 专属技法）
+          if (ASTRO.aspectBetween) {
+            try {
+              var casps = ASTRO.aspectBetween(mid, mid, P7).filter(function (x) {
+                return ['合', '六合', '刑', '拱', '冲'].indexOf(x.类型) >= 0;
+              });
+              var MA = { 合: '融合', 六合: '机会', 刑: '张力', 拱: '顺畅', 冲: '对立' };
+              if (casps.length) {
+                LC.push('中点盘内部相位（关系自身动力，' + casps.length + ' 条，取前 6）：'
+                  + casps.slice(0, 6).map(function (x) {
+                    return '关系盘' + x.a + ' ' + x.类型 + ' ' + x.b + '（' + MA[x.类型] + '·' + x.夹角 + '°' + (x.精准 ? '·精准' : '') + '）';
+                  }).join('，'));
+              }
+            } catch (e) { /* 不阻断 */ }
+          }
+          // Composite 上升/宫位（v3.1.56 补）：两人上升黄经取中点成「关系上升」，按等宫布 12 宫
+          //   口径：**度数中点法**（与上面中点行星同源——所有点取黄经中点）；另有「时空中点法」
+          //   （取两人出生时刻/地点中点重算一盘），两法结果不同，本版取度数中点法并如实注明。
+          if (AH && AH.houses) {
+            try {
+              var ha = AH.houses(na), hb = AH.houses(nb);
+              if (!ha.err && !hb.err) {
+                var dAsc = ((hb.上升黄经 - ha.上升黄经) % 360 + 360) % 360;
+                var cAsc = ASTRO.mod360(ha.上升黄经 + dAsc / 2);
+                var cHouses = [];
+                for (var ci = 0; ci < 12; ci++) cHouses.push(ASTRO.mod360(cAsc + 30 * ci));
+                var cg = [];
+                P7.forEach(function (k) {
+                  if (mid[k] == null) return;
+                  var hn = 12;
+                  for (var hi = 0; hi < 12; hi++) {
+                    var a = cHouses[hi], b = cHouses[(hi + 1) % 12];
+                    if (ASTRO.mod360(mid[k] - a) < ASTRO.mod360(b - a)) { hn = hi + 1; break; }
+                  }
+                  cg.push(k + ' 第' + hn + '宫');
+                });
+                var csign = ASTRO.signOf(cAsc);
+                LC.push('Composite 上升/宫位（度数中点法）：关系上升 ' + csign.星座 + ' ' + csign.度数 + '°，等宫制逐曜落宫——' + cg.join('、') + '。');
+              }
+            } catch (e) { /* 不阻断 */ }
           }
           LC.push('Composite 口径：中点盘 = 两人同行星黄经取中点（走较短弧）合成的「关系本身」盘，'
             + '回答「这段关系是什么」而非「两人合不合」（那是比较盘 Synastry 的事）。'
-            + '本版解读暂借行星落座通行释义并冠以关系语境，Composite 专属解读体系待补；'
-            + '上升/宫位需精确出生地与时刻，中点盘上升各家算法不一（均值 vs 时空中点），本版只给行星不置宫位。');
+            + 'v3.1.55 补 Composite 专属结构：关系主轴（日月）框架 + 中点行星彼此相位；'
+            + 'v3.1.56 补上升/宫位（**度数中点法**——所有点含上升取黄经中点，与中点行星同源）。'
+            + '均属**现代 Composite 通行技法**（◆非单一古籍权威，关系语境参考，自我认知工具、不作命运定论）；'
+            + '上升/宫位另有「时空中点法」（取两人出生时刻与地点中点重算一盘），两法结果不同，本版取度数中点法并如实注明；'
+            + '出生地未给按北京（上升对经纬度敏感，建议给城市）。');
           return { text: LC.join('\n') };
         }
         var r = ASTRO.synastry(na, nb);
@@ -1816,6 +1900,29 @@
         if (v.err) return { prompt: v.err };
         var L = ['【印占 Vedic】' + v.时刻 + '：岁差 Ayanamsa ' + v.ayanamsa + '。'];
         L.push('月亮宿：' + v.月亮宿 + '；Vimshottari 起限「' + v.Vimshottari.起限星 + '」，大限序 ' + v.Vimshottari.大限序.join('→') + '（共 ' + v.Vimshottari.总年 + ' 年）。');
+        // 印占 Bhava 分宫（v3.1.55 补：自然宫 + 等宫，原「分盘制(Default/Bhava)未定」收口）
+        if (AH && AH.vedicHouses) {
+          try {
+            var vh = AH.vedicHouses({ y: y, m: m, d: d, h: h, tz: 8, city: ent.city || (ent.place && ent.place.city) });
+            if (vh && !vh.err) {
+              var ws = [], eq = [];
+              Object.keys(vh.落宫).forEach(function (k) { ws.push(k + ' ' + vh.落宫[k].自然宫 + '宫'); });
+              Object.keys(vh.落宫).forEach(function (k) { eq.push(k + ' ' + vh.落宫[k].等宫 + '宫'); });
+              L.push('印占分宫：上升恒星（Lagna）' + vh.上升恒星 + '（' + vh.Lagna星座 + '座）。'
+                + '自然宫制（Whole Sign·古典默认，与 Vimshottari 配套）：' + ws.join('、') + '。'
+                + '等宫制（Bhava Chalit·核验层）：' + eq.join('、') + '。');
+              if (vh.Sripati宫头) {
+                var sp = [];
+                Object.keys(vh.落宫).forEach(function (k) {
+                  if (vh.落宫[k].Sripati != null) sp.push(k + ' ' + vh.落宫[k].Sripati + '宫');
+                });
+                L.push('Sripati 不等宫（Bhava Chalit 正式版·Siddhānta Śekhara 系，四轴为宫之中点）：' + sp.join('、') + '。');
+              } else {
+                L.push('Sripati 不等宫：本纬度象限退化（极区），该套未出，已如普拉西度降级；自然宫/等宫不受影响。');
+              }
+            }
+          } catch (e) { /* 不阻断 */ }
+        }
         // 解读层（v3.1.51 新增，vedic-duanyu）：二十七宿含义 + Vimshottari 起限主题
         if (VED) {
           var mn = (v.二十七宿 && (v.二十七宿['太阴'] || v.二十七宿['月亮'])) || null;
@@ -1826,7 +1933,9 @@
           var vd = VED.vimsLordOf(v.Vimshottari.起限星);
           if (vd) L.push('Vimshottari 起限主题：' + vd);
           L.push('印占口径：二十七宿与 Vimshottari 取印占标准体系（《Brihat Parashara Hora Shastra》系），'
-            + '为印度古典传承；岁差已按 IAU2006 + Lahiri 官方 2000 基准计算（未逐点核对官方年表，估计差 < 0.05°），分盘制（Default/Bhava）未定、待权威星历校准，当前大限起算点以月亮宿为准。');
+            + '为印度古典传承；岁差已按 IAU2006 + Lahiri 官方 2000 基准计算（未逐点核对官方年表，估计差 < 0.05°），'
+            + '分宫制已补**自然宫（Whole Sign·软件 Default·古典默认）+ 等宫（Bhava Chalit·核验层）+ Sripati 不等宫（Bhava Chalit 正式版）**三套并列，'
+            + '行星近星座边界或 Sripati 宫界（Bhava Sandhi）时三制可能不同宫（未收 Placidus 于恒星盘）；大限起算点以月亮宿为准，出生地未给按北京（Lagna 对经纬度敏感，建议给城市）。');
         }
         L.push('（' + v.缺料 + '）');
         return { text: L.join('\n') };
@@ -2433,6 +2542,19 @@
         var main = r.宫制.普拉西度 ? '普拉西度' : '波菲利';
         var keys = Object.keys(r.落宫);
         L.push('落宫（' + main + '）：' + keys.map(function (k) { return k + '第' + r.落宫[k][main] + '宫'; }).join('，') + '。');
+        // 界/面尊贵（v3.1.56 补）：埃及界（已核）+ 面（迦勒底序，已核）+ 托勒密界两版并列
+        if (r.尊贵) {
+          var dig = [], diff = [];
+          keys.forEach(function (k) {
+            var g = r.尊贵[k]; if (!g) return;
+            var eg = g.界.埃及界, fa = g.面;
+            if (eg) dig.push(k + '入' + eg.界主 + '界（' + eg.起 + '–' + eg.止 + '°）·' + fa.面主 + '面');
+            var a = g.界.托勒密界_拉丁本, b = g.界.托勒密界_现代整理本;
+            if (a && b && a.界主 !== b.界主) diff.push(k + '（拉丁本' + a.界主 + '／现代本' + b.界主 + '）');
+          });
+          L.push('界/面尊贵（埃及界六源一致✅，面按迦勒底序）：' + dig.join('，') + '。');
+          L.push('托勒密界两版分歧（传本不同，并列不裁定）：' + (diff.length ? diff.join('，') : '本盘无分歧') + '。');
+        }
         L.push('标注：' + r.缺口.map(function (s) { return String(s).replace(/[。]/g, '，').replace(/，$/, ''); }).join('；') + '。');
         return { text: L.join('\n') };
       }

@@ -240,6 +240,18 @@ ok(/命宫空宫（无主星），依「借星安宫」借对宫迁移/.test(zrw
 ok(/星情·借（取迁移宫）：/.test(zrw2.text), '借星后星情标明是借来的');
 ok(zrw2.text.indexOf('命宫辅星：文曲（阴水·科甲·吉）') >= 0, '命宫辅星给出星情');
 
+// ===== v3.1.55–3.1.56 占星关系类（Composite 专属结构）=====
+console.log('== Composite 中点盘专属结构 ==');
+var comp = R.run('astro-hepan', ent(1990, 8, 15, 14), '1990年8月15日 与 1992年3月20日 中点合盘');
+var ct = comp && (comp.text || comp);
+ok(typeof ct === 'string' && ct.indexOf('Composite 中点盘') >= 0, 'Composite 中点盘出标题');
+ok(ct.indexOf('关系主轴（Composite 日月') >= 0, '补关系主轴（Composite 日月）');
+ok(ct.indexOf('中点盘内部相位') >= 0, '补中点行星彼此相位');
+ok(ct.indexOf('Composite 上升/宫位（度数中点法）') >= 0, '补上升/宫位（度数中点法）');
+ok(ct.indexOf('关系上升') >= 0, '给出关系上升');
+ok(ct.indexOf('◆非单一古籍权威') >= 0, '如实标注 Composite 为现代通行技法、非单一古籍权威');
+ok(ct.indexOf('时空中点法') >= 0, '如实注明上升/宫位另有时空中点法');
+
 // ===== v3.1.14 八字运程（小运 + 流月 + 流日 + 十神）=====
 console.log('== v3.1.14 八字运程 ==');
 var byO = R.run('dayun', ent(1990, 8, 15, 14, 'male'), '大运 1990年8月15日 男');
@@ -447,7 +459,9 @@ ok(xOut.text.indexOf('乾为天') >= 0 && xOut.text.indexOf('山火贲') >= 0, '
 ok(xOut.text.indexOf('中宫归藏 震') >= 0, '小成图中宫归藏 = 震（异或自洽，非转载误写的巽）');
 ok(xOut.text.indexOf('四正') >= 0 && xOut.text.indexOf('四隅') >= 0, '小成图给出四正（本/之上下卦）与四隅（本/之互卦）');
 ok(xOut.text.indexOf('用神') >= 0 && xOut.text.indexOf('应期') >= 0, '小成图给出取用神宫与应期');
-ok(xOut.text.indexOf('不硬下') >= 0, '小成图如实标注不硬下五行/阖辟吉凶断语（守零臆造）');
+// v3.1.56：四势吉凶已据霍老原文补入（纲要级）；五行仍守原论不涉
+ok(xOut.text.indexOf('阖辟往来四势') >= 0 && xOut.text.indexOf('纲要级') >= 0, '小成图补阖辟往来四势（霍老原文·纲要级）');
+ok(xOut.text.indexOf('不涉五行生克吉凶') >= 0, '小成图守霍老原论不涉五行（原文本就如此，非臆造缺口）');
 ok(R.match('小成图 1136').key === 'xiaocheng', '「小成图」路由到小成图');
 var xPrompt = R.run('xiaocheng', {}, '小成图 看看');
 ok(xPrompt.prompt, '小成图无 4 位数字 → 追问（守门）');

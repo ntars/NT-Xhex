@@ -73,6 +73,96 @@
     return { lat: lat, lng: lng, 说明: 说明 };
   }
 
+  // ---------- 界（Terms/Bounds）与面（Faces/Decans）尊贵 ----------
+  // 口径（多源核对，标来源，不臆造；流派分歧并列不合并）：
+  //  · 界（Term/Bound）：每星座分 5 个不等段，段主为日/月之外的五星；段内行星获该段主的
+  //    「小尊贵」（Firmicus：如入本宫；Al-Qabisi 计分：界 = 2 分，弱于庙旺/三合）。日、月无界主。
+  //  · **埃及界**：celesteapp / aizhanxing(Astrodienst) / tropicalastro / horoscopelogic /
+  //    sirauysal / yourhearth 六源逐字一致（各星座五段度数合计均 30）→ ✅ 已核。
+  //  · **托勒密界**：**存传本/整理本分歧**（ficinosociety 1535 拉丁本 vs horoscopelogic 现代整理本，
+  //    12 宫中仅 4 宫一致）→ 按数据铁律**两版并列、不裁定孰正**，均由调用方注明版本。
+  //  · 面（Face/Decan）：每星座 3 个 10° 段，段主按迦勒底序（土木火日金水月）自白羊 0° 火星起循环；
+  //    sirauysal 与 Wikipedia(Lilly 表) 一致 → ✅ 已核。
+  var TERM_PLANET = { 木: '木星', 金: '金星', 水: '水星', 火: '火星', 土: '土星' };
+  // 埃及界：12 星座 × 5 段 [起点度, 段主]（六源一致）
+  var TERMS_EGYPT = [
+    [[0, '木'], [6, '金'], [12, '水'], [20, '火'], [25, '土']],   // 白羊
+    [[0, '金'], [8, '水'], [14, '木'], [22, '土'], [27, '火']],   // 金牛
+    [[0, '水'], [6, '木'], [12, '金'], [17, '火'], [24, '土']],   // 双子
+    [[0, '火'], [7, '金'], [13, '水'], [19, '木'], [26, '土']],   // 巨蟹
+    [[0, '木'], [6, '金'], [11, '土'], [18, '水'], [24, '火']],   // 狮子
+    [[0, '水'], [7, '金'], [17, '木'], [21, '火'], [28, '土']],   // 室女
+    [[0, '土'], [6, '水'], [14, '木'], [21, '金'], [28, '火']],   // 天秤
+    [[0, '火'], [7, '金'], [11, '水'], [19, '木'], [24, '土']],   // 天蝎
+    [[0, '木'], [12, '金'], [17, '水'], [21, '土'], [26, '火']],  // 射手
+    [[0, '水'], [7, '木'], [14, '金'], [22, '土'], [26, '火']],   // 摩羯
+    [[0, '水'], [7, '金'], [13, '木'], [20, '火'], [25, '土']],   // 水瓶
+    [[0, '金'], [12, '木'], [16, '水'], [19, '火'], [28, '土']]   // 双鱼
+  ];
+  // 托勒密界 A 版：Tetrabiblos 1535 拉丁本（ficinosociety.org 逐星座转录）
+  var TERMS_PTOLEMY_A = [
+    [[0, '木'], [6, '金'], [14, '水'], [21, '火'], [26, '土']],   // 白羊
+    [[0, '金'], [8, '水'], [15, '木'], [23, '火'], [28, '土']],   // 金牛
+    [[0, '水'], [7, '木'], [13, '金'], [20, '火'], [26, '土']],   // 双子
+    [[0, '火'], [7, '金'], [13, '水'], [19, '木'], [26, '土']],   // 巨蟹
+    [[0, '木'], [6, '金'], [13, '土'], [19, '火'], [25, '水']],   // 狮子
+    [[0, '水'], [7, '金'], [13, '木'], [18, '火'], [24, '土']],   // 室女
+    [[0, '金'], [8, '水'], [15, '木'], [23, '火'], [28, '土']],   // 天秤
+    [[0, '火'], [6, '金'], [14, '水'], [22, '木'], [27, '土']],   // 天蝎
+    [[0, '木'], [8, '金'], [14, '水'], [19, '土'], [25, '火']],   // 射手
+    [[0, '金'], [6, '水'], [12, '木'], [19, '火'], [25, '土']],   // 摩羯
+    [[0, '水'], [7, '金'], [13, '木'], [20, '火'], [28, '土']],   // 水瓶
+    [[0, '金'], [8, '木'], [14, '水'], [20, '火'], [25, '土']]    // 双鱼
+  ];
+  // 托勒密界 B 版：现代整理本（horoscopelogic.com 标 Tetrabiblos I.21）
+  var TERMS_PTOLEMY_B = [
+    [[0, '木'], [6, '金'], [14, '水'], [21, '火'], [26, '土']],   // 白羊
+    [[0, '金'], [8, '水'], [15, '木'], [22, '土'], [26, '火']],   // 金牛
+    [[0, '水'], [7, '木'], [13, '金'], [21, '火'], [25, '土']],   // 双子
+    [[0, '火'], [6, '木'], [13, '水'], [20, '金'], [27, '土']],   // 巨蟹
+    [[0, '土'], [6, '水'], [13, '金'], [19, '木'], [25, '火']],   // 狮子
+    [[0, '水'], [7, '金'], [13, '木'], [18, '土'], [24, '火']],   // 室女
+    [[0, '土'], [6, '金'], [11, '水'], [19, '木'], [24, '火']],   // 天秤
+    [[0, '火'], [6, '木'], [14, '金'], [21, '水'], [27, '土']],   // 天蝎
+    [[0, '木'], [8, '金'], [14, '水'], [19, '土'], [25, '火']],   // 射手
+    [[0, '金'], [6, '水'], [12, '木'], [19, '火'], [25, '土']],   // 摩羯
+    [[0, '土'], [6, '水'], [12, '金'], [20, '木'], [25, '火']],   // 水瓶
+    [[0, '金'], [8, '木'], [14, '水'], [20, '火'], [26, '土']]    // 双鱼
+  ];
+  // 面（Faces/Decans）：12 星座 × 3 个 10° 段，迦勒底序自白羊 0° 火星起循环（两源一致）
+  var FACES = [
+    ['火', '日', '金'], ['水', '月', '土'], ['木', '火', '日'], ['金', '水', '月'],
+    ['土', '木', '火'], ['日', '金', '水'], ['月', '土', '木'], ['火', '日', '金'],
+    ['水', '月', '土'], ['木', '火', '日'], ['金', '水', '月'], ['土', '木', '火']
+  ];
+  var FACE_PLANET = { 日: '太阳', 月: '太阴', 金: '金星', 水: '水星', 火: '火星', 木: '木星', 土: '土星' };
+  /** 查界主：lonDeg 黄经（tropical），table 为某套界表。返 {界主, 界序, 起, 止, 星座} */
+  function termOf(lonDeg, table) {
+    var L = mod360(lonDeg), s = Math.floor(L / 30) % 12, d = L % 30;
+    var row = table[s];
+    for (var i = 0; i < row.length; i++) {
+      var start = row[i][0], end = (i + 1 < row.length) ? row[i + 1][0] : 30;
+      if (d >= start && d < end) {
+        return { 界主: TERM_PLANET[row[i][1]], 界序: i + 1, 起: start, 止: end, 星座: SIGNS[s] };
+      }
+    }
+    return null;
+  }
+  /** 面主：lonDeg 黄经 → {面主, 面序, 起, 止, 星座}（迦勒底序 10° 段） */
+  function faceOf(lonDeg) {
+    var L = mod360(lonDeg), s = Math.floor(L / 30) % 12, d = L % 30;
+    var i = Math.min(2, Math.floor(d / 10));
+    return { 面主: FACE_PLANET[FACES[s][i]], 面序: i + 1, 起: i * 10, 止: (i + 1) * 10, 星座: SIGNS[s] };
+  }
+  /** 界尊贵三套并列（埃及界已核；托勒密界两版并列、不裁定） */
+  function termAll(lonDeg) {
+    return {
+      埃及界: termOf(lonDeg, TERMS_EGYPT),
+      托勒密界_拉丁本: termOf(lonDeg, TERMS_PTOLEMY_A),
+      托勒密界_现代整理本: termOf(lonDeg, TERMS_PTOLEMY_B)
+    };
+  }
+
   // ---------- 上升/天顶 ----------
   /**
    * 上升点（ASC）与天顶（MC）。RAMC = 本地恒星时（度）。
@@ -142,6 +232,41 @@
     var c = []; for (var i = 0; i < 12; i++) c.push(mod360(ASC + 30 * i)); return c;
   }
 
+  /**
+   * Sripati 分宫（印占 Bhava Chalit 的不等宫版，Śrīpati《Siddhānta Śekhara》系）。
+   * 口径（多源一致 ≥4 源：astroratan.ai / grokipedia / vedicmarga / modernastro，不臆造）：
+   *   · 四轴为**宫之中点**（Bhava Madhya）：上升 = 第1宫中点、天顶 = 第10宫中点、
+   *     下降 = 第7宫中点、天底 = 第4宫中点；
+   *   · **宫号沿顺行**（与 wholeSign/equalHouse、houseIndexOf 一致）：第1宫中点(ASC) 顺行至
+   *     第4宫中点(IC) 为第一象限，三等分得第 2、3 宫中点；余象限同理；
+   *   · 宫界（Bhava Sandhi）= 相邻两宫中点连线的中点。
+  * 自洽锚点：等象限时四轴须精确为 1/4/7/10 宫之中点、宫宽恒 30°（见 astrohouse.test.js 断言）。
+  * 数学性质：相邻两象限之和恒 180°（因 IC=MC+180、DSC=ASC+180），故四轴宫(1/4/7/10)宽恒 30°、
+  *   中间宫随纬度不等——**比普拉西度稳健，高纬不退化**；仅当 MC 与 ASC 重合（象限长 0）时无解，
+  *   此时返回 null 由调用方降级。
+  */
+  function sripati(lagna, mc) {
+    var mid = new Array(13);
+    mid[1] = mod360(lagna); mid[4] = mod360(mc + 180);
+    mid[7] = mod360(lagna + 180); mid[10] = mod360(mc);
+    function quad(hStart, hEnd, h1, h2) {
+      var a = mid[hStart], b = mid[hEnd];
+      var span = mod360(b - a) / 3;          // 顺行每段长（共三段）
+      if (span <= 0.01 || span >= 60) return false;   // 象限退化/异常 → 无解
+      mid[h1] = mod360(a + span);
+      mid[h2] = mod360(a + 2 * span);
+      return true;
+    }
+    // 四象限各三等分（宫号顺行）：1→4 得 2/3；4→7 得 5/6；7→10 得 8/9；10→1 得 11/12
+    if (!quad(1, 4, 2, 3) || !quad(4, 7, 5, 6) || !quad(7, 10, 8, 9) || !quad(10, 1, 11, 12)) return null;
+    var c = new Array(12);
+    for (var i = 1; i <= 12; i++) {
+      var a = mid[i === 1 ? 12 : i - 1], b = mid[i];       // 第 i 宫头 = (m_{i-1} + m_i)/2
+      c[i - 1] = mod360(a + mod360(b - a) / 2);
+    }
+    return c;
+  }
+
   // 某黄经落第几宫（宫头起点含、下宫头不含；按黄道顺行判定）
   function houseIndexOf(lon, cusps) {
     for (var i = 0; i < 12; i++) {
@@ -177,6 +302,7 @@
 
     var p = AST.positions({ y: inp.y, m: inp.m, d: inp.d, h: h, tz: tz });
     var 落宫 = {};
+    var 尊贵 = {};   // 界（Terms）与面（Faces）尊贵——复用上面已算的黄经，不重算星历
     if (p && p.黄经) {
       Object.keys(p.黄经).forEach(function (k) {
         if (p.黄经[k] == null) return;
@@ -185,6 +311,7 @@
           if (!sys[s]) return;
           落宫[k][s] = houseIndexOf(p.黄经[k], sys[s]);
         });
+        尊贵[k] = { 界: termAll(p.黄经[k]), 面: faceOf(p.黄经[k]) };
       });
     }
     return {
@@ -196,11 +323,86 @@
       黄赤交角: eps.toFixed(4) + '°',
       宫制: sys, 宫制缺: pl.ok ? '' : ('普拉西度不可用：' + pl.why + '（已降级波菲利）'),
       落宫: 落宫,
+      尊贵: 尊贵,
       各宫宫头: sys.普拉西度 || sys.波菲利,
       缺口: [
         g.说明,
         '宫制四家并列不合并：整宫（希腊化）、等宫（现代常用）、波菲利（古典四轴三分）、普拉西度（半弧三分，现代最通用）',
+        '界/面尊贵：埃及界（六源逐字一致，已核）；托勒密界存传本分歧（拉丁本/现代整理本仅 4/12 宫一致），两版并列不裁定；面按迦勒底序（两源一致，已核）。日、月无界主。',
         '上升/天顶为球面天文标准解，可用 astronomy-engine 地平坐标反验（见测试）'
+      ].filter(Boolean)
+    };
+  }
+
+  // ---------- 印占（Vedic）分宫：自然宫 + 等宫 + Sripati ----------
+  /**
+   * 印占 Bhava 分宫（v3.1.55 补；v3.1.56 增第三套 Sripati；原 astro.js vedicPositions 缺料「分盘制(Default/Bhava)未定」收口）。
+   *
+   * 口径（多源一致，标来源，不臆造；≥3 源：BPHS/Phaladeepika 古典默认 + 通行星历软件）：
+   *   · 印占三套分宫并列，均以**上升（Lagna）恒星黄经**为基准：
+   *     ① 自然宫制 Whole Sign（Rashi 图 = 软件「Default」）：上升所在星座为第 1 宫，
+   *        一宫一整星座、宫宽恒 30°；行星落宫 = 行星恒星星座 − 上升恒星星座（mod 12）+ 1。
+   *        这是《BPHS》《Phaladeepika》的古典默认，与 Vimshottari 大限配套。
+   *     ② 等宫制 Equal / Bhava Chalit（宫位核验层）：自上升**精确度数**起每 30° 一宫，
+   *        行星按恒星黄经相对上升度数落宫；可能出现「在星座 A、入宫 B」。
+   *     ③ Sripati（不等宫 · Bhava Chalit 正式版，Śrīpati《Siddhānta Śekhara》系，≥4 源一致）：
+   *        四轴为宫之中点、四象限各三等分，宫宽随纬度不等；见 sripati() 注释。
+   *   · 恒星黄经 = 回归黄经 − Lahiri 岁差（astro.js ayanamsa，单一真源）；
+   *     上升/天顶先按回归黄经算（Meeus 标准式），再减岁差得恒星 Lagna/MC。
+   *
+   * ⚠ 缺口（如实标注，不假报已锁）：
+   *   · 出生地经纬度未给按北京——Lagna 对纬度/经度敏感，边界处三制可能不同宫，建议给城市；
+   *   · Sripati 在极区（象限长度≈0）数学退化，本函数返回该套为 null 并注明，与普拉西度降级策略一致；
+   *   · 行星近星座边界或 Sripati 宫界（Bhava Sandhi）时，三制可能给出不同宫位，属正常流派差异，并列不合并。
+   */
+  function vedicHouses(inp) {
+    inp = inp || {};
+    if (!inp.y || !inp.m || !inp.d) return { err: '印占分宫需出生年月日时（例「1990年8月15日14时 北京」）。' };
+    var tz = (inp.tz == null ? 8 : +inp.tz);
+    var g = geo(inp);
+    var h = inp.h || 0;
+    var sid = AST.sidereal(inp.y, inp.m, inp.d, h, tz, g.lng);
+    var U = sid.世界时;
+    var eps = AST.obliquity(U.y, U.m, U.d, U.h);
+    var ax = axes(sid.LST, g.lat, eps);
+    var ascTrop = ax.ASC;                          // 上升（回归黄经）
+    var ay = AST.ayanamsa(inp.y + (inp.m - 1) / 12);
+    var lagna = mod360(ascTrop - ay);              // 恒星上升（Lagna）
+    var mcSid = mod360(ax.MC - ay);                // 恒星天顶（MC，供 Sripati 定第 10 宫中点）
+    var p = AST.positions({ y: inp.y, m: inp.m, d: inp.d, h: h, tz: tz });
+    var sidereal = {};
+    if (p && p.黄经) {
+      Object.keys(p.黄经).forEach(function (k) {
+        if (p.黄经[k] == null) return;
+        sidereal[k] = mod360(p.黄经[k] - ay);
+      });
+    }
+    var wsCusps = wholeSign(lagna);                // 自然宫宫头（恒星）：上升星座 0° 起
+    var eqCusps = equalHouse(lagna);               // 等宫宫头（恒星）：上升度数起每 30°
+    var spCusps = sripati(lagna, mcSid);           // Sripati 宫头（恒星）：四轴为中点·象限三等分；极区返 null
+    var 落宫 = {};
+    Object.keys(sidereal).forEach(function (k) {
+      落宫[k] = {
+        自然宫: houseIndexOf(sidereal[k], wsCusps),
+        等宫: houseIndexOf(sidereal[k], eqCusps),
+        Sripati: spCusps ? houseIndexOf(sidereal[k], spCusps) : null
+      };
+    });
+    var lagnaSign = Math.floor(lagna / 30) % 12;   // 恒星上升星座序（白羊 0° 起）
+    return {
+      上升回归: fmtLon(ascTrop), 上升恒星: fmtLon(lagna), Lagna星座: SIGNS[lagnaSign],
+      Lagna恒星黄经: +lagna.toFixed(3),
+      ayanamsa: +ay.toFixed(3),
+      地点: g.lat.toFixed(2) + '°N ' + g.lng.toFixed(2) + '°E',
+      自然宫宫头: wsCusps.map(function (x) { return +x.toFixed(3); }),
+      等宫宫头: eqCusps.map(function (x) { return +x.toFixed(3); }),
+      Sripati宫头: spCusps ? spCusps.map(function (x) { return +x.toFixed(3); }) : null,
+      落宫: 落宫,
+      缺口: [
+        g.说明,
+        spCusps ? '' : 'Sripati 象限退化（MC 与 ASC 重合的罕见情形），本套未出；自然宫/等宫不受影响',
+        '印占三套分宫并列不合并：自然宫（Whole Sign·软件 Default·古典默认，与 Vimshottari 配套）；等宫（Equal·宫位核验层）；Sripati（不等宫·Bhava Chalit 正式版，Siddhānta Śekhara 系）',
+        'Sripati 相邻两象限之和恒 180°，四轴宫(1/4/7/10)宽恒 30°、中间宫随纬度不等；行星近星座边界或宫界（Bhava Sandhi）时三制可能不同宫，属正常流派差异'
       ].filter(Boolean)
     };
   }
@@ -580,8 +782,11 @@
 
   return {
     houses: houses, lots: lots, horary: horary, election: election,
+    vedicHouses: vedicHouses,
     planetaryHour: planetaryHour, moonPhase: moonPhase,
-    axes: axes, fmtLon: fmtLon, houseIndexOf: houseIndexOf,
+    axes: axes, fmtLon: fmtLon, houseIndexOf: houseIndexOf, sripati: sripati,
+    TERMS_EGYPT: TERMS_EGYPT, TERMS_PTOLEMY_A: TERMS_PTOLEMY_A, TERMS_PTOLEMY_B: TERMS_PTOLEMY_B, FACES: FACES,
+    termOf: termOf, faceOf: faceOf, termAll: termAll,
     SIGN_RULER: SIGN_RULER, EXALT: EXALT, PLANETS7: PLANETS7,
     cities: (ST && ST.CITIES) ? Object.keys(ST.CITIES) : [],
     CHALDEAN: CHALDEAN, WEEK_RULER: WEEK_RULER, ELECTION_TOPIC: ELECTION_TOPIC, Q_HOUSE: Q_HOUSE

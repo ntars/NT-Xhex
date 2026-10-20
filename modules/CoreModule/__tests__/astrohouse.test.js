@@ -190,5 +190,116 @@ ok('未给城市按北京并注明', (function () {
   return /按北京/.test(x.缺口.join(''));
 })(), 'ok');
 
+// K. 印占 Bhava 分宫（自然宫 + 等宫；v3.1.55 补）
+console.log('K. 印占 Bhava 分宫（vedicHouses）');
+(function () {
+  var v = H.vedicHouses(CHART);
+  var ay = v.ayanamsa;
+  var h0 = H.houses(CHART);
+  ok('缺日期给错误提示', !!H.vedicHouses({}).err, H.vedicHouses({}).err);
+  // 恒星上升（Lagna）= 回归上升 − 岁差（与 houses() 上升黄经自洽）
+  ok('Lagna 恒星 = 回归上升 − 岁差', angNear(v.Lagna恒星黄经, AST.mod360(h0.上升黄经 - ay), 0.01), v.Lagna恒星黄经 + '° vs ' + AST.mod360(h0.上升黄经 - ay).toFixed(3) + '°');
+  // 自然宫宫头[0] = 上升星座 0°；宫宽恒 30°；等宫宫头[0] = 上升度数
+  ok('自然宫宫头[0] = 上升星座 0°', Math.abs(v.自然宫宫头[0] - Math.floor(v.Lagna恒星黄经 / 30) * 30) < 0.01, v.自然宫宫头[0]);
+  ok('自然宫宫宽恒 30°（相邻宫头差 30）', v.自然宫宫头.every(function (c, i) { return angNear(v.自然宫宫头[(i + 1) % 12] - c, 30, 0.01); }), 'ok');
+  ok('等宫宫头[0] = 上升恒星度数', Math.abs(v.等宫宫头[0] - v.Lagna恒星黄经) < 0.01, v.等宫宫头[0]);
+  ok('等宫宫宽恒 30°', v.等宫宫头.every(function (c, i) { return angNear(v.等宫宫头[(i + 1) % 12] - c, 30, 0.01); }), 'ok');
+  // 逐曜落宫在 1..12；自然宫落宫 = (行星恒星星座 − Lagna星座) mod 12 + 1
+  var p = AST.positions(CHART);
+  var allOk = true, sunWs = null;
+  Object.keys(v.落宫).forEach(function (k) {
+    var lon = v.落宫[k];
+    if (!(lon.自然宫 >= 1 && lon.自然宫 <= 12 && lon.等宫 >= 1 && lon.等宫 <= 12)) allOk = false;
+    var planetSign = Math.floor(AST.mod360(p.黄经[k] - ay) / 30) % 12;
+    var lagnaSign = Math.floor(v.Lagna恒星黄经 / 30) % 12;
+    var expect = ((planetSign - lagnaSign) % 12 + 12) % 12 + 1;
+    if (lon.自然宫 !== expect) allOk = false;
+    if (k === '太阳') sunWs = lon.自然宫;
+  });
+  ok('逐曜落宫均 1..12', allOk, 'ok');
+  ok('自然宫落宫 = 行星星座 − 上升星座(模12)+1', sunWs != null && sunWs === (((Math.floor(AST.mod360(p.黄经['太阳'] - ay) / 30) % 12) - Math.floor(v.Lagna恒星黄经 / 30) % 12 + 12) % 12) + 1, '太阳自然宫=' + sunWs);
+  // 缺口如实：两制并列不合并 + 未收 Sripati
+  ok('缺口注明三制并列不合并', /三套分宫并列不合并/.test(v.缺口.join('')), 'ok');
+  ok('缺口注明 Sripati 宫界差异', /Bhava Sandhi/.test(v.缺口.join('')), 'ok');
+})();
+
+// K2. Sripati 不等宫（v3.1.56 第三套并列）
+console.log('K2. Sripati 不等宫（vedicHouses.Sripati）');
+(function () {
+  // ① 纯函数合成案例：四象限均 90° → 四轴须精确为 1/4/7/10 宫之中点，宫宽恒 30
+  var c = H.sripati(100, 10);   // ASC=100, MC=10 → IC=190, DSC=280
+  function spSpan(a, b) { var d = AST.mod360(b - a); return d; }
+  var mids = [];
+  for (var i = 0; i < 12; i++) mids.push(AST.mod360(c[i] + spSpan(c[i], c[(i + 1) % 12]) / 2));
+  ok('合成盘：第1宫中点 = ASC', Math.abs(AST.mod360(mids[0] - 100)) < 0.01, mids[0]);
+  ok('合成盘：第4宫中点 = IC', Math.abs(AST.mod360(mids[3] - 190)) < 0.01, mids[3]);
+  ok('合成盘：第7宫中点 = DSC', Math.abs(AST.mod360(mids[6] - 280)) < 0.01, mids[6]);
+  ok('合成盘：第10宫中点 = MC', Math.abs(AST.mod360(mids[9] - 10)) < 0.01, mids[9]);
+  ok('合成盘：宫宽恒 30', c.every(function (x, i) { return Math.abs(spSpan(x, c[(i + 1) % 12]) - 30) < 0.01; }), 'ok');
+  ok('合成盘：宫头顺行递增（配合 houseIndexOf）', c.every(function (x, i) { return spSpan(x, c[(i + 1) % 12]) < 180; }), 'ok');
+  ok('sripati 象限退化返 null（极区式输入）', H.sripati(100, 100) === null || H.sripati(0, 0) === null, 'ok');
+  // ② 端到端：北京盘应出三套，且 Sripati 落宫 1..12
+  var v = H.vedicHouses(CHART);
+  ok('北京盘出三套分宫（含 Sripati）', !!v.Sripati宫头 && v.Sripati宫头.length === 12, v.Sripati宫头 ? v.Sripati宫头.length + ' 个' : 'null');
+  var allOk = true, offsetMax = 0;
+  Object.keys(v.落宫).forEach(function (k) {
+    var lo = v.落宫[k];
+    if (!(lo.自然宫 >= 1 && lo.自然宫 <= 12 && lo.等宫 >= 1 && lo.等宫 <= 12 && lo.Sripati >= 1 && lo.Sripati <= 12)) allOk = false;
+  });
+  ok('三套落宫均 1..12', allOk, 'ok');
+  // 真实盘象限不等长 → 第1宫中点与 ASC 有小偏移（<5°），如实记录不假报
+  (function () {
+    var cc = v.Sripati宫头, m1 = AST.mod360(cc[0] + spSpan(cc[0], cc[1]) / 2);
+    var off = Math.min(AST.mod360(m1 - v.Lagna恒星黄经), AST.mod360(v.Lagna恒星黄经 - m1));
+    ok('真实盘第1宫中点与 Lagna 偏移 <5°（象限不等长的正常现象）', off < 5, off.toFixed(2) + '°');
+  })();
+  // ③ 极区：Sripati 相邻两象限之和恒 180°，四轴宫宽恒 30，数学上不退化（比普拉西度稳健）
+  var pv = H.vedicHouses({ y: 1990, m: 8, d: 15, h: 14, lat: 78.2, lng: 15.6 });
+  ok('极区(78.2°) Sripati 仍出（象限和恒180·不退化）', !!pv.Sripati宫头 && pv.Sripati宫头.length === 12, 'ok');
+  ok('极区四轴宫宽仍恒 30', (function () {
+    var cc = pv.Sripati宫头;
+    return Math.abs(AST.mod360(cc[1] - cc[0]) - 30) < 0.01 && Math.abs(AST.mod360(cc[4] - cc[3]) - 30) < 0.01;
+  })(), 'ok');
+  ok('降级后自然宫/等宫仍出', !!pv.自然宫宫头 && !!pv.等宫宫头, 'ok');
+  // 退化保护：MC 与 ASC 重合（象限长 0）时应安全返 null，不崩不出错盘
+  ok('MC=ASC 象限退化安全返 null', H.sripati(100, 100) === null, 'ok');
+})();
+
+// K3. 界（Terms）与面（Faces）尊贵（v3.1.56 补）
+console.log('K3. 界/面尊贵');
+(function () {
+  // ① 界表结构：每星座五段合计 30（三套均验）
+  function segSum(t) {
+    return t.every(function (row) {
+      var s = 0;
+      for (var j = 0; j < row.length; j++) { var e = (j + 1 < row.length) ? row[j + 1][0] : 30; s += e - row[j][0]; }
+      return s === 30;
+    });
+  }
+  ok('埃及界 12 星座五段合计均 30', segSum(H.TERMS_EGYPT), 'ok');
+  ok('托勒密拉丁本 12 星座五段合计均 30', segSum(H.TERMS_PTOLEMY_A), 'ok');
+  ok('托勒密现代整理本 12 星座五段合计均 30', segSum(H.TERMS_PTOLEMY_B), 'ok');
+  // ② 黄金实例（thegreatalmanac.com 明列）
+  ok('13°白羊 = 水星界（埃及界 12–20）', H.termOf(13, H.TERMS_EGYPT).界主 === '水星', H.termOf(13, H.TERMS_EGYPT).界主);
+  ok('12°室女 = 金星界（埃及界 7–17）', H.termOf(150 + 12, H.TERMS_EGYPT).界主 === '金星', 'ok');
+  ok('6°30′白羊 = 金星界（已离木界入金界）', H.termOf(6.5, H.TERMS_EGYPT).界主 === '金星', 'ok');
+  // ③ 日/月无界主（界表只含五星）
+  ok('界表不含日/月（日月无界主）', !H.TERMS_EGYPT.some(function (r) { return r.some(function (x) { return x[1] === '日' || x[1] === '月'; }); }), 'ok');
+  // ④ 面（Faces）：迦勒底序，白羊 0/10/20 = 火/日/金
+  ok('0°白羊面主 = 火星', H.faceOf(0).面主 === '火星', H.faceOf(0).面主);
+  ok('15°白羊面主 = 太阳', H.faceOf(15).面主 === '太阳', H.faceOf(15).面主);
+  ok('25°白羊面主 = 金星', H.faceOf(25).面主 === '金星', H.faceOf(25).面主);
+  ok('5°金牛面主 = 水星', H.faceOf(35).面主 === '水星', H.faceOf(35).面主);
+  // ⑤ 三套并列 + 托勒密两版分歧客观存在（5°狮子：拉丁本木 / 现代本土）
+  var ta = H.termAll(125);
+  ok('三套并列输出', ta.埃及界 && ta.托勒密界_拉丁本 && ta.托勒密界_现代整理本, 'ok');
+  ok('5°狮子 托勒密两版确有分歧（木 vs 土）', ta.托勒密界_拉丁本.界主 === '木星' && ta.托勒密界_现代整理本.界主 === '土星',
+    ta.托勒密界_拉丁本.界主 + '/' + ta.托勒密界_现代整理本.界主);
+  // ⑥ houses() 附带尊贵字段（复用黄经，不重算）
+  var hh = H.houses(CHART);
+  ok('houses() 带尊贵字段且覆盖全曜', !!hh.尊贵 && Object.keys(hh.尊贵).length === Object.keys(hh.落宫).length, 'ok');
+  ok('houses() 缺口注明托勒密传本分歧', /传本分歧/.test(hh.缺口.join('')), 'ok');
+})();
+
 console.log('\n=== astro-house 自测：' + pass + ' 通过 / ' + fail + ' 失败 ===');
 if (fail) process.exit(1);

@@ -47,8 +47,50 @@ var c = TY.chart({ y: 2026 });
 t('chart 无 err', !c.err);
 t('chart 阳遁', c.阴阳遁 === '阳');
 t('chart 天目含武德', c.天目文昌.indexOf('武德') >= 0);
-t('chart 落宫标待验证', c.太乙落宫.indexOf('待黄金盘验证') >= 0);
-t('chart 缺口说明', c.缺料.length > 0);
+// v3.1.56：落宫两说并列；主口径「三年一宫」，并如实标注年份落宫待独立黄金盘锁定
+t('chart 落宫主口径为三年一宫', c.太乙落宫.indexOf('三年一宫') >= 0, c.太乙落宫);
+t('chart 落宫并列九局一宫（流派异说不合并）', c.落宫_九局一宫 && c.落宫_九局一宫.indexOf('九局一宫') >= 0, c.落宫_九局一宫);
+t('chart 落宫如实标「年份落宫待独立黄金盘锁定」', c.太乙落宫.indexOf('待独立黄金盘锁定') >= 0, c.太乙落宫);
+t('chart 缺口说明含两说不合并', c.缺料.indexOf('并列不合并') >= 0);
+t('chart 缺口如实记明网传算例非年份锁定', c.缺料.indexOf('非年份算例') >= 0 || c.缺料.indexOf('起局规则') >= 0);
+
+// ===== v3.1.56 太乙落宫·三年一宫（周期结构五源一致 + 自洽已验）=====
+console.log('太乙落宫·三年一宫');
+// ① 周期自洽：24 年一周（1588 与 1612 同宫）；3 年递进一宫
+t('三年一宫：24 年一周（1588 与 1612 同宫）', TY.taiyiPalace3(TY.jinian(1588), false) === TY.taiyiPalace3(TY.jinian(1612), false),
+  TY.taiyiPalace3(TY.jinian(1588), false) + ' vs ' + TY.taiyiPalace3(TY.jinian(1612), false));
+t('三年一宫：相邻三年递进一宫', (function () {
+  var a = TY.taiyiPalace3(TY.jinian(1588), false), b = TY.taiyiPalace3(TY.jinian(1591), false);
+  var BAGUA8 = [1, 2, 3, 4, 6, 7, 8, 9];
+  return BAGUA8.indexOf(b) === (BAGUA8.indexOf(a) + 1) % 8;
+})(), 'ok');
+// ② 八宫不入中五（永不出 5）
+t('三年一宫：八宫俱不入中五（多年扫描无 5）', (function () {
+  for (var y = 1500; y <= 2100; y++) {
+    var v = TY.taiyiPalace3(TY.jinian(y), y % 2 === 0);
+    if (v === 5) return false;
+    if ([1, 2, 3, 4, 6, 7, 8, 9].indexOf(v) < 0) return false;
+  }
+  return true;
+})(), 'ok');
+// ③ 阴阳遁互为逆序（同一积年，阳遁第 k 步 = 阴遁第 7−k 步）
+t('三年一宫：阴阳遁逆序（阳 idx 与阴 idx 互补）', (function () {
+  var BAGUA8 = [1, 2, 3, 4, 6, 7, 8, 9];
+  for (var y = 1600; y <= 1700; y++) {
+    var p = TY.taiyiPalace3(TY.jinian(y), false), q = TY.taiyiPalace3(TY.jinian(y), true);
+    if (BAGUA8.indexOf(p) + BAGUA8.indexOf(q) !== 7) return false;
+  }
+  return true;
+})(), 'ok');
+// ④ 与九局一宫是两套（多数年份不同，证明未混用）
+t('三年一宫与九局一宫为两套（存在分歧年份）', (function () {
+  var diff = 0;
+  for (var y = 1900; y <= 2026; y++) {
+    var r = TY.ruju(y);
+    if (TY.taiyiPalace3(TY.jinian(y), r.阴) !== TY.taiyiPalace(r.入局数, r.阴)) diff++;
+  }
+  return diff > 0;
+})(), 'ok');
 
 console.log('\n太乙内核测试：通过 ' + pass + ' / 失败 ' + fail);
 process.exit(fail ? 1 : 0);
