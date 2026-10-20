@@ -41,3 +41,29 @@ ok('shenshaOf(天德) 有', !!HL.shenshaOf('天德'));
 ok('shenshaOf 未知返回 null', HL.shenshaOf('不存在的神煞') === null);
 console.log('\n=== 四库自测：' + pass + ' 通过 / ' + fail + ' 失败 ===');
 if (fail) process.exit(1);
+
+// v3.1.50 追加：占星落宫 + 七政曜入宫
+console.log('\nE. 占星落宫（v3.1.50）');
+var AD = require('../astro-duanyu.js');
+ok('落宫断语 84', AD.count.落宫断语 === 84);
+var miss2 = [];
+Object.keys(AD.PLANET_HOUSE).forEach(function (pl) {
+  for (var i = 1; i <= 12; i++) if (!AD.PLANET_HOUSE[pl][i]) miss2.push(pl + '·' + i);
+});
+ok('84 格全（7行星×12宫）', miss2.length === 0, miss2.slice(0, 5).join(','));
+ok('HOUSE12 含档位', AD.HOUSE12[10].档.indexOf('角宫') >= 0);
+ok('planHouseOf(太阳,10) 有', !!AD.planHouseOf('太阳', 10));
+ok('planHouseOf 吃异名（太阴→月亮）', AD.planHouseOf('太阴', 4) === AD.planHouseOf('月亮', 4));
+ok('planHouseOf 未知返回 null', AD.planHouseOf('太阳', 99) === null);
+ok('planHouseOf 未知行星返回 null', AD.planHouseOf('天王', 1) === null);
+
+console.log('\nF. 七政曜入十二宫映射（v3.1.50）');
+var QZ = require('../qizheng-duanyu.js');
+var GL = { 1: '命', 2: '财帛', 3: '兄弟', 4: '田宅', 5: '男女', 6: '奴仆', 7: '夫妻', 8: '疾厄', 9: '迁移', 10: '官禄', 11: '福德', 12: '相貌' };
+var miss3 = [];
+Object.keys(GL).forEach(function (no) {
+  ['太阳', '太阴', '金星', '木星', '水星', '火星', '土星'].forEach(function (y) {
+    if (!QZ.gongDuanOf(y, GL[no])) miss3.push(y + '·' + GL[no]);
+  });
+});
+ok('7 政 × 12 果老宫全部有断语（84 格）', miss3.length === 0, miss3.slice(0, 5).join(','));

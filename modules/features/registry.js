@@ -1040,7 +1040,26 @@
               mo[s2.模式] = (mo[s2.模式] || 0) + 1;
             });
             lines.push('元素/模式分布：' + Object.keys(el).map(function (e) { return e + '象' + el[e]; }).join('、') + '；' + Object.keys(mo).map(function (mm) { return mm + mo[mm]; }).join('、'));
-            lines.push('占星口径：行星落座/相位/三要素/元素模式为**通行占星学**体系（非单一古籍），定位是「自我认知工具」，不作命运定论；行星落宫逐格、推运、合盘、印占解读待补。');
+            // 行星落宫（v3.1.50 新增）：astro-house.js 的 houses() 已算好每曜落宫（4 种宫制）
+            //   ⚠ 宫位需出生地经纬度；未给时 houses() 默认北京（39.90°N 116.40°E），须如实标注
+            if (AH && AH.houses) {
+              try {
+                var hp = AH.houses({ y: y, m: m, d: d, h: h, tz: 8 });
+                if (hp && hp.落宫 && !hp.err) {
+                  var 地注 = (ent && ent.place) ? String(ent.place) : '北京（未给出生地，按默认）';
+                  var ph = [];
+                  west.forEach(function (k) {
+                    var no = hp.落宫[k] && hp.落宫[k].整宫;
+                    var dy = AAD.planHouseOf(k, no);
+                    if (dy) ph.push(dy);
+                  });
+                  if (ph.length) lines.push('行星落宫（' + 地注 + '·整宫制）：' + ph.join('；') + '。');
+                  // 上升星座（三要素补齐：此前因需出生地而缺失）
+                  if (hp.上升) lines.push('三要素补齐·上升' + hp.上升 + '——' + AAD.VITAL.上升 + '。');
+                }
+              } catch (e) { /* 宫位算不出不阻断 */ }
+            }
+            lines.push('占星口径：行星落座/相位/三要素/元素模式为**通行占星学**体系（非单一古籍），定位是「自我认知工具」，不作命运定论；行星落宫需出生地经纬度（未给则按北京），推运/合盘/印占解读待补。');
           }
 
           // ── 七政四余断语层（v3.1.47 新增，qizheng-duanyu）──
@@ -1063,7 +1082,24 @@
             lines.push('庙旺五态：' + Object.keys(QZD.MIAO_TEXT).map(function (k) {
               return k + '＝' + QZD.MIAO_TEXT[k];
             }).join(' '));
-            lines.push('断语口径：十一曜星性与星格均引《果老星宗》卷七、卷八（通微赋等篇）原文义；星格须宫位/同度/宿位条件方可判定，本轮只作「相关提示」；「曜入十二宫」断语待果老十二宫定位补齐后接（不臆造）。');
+            // 曜入十二宫（v3.1.50 新增）：果老十二宫 = 以上升为命宫、每 30° 一宫（整宫制同构）
+            //   果老宫名序列与占星宫号一一对应（1命 2财帛 3兄弟 4田宅 5男女 6奴仆 7夫妻 8疾厄 9迁移 10官禄 11福德 12相貌）
+            var GL = { 1: '命', 2: '财帛', 3: '兄弟', 4: '田宅', 5: '男女', 6: '奴仆', 7: '夫妻', 8: '疾厄', 9: '迁移', 10: '官禄', 11: '福德', 12: '相貌' };
+            if (AH && AH.houses) {
+              try {
+                var hp2 = AH.houses({ y: y, m: m, d: d, h: h, tz: 8 });
+                if (hp2 && hp2.落宫 && !hp2.err) {
+                  var gh = [];
+                  order.forEach(function (k) {
+                    var no = hp2.落宫[k] && hp2.落宫[k].整宫;
+                    var dy = QZD.gongDuanOf(k, GL[no]);
+                    if (dy) gh.push(k + '入' + GL[no] + '宫：' + dy);
+                  });
+                  if (gh.length) lines.push('曜入十二宫（果老·整宫制近似）：' + gh.join('；') + '。');
+                }
+              } catch (e) { /* 不阻断 */ }
+            }
+            lines.push('断语口径：十一曜星性与星格均引《果老星宗》卷七、卷八（通微赋等篇）原文义；星格须宫位/同度/宿位条件方可判定，本轮只作「相关提示」；「曜入十二宫」走**整宫制 30° 等分近似**（果老宫分所属与不等宿度为流派差异，未锁），须结合庙旺与昼夜综合断。');
           }
           return { text: lines.join('\n') };
         } catch (e) {
