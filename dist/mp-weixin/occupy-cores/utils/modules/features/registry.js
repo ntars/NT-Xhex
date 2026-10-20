@@ -1663,10 +1663,25 @@
           T.push('精准行运相位（容许度内）：' + (hit.length ? hit.map(function (x) { return x.a + '　' + x.类型 + '　' + x.b; }).join('，') : '无'));
           T.push('全部行运相位 ' + tr.行运相位.length + ' 条，取前 8 条：' + tr.行运相位.slice(0, 8).map(function (x) { return x.a + x.类型 + x.b; }).join('，'));
           T.push('注：行运星＝该日实际天象，对本命盘取相位（容许度按主/小相位各自 orb）；想换日期就把日期写进问题。' + more);
-          // 解读层（v3.1.51 新增，transit-duanyu）：精准相位的触发语义
+          // 解读层（v3.1.51 新增，transit-duanyu）：精准相位的触发语义 + 行运过宫
           if (TRD) {
             var trL = hit.slice(0, 6).map(function (x) { return TRD.transitAspectOf(x.a, x.类型); }).filter(Boolean);
             if (trL.length) T.push('触发语义：' + trL.join(' '));
+            // 行运过宫（v3.1.51 补）：行运星落**本命**宫位 = 行运黄经 vs 本命各宫宫头
+            if (AH && AH.houses && AH.houseIndexOf) {
+              try {
+                var hp = AH.houses(nat);
+                if (hp && !hp.err && hp.各宫宫头 && hp.各宫宫头.length >= 12) {
+                  var th = [];
+                  Object.keys(tr.行运黄经).forEach(function (k) {
+                    var no = AH.houseIndexOf(tr.行运黄经[k], hp.各宫宫头);
+                    var dy = TRD.transitHouseOf(k, no);
+                    if (dy) th.push(dy);
+                  });
+                  if (th.length) T.push('行运过宫（落本命宫位，未给出生地按北京）：' + th.slice(0, 6).join(' '));
+                }
+              } catch (e) { /* 宫位算不出不阻断 */ }
+            }
             T.push('推运口径：行运=真实天象过境，属西方通行占星学推运法（自我认知工具，不作命运定论）。');
           }
           return { text: T.join('\n') };
