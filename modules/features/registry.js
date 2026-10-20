@@ -60,6 +60,9 @@
       require('../CoreModule/ziwei-duanyu.js'),
       require('../CoreModule/qizheng-duanyu.js'),
       require('../CoreModule/astro-duanyu.js'),
+      require('../CoreModule/transit-duanyu.js'),
+      require('../CoreModule/synastry-duanyu.js'),
+      require('../CoreModule/vedic-duanyu.js'),
       require('../CoreModule/liuren-duanyu.js'),
       require('../CoreModule/taiyi-duanyu.js'),
       require('../CoreModule/meihua-duanyu.js'),
@@ -104,13 +107,16 @@
       root.NT.core && root.NT.core.ziweiDuanyu,
       root.NT.core && root.NT.core.qizhengDuanyu,
       root.NT.core && root.NT.core.astroDuanyu,
+      root.NT.core && root.NT.core.transitDuanyu,
+      root.NT.core && root.NT.core.synastryDuanyu,
+      root.NT.core && root.NT.core.vedicDuanyu,
       root.NT.core && root.NT.core.liurenDuanyu,
       root.NT.core && root.NT.core.taiyiDuanyu,
       root.NT.core && root.NT.core.meihuaDuanyu,
       root.NT.core && root.NT.core.huangliDuanyu
     );
   }
-})(typeof self !== 'undefined' ? self : this, function (FEI, NUM, NSTAR, ICE, BZH, XS, WX, N81, CORE, BAZI, ZD, ZW, ASTRO, QM, LR, LY, TY, YZ, XSH, QW, CZ, QF, BP, ZR, QG, LBF, LWS, ZHW, AH, BSS, ZWS, JK, QMR, QMK, QNY, XCO, SHEN, ZWD, QZD, AAD, LID, TID, MID, HLD) {
+})(typeof self !== 'undefined' ? self : this, function (FEI, NUM, NSTAR, ICE, BZH, XS, WX, N81, CORE, BAZI, ZD, ZW, ASTRO, QM, LR, LY, TY, YZ, XSH, QW, CZ, QF, BP, ZR, QG, LBF, LWS, ZHW, AH, BSS, ZWS, JK, QMR, QMK, QNY, XCO, SHEN, ZWD, QZD, AAD, TRD, SYD, VED, LID, TID, MID, HLD) {
 
   // 占星/紫微五件与其他内核一视同仁：形参直接注入（v3.1.32 曾因分包把它们拆成「工厂内可变变量」，
   //   v3.1.38 改为整体分包后不再需要，恢复形参、去掉那一层间接。）
@@ -1534,6 +1540,18 @@
         if (a.err) return { prompt: a.err };
         var L = ['【占星·相位】' + a.时刻 + '（参与 ' + a.参与.length + ' 曜）：'];
         L.push(a.相位.length ? a.相位.map(function (x) { return x.a + ' ' + x.类型 + ' ' + x.b + '(' + x.夹角 + '°/容许' + x.容许 + ')'; }).join('；') : '无明显相位。');
+        // 解读层（v3.1.51 新增，synastry-duanyu 的行星对 + 相位性质）：只解 7 实际行星的主相位
+        if (SYD) {
+          var P7 = ['太阳', '太阴', '水星', '金星', '火星', '木星', '土星'];
+          var MAIN = ['合', '六合', '刑', '拱', '冲'];
+          var main = (a.相位 || []).filter(function (x) {
+            return P7.indexOf(x.a) >= 0 && P7.indexOf(x.b) >= 0 && MAIN.indexOf(x.类型) >= 0;
+          });
+          var lines = main.slice(0, 10).map(function (x) { return SYD.lineOf(x.a, x.b, x.类型); }).filter(Boolean);
+          if (lines.length) L.push('主相位含义：' + lines.slice(0, 6).join(' '));
+          L.push('相位口径：含义为西方通行占星学通解（行星对主题 + 相位性质：六合/三合偏吉、刑/冲为成长课题），'
+            + '定位是自我认知工具，不作命运定论；罗计孛气归七政侧，不在此解。');
+        }
         return { text: L.join('\n') };
       }
     },
@@ -1561,6 +1579,15 @@
           L.push('当前 ' + (f.年龄 != null ? f.年龄 + ' 岁：' : '') + '大运「' + f.当前大运 + '」，副运「' + f.当前副运 + '」。');
           L.push('九期（合计 ' + f.周期总年 + ' 年，满期从首期重新起算）：' + f.大运.map(function (r) { return r.主星 + ' ' + r.起 + '–' + r.止 + '岁'; }).join('，'));
           if (f.副运表) L.push('本大运七副运：' + f.副运表.map(function (s) { return s.副星 + ' ' + s.起 + '–' + s.止 + '岁'; }).join('，'));
+          // 解读层（v3.1.51 新增，transit-duanyu 的 Firdaria 主星主题）
+          if (TRD) {
+            var fl = TRD.firdariaLordOf(String(f.当前大运 || '').slice(0, 2));
+            var fs = TRD.firdariaLordOf(String(f.当前副运 || '').slice(0, 2));
+            if (fl) L.push('大运主题：' + fl);
+            if (fs) L.push('副运主题：' + fs);
+            L.push('法达口径：Firdaria（法达星限）为古典占星大小运体系（波斯-阿拉伯传统，Bonatti 一系），'
+              + '与印视 Vimshottari 是两套独立体系，勿混用；主星主题为通行释义，供参考。');
+          }
           L.push('注：' + f.缺口);
           return { text: L.join('\n') };
         }
@@ -1590,6 +1617,14 @@
             LR.push('返照盘（上升未定则只列行星）：' + ['太阳', '太阴', '水星', '金星', '火星', '木星', '土星'].filter(function (k) { return lr.返照黄经[k] != null; }).map(function (k) { return k + ' ' + lr.返照黄经[k].toFixed(2) + '°（' + fmtSignL(k) + '）'; }).join('，'));
             LR.push('返照对本命相位：' + (lr.与本命相位.length ? lr.与本命相位.filter(function (x) { return x.精准; }).map(function (x) { return x.a + '　' + x.类型 + '　' + x.b; }).join('，') || '无（取精准相位；全部 ' + lr.与本命相位.length + ' 条）' : '无显著相位'));
             LR.push('注：月亮返照约 27.32 天一次，取「月亮回照本命黄经那一刻」，不按整点/整日取整（取整即另一张盘）。' + more);
+            if (TRD) {
+              var lt = TRD.returnTextOf('月亮返照');
+              if (lt) LR.push('返照读法：' + lt);
+              var lrPh = (lr.与本命相位 || []).filter(function (x) { return x.精准; }).slice(0, 6)
+                .map(function (x) { return TRD.transitAspectOf(x.a, x.类型); }).filter(Boolean);
+              if (lrPh.length) LR.push('返照触发：' + lrPh.join(' '));
+              LR.push('推运口径：行运/返照/次限均属西方通行占星学推运法（自我认知工具，不作命运定论）。');
+            }
             return { text: LR.join('\n') };
           }
           if (!ASTRO.solarReturn) return { text: '【返照】内核未加载。' };
@@ -1603,6 +1638,15 @@
           S.push('返照盘（上升未定则只列行星）：' + ['太阳', '太阴', '水星', '金星', '火星', '木星', '土星'].filter(function (k) { return sr.返照黄经[k] != null; }).map(function (k) { return k + ' ' + sr.返照黄经[k].toFixed(2) + '°（' + fmtSign(k) + '）'; }).join('，'));
           S.push('返照对本命相位：' + (sr.与本命相位.length ? sr.与本命相位.filter(function (x) { return x.精准; }).map(function (x) { return x.a + '　' + x.类型 + '　' + x.b; }).join('，') || '无（取精准相位；全部 ' + sr.与本命相位.length + ' 条）' : '无显著相位'));
           S.push('注：返照盘取「太阳回照那一刻」，不按生日当天零点/正午取整，取整即是另一张盘。' + more);
+          // 解读层（v3.1.51 新增）
+          if (TRD) {
+            var rt = TRD.returnTextOf('太阳返照');
+            if (rt) S.push('返照读法：' + rt);
+            var srPh = (sr.与本命相位 || []).filter(function (x) { return x.精准; }).slice(0, 6)
+              .map(function (x) { return TRD.transitAspectOf(x.a, x.类型); }).filter(Boolean);
+            if (srPh.length) S.push('返照触发：' + srPh.join(' '));
+            S.push('推运口径：行运/返照/次限均属西方通行占星学推运法（自我认知工具，不作命运定论）。');
+          }
           return { text: S.join('\n') };
         }
         // ③ 行运（可指定日期；不给则按今天）
@@ -1619,6 +1663,12 @@
           T.push('精准行运相位（容许度内）：' + (hit.length ? hit.map(function (x) { return x.a + '　' + x.类型 + '　' + x.b; }).join('，') : '无'));
           T.push('全部行运相位 ' + tr.行运相位.length + ' 条，取前 8 条：' + tr.行运相位.slice(0, 8).map(function (x) { return x.a + x.类型 + x.b; }).join('，'));
           T.push('注：行运星＝该日实际天象，对本命盘取相位（容许度按主/小相位各自 orb）；想换日期就把日期写进问题。' + more);
+          // 解读层（v3.1.51 新增，transit-duanyu）：精准相位的触发语义
+          if (TRD) {
+            var trL = hit.slice(0, 6).map(function (x) { return TRD.transitAspectOf(x.a, x.类型); }).filter(Boolean);
+            if (trL.length) T.push('触发语义：' + trL.join(' '));
+            T.push('推运口径：行运=真实天象过境，属西方通行占星学推运法（自我认知工具，不作命运定论）。');
+          }
           return { text: T.join('\n') };
         }
         // ④ 默认：次限推运
@@ -1630,6 +1680,12 @@
         L2.push('次限精准相位（容许度内）：' + (tight.length ? tight.map(function (x) { return x.a + '　' + x.类型 + '　' + x.b; }).join('，') : '无'));
         if (ph.length > tight.length) L2.push('（另有容许度边缘的 ' + (ph.length - tight.length) + ' 条，共 ' + ph.length + ' 条；只为不漏，不逐一铺开。）');
         L2.push('注：次限按「出生后 1 天 = 1 年」推进。' + more.replace('（', '（另有'));
+        // 解读层（v3.1.51 新增）：次限精准相位的触发语义（推进星的心理功能以该方式被激活）
+        if (TRD) {
+          var pgL = tight.slice(0, 6).map(function (x) { return TRD.transitAspectOf(x.a, x.类型); }).filter(Boolean);
+          if (pgL.length) L2.push('触发语义：' + pgL.join(' '));
+          L2.push('推运口径：次限/行运/返照均属西方通行占星学推运法（自我认知工具，不作命运定论）。');
+        }
         return { text: L2.join('\n') };
       }
     },
@@ -1640,7 +1696,39 @@
       说明: '双人本命盘行星相位比较（Synastry），需两人出生时间（C19 内核 §8.4）。',
       run: function (ent, text) {
         if (!ASTRO || !ASTRO.synastry) return { text: '【合盘】内核未加载。' };
-        return { prompt: '双人合盘需要两位的出生年月日，例如「1990年8月15日 与 1988年3月20日 合盘」（可含时辰）。' };
+        var t = String(text || '');
+        // 解析两位出生日期（支持「1990年8月15日」「1990-08-15」「1990/8/15」，可带时辰）
+        var DATE_RE = /((?:19|20)\d{2})\s*[年\-./]\s*(\d{1,2})\s*[月\-./]\s*(\d{1,2})(?:\s*(\d{1,2})\s*[时:：点])?/g;
+        var found = [], mm;
+        while ((mm = DATE_RE.exec(t)) !== null) {
+          found.push({ y: +mm[1], m: +mm[2], d: +mm[3], h: mm[4] != null ? +mm[4] : 12 });
+        }
+        if (found.length < 2) {
+          return { prompt: '双人合盘需要两位的出生年月日，例如「1990年8月15日 与 1988年3月20日 合盘」（可含时辰）。' };
+        }
+        var A = found[0], B = found[1];
+        var na = { y: A.y, m: A.m, d: A.d, h: A.h, tz: 8 }, nb = { y: B.y, m: B.m, d: B.d, h: B.h, tz: 8 };
+        var r = ASTRO.synastry(na, nb);
+        if (r.err) return { prompt: r.err };
+        var P7 = ['太阳', '太阴', '水星', '金星', '火星', '木星', '土星'];
+        var L = ['【占星·合盘】A：' + r.A + '；B：' + r.B + '。'];
+        // 只取 7 实际行星之间的主相位（罗计孛气归七政侧）
+        var MAIN = ['合', '六合', '刑', '拱', '冲'];
+        var core = (r.合盘相位 || []).filter(function (x) {
+          return P7.indexOf(x.a) >= 0 && P7.indexOf(x.b) >= 0 && MAIN.indexOf(x.类型) >= 0;
+        });
+        L.push('核心相位（7 行星主相位 ' + core.length + ' 条，取前 8）：'
+          + (core.length ? core.slice(0, 8).map(function (x) {
+              return 'A' + x.a + ' ' + x.类型 + ' B' + x.b + '(' + x.夹角 + '°' + (x.精准 ? '·精准' : '') + ')';
+            }).join('，') : '无'));
+        // 解读层（v3.1.51 新增，synastry-duanyu）
+        if (SYD) {
+          var lines = core.slice(0, 8).map(function (x) { return SYD.lineOf(x.a, x.b, x.类型); }).filter(Boolean);
+          if (lines.length) L.push('合盘解读：' + lines.join(' '));
+          L.push('合盘口径：Synastry（比较盘）看「A 的行星 vs B 的行星」互动，属西方通行占星学'
+            + '（自我认知工具，不作命运定论）；关系合盘另有 Composite 中点盘，本版未做（如实标注）。');
+        }
+        return { text: L.join('\n') };
       }
     },
     {
@@ -1656,6 +1744,18 @@
         if (v.err) return { prompt: v.err };
         var L = ['【印占 Vedic】' + v.时刻 + '：岁差 Ayanamsa ' + v.ayanamsa + '。'];
         L.push('月亮宿：' + v.月亮宿 + '；Vimshottari 起限「' + v.Vimshottari.起限星 + '」，大限序 ' + v.Vimshottari.大限序.join('→') + '（共 ' + v.Vimshottari.总年 + ' 年）。');
+        // 解读层（v3.1.51 新增，vedic-duanyu）：二十七宿含义 + Vimshottari 起限主题
+        if (VED) {
+          var mn = (v.二十七宿 && (v.二十七宿['太阴'] || v.二十七宿['月亮'])) || null;
+          if (mn) {
+            var nd = VED.nakByName(mn.宿名);
+            if (nd) L.push('月亮宿解读：' + nd.中 + '（' + nd.梵 + ' · 主星' + nd.主 + ' · 象' + nd.象 + '）——' + nd.质 + '。');
+          }
+          var vd = VED.vimsLordOf(v.Vimshottari.起限星);
+          if (vd) L.push('Vimshottari 起限主题：' + vd);
+          L.push('印占口径：二十七宿与 Vimshottari 取印占标准体系（《Brihat Parashara Hora Shastra》系），'
+            + '为印度古典传承；精确岁差与分盘制（Default/Bhava）待权威星历校准，当前大限起算点以月亮宿为准。');
+        }
         L.push('（' + v.缺料 + '）');
         return { text: L.join('\n') };
       }
