@@ -1723,6 +1723,41 @@
         }
         var A = found[0], B = found[1];
         var na = { y: A.y, m: A.m, d: A.d, h: A.h, tz: 8 }, nb = { y: B.y, m: B.m, d: B.d, h: B.h, tz: 8 };
+        // Composite 中点盘（v3.1.52 新增）：文本含「中点 / Composite」→ 两人行星黄经取中点成「关系盘」
+        if (t.indexOf('中点') >= 0 || t.indexOf('Composite') >= 0 || t.indexOf('composite') >= 0) {
+          var pa = ASTRO.positions(na), pb = ASTRO.positions(nb);
+          if (pa.err) return { prompt: pa.err };
+          if (pb.err) return { prompt: pb.err };
+          var P7 = ['太阳', '太阴', '水星', '金星', '火星', '木星', '土星'];
+          var LC = ['【占星·合盘】Composite 中点盘：A（' + na.y + '年' + na.m + '月' + na.d + '日）与 B（' + nb.y + '年' + nb.m + '月' + nb.d + '日）的关系中点盘。'];
+          var mid = {};
+          P7.forEach(function (k) {
+            var la = pa.黄经[k], lb = pb.黄经[k];
+            if (la == null || lb == null) return;
+            // 取较短弧的中点（防 350° 与 10° 被平均成 180°）
+            var diff = ((lb - la) % 360 + 360) % 360;
+            mid[k] = (la + diff / 2) % 360;
+          });
+          LC.push('中点盘行星落座：' + P7.filter(function (k) { return mid[k] != null; })
+            .map(function (k) { var g = ASTRO.signOf(mid[k]); return k + ' ' + g.星座 + ' ' + g.度数 + '°'; }).join('，'));
+          // 解读：借用行星落座通行释义，语境换成「这段关系的」
+          if (AAD) {
+            var cl = [];
+            P7.forEach(function (k) {
+              if (mid[k] == null) return;
+              var g = ASTRO.signOf(mid[k]);
+              var dy = AAD.planSignOf(k, g.星座);
+              var CTX = { 太阳: '核心气质', 太阴: '情感模式', 水星: '表达面', 金星: '吸引力', 火星: '行动力', 木星: '扩张面', 土星: '责任面' };
+              if (dy) cl.push(k + '（这段关系的' + CTX[k] + '）：' + dy);
+            });
+            if (cl.length) LC.push('中点盘解读：' + cl.slice(0, 5).join(' '));
+          }
+          LC.push('Composite 口径：中点盘 = 两人同行星黄经取中点（走较短弧）合成的「关系本身」盘，'
+            + '回答「这段关系是什么」而非「两人合不合」（那是比较盘 Synastry 的事）。'
+            + '本版解读暂借行星落座通行释义并冠以关系语境，Composite 专属解读体系待补；'
+            + '上升/宫位需精确出生地与时刻，中点盘上升各家算法不一（均值 vs 时空中点），本版只给行星不置宫位。');
+          return { text: LC.join('\n') };
+        }
         var r = ASTRO.synastry(na, nb);
         if (r.err) return { prompt: r.err };
         var P7 = ['太阳', '太阴', '水星', '金星', '火星', '木星', '土星'];
@@ -1752,8 +1787,30 @@
       触发词: ['印占', 'Vedic', '吠陀', '恒星黄道', '二十七宿', 'Nakshatra', 'Vimshottari'],
       说明: '印占盘：恒星黄经（Lahiri 岁差近似）+ 二十七宿 + Vimshottari 大限（以月亮宿起限，C19 内核 §8.5）。',
       run: function (ent, text) {
-        if (!ent || !ent.date || !ent.date.year) return { prompt: '印占需要出生年月日，例如「1990年8月15日 印占」。' };
         if (!ASTRO || !ASTRO.vedicPositions) return { text: '【印占】内核未加载。' };
+        var t0 = String(text || '');
+        // 双人 Tara（v3.1.52 新增）：文本含两个出生日期 → 两人月亮宿的宿命关系
+        var DRE = /((?:19|20)\d{2})\s*[年\-./]\s*(\d{1,2})\s*[月\-./]\s*(\d{1,2})(?:\s*(\d{1,2})\s*[时:：点])?/g;
+        var ds = [], dm;
+        while ((dm = DRE.exec(t0)) !== null) ds.push({ y: +dm[1], m: +dm[2], d: +dm[3], h: dm[4] != null ? +dm[4] : 12 });
+        if (ds.length >= 2 && VED && VED.taraOf) {
+          var fa = ASTRO.vedicPositions({ y: ds[0].y, m: ds[0].m, d: ds[0].d, h: ds[0].h, tz: 8 });
+          var fb = ASTRO.vedicPositions({ y: ds[1].y, m: ds[1].m, d: ds[1].d, h: ds[1].h, tz: 8 });
+          if (fa.err) return { prompt: fa.err };
+          if (fb.err) return { prompt: fb.err };
+          var sa = fa.二十七宿['太阴'] || fa.二十七宿['月亮'];
+          var sb = fb.二十七宿['太阴'] || fb.二十七宿['月亮'];
+          var na_ = VED.nakByName(sa.宿名), nb_ = VED.nakByName(sb.宿名);
+          var L2 = ['【印占·双人 Tara】A：' + fa.时刻 + '（月亮宿' + na_.中 + '·' + na_.梵 + '）；B：' + fb.时刻 + '（月亮宿' + nb_.中 + '·' + nb_.梵 + '）。'];
+          // Tara 有方向性：从 A 数到 B 与从 B 数到 A 是两类，双向都报
+          var ab = VED.taraOf(sa.宿序, sb.宿序), ba = VED.taraOf(sb.宿序, sa.宿序);
+          L2.push('A 对 B（从' + na_.中 + '数到' + nb_.中 + '）：' + ab.名 + '（' + ab.凶 + '）——' + ab.释 + '。');
+          L2.push('B 对 A（从' + nb_.中 + '数到' + na_.中 + '）：' + ba.名 + '（' + ba.凶 + '）——' + ba.释 + '。');
+          L2.push('Tara 口径：从一方月亮宿数到另一方月亮宿（含首宿计 1），除以 9 取余定九类吉凶，'
+            + '取印占通行法；双向分别读「谁对谁的影响」，单人不适用（单人请直接问印占看本命盘）。');
+          return { text: L2.join('\n') };
+        }
+        if (!ent || !ent.date || !ent.date.year) return { prompt: '印占需要出生年月日，例如「1990年8月15日 印占」；双人宿命关系给两个日期，如「1990年8月15日 与 1992年3月20日 印占 Tara」。' };
         var y = ent.date.year, m = ent.date.month || 1, d = ent.date.day || 1, h = ent.time ? ent.time.hour : 12;
         var v = ASTRO.vedicPositions({ y: y, m: m, d: d, h: h, tz: 8 });
         if (v.err) return { prompt: v.err };

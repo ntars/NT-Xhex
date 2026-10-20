@@ -44,3 +44,21 @@ for (var i = 1; i <= 27; i++) { var n = VD.nakOf(i); if (!n.中 || !n.梵 || !n.
 ok('27 宿五字段全（中/梵/主/象/质）', miss.length === 0, miss.join(','));
 console.log('\n=== 三库自测：' + pass + ' 通过 / ' + fail + ' 失败 ===');
 if (fail) process.exit(1);
+
+// v3.1.52 追加：双人 Tara + Composite 中点盘（功能级，走 analyzer）
+console.log('\nE. 双人 Tara 与 Composite（v3.1.52）');
+var ANA = require('../../AnalyzerModule/analyzer.js');
+var taraOut = String(ANA.analyze('1990年8月15日12时 与 1992年3月20日6时 印占 Tara'));
+ok('双人 Tara 输出含双向（A 对 B / B 对 A）',
+  /A 对 B/.test(taraOut) && /B 对 A/.test(taraOut), taraOut.slice(0, 80));
+ok('双人 Tara 有吉凶判定', /（吉|凶|大吉|平偏阻）/.test(taraOut));
+ok('双人 Tara 有口径行', /Tara 口径/.test(taraOut));
+ok('单人印占不触发 Tara（仍是本命盘）',
+  String(ANA.analyze('1990年8月15日12时 印占')).indexOf('双人 Tara') < 0);
+var compOut = String(ANA.analyze('1990年8月15日12时 与 1992年3月20日6时 合盘 中点'));
+ok('Composite 输出 7 行星落座', /中点盘行星落座：太阳/.test(compOut) && /土星/.test(compOut));
+ok('Composite 有关系语境解读', /中点盘解读：.*这段关系的核心气质/.test(compOut));
+ok('Composite 有口径行（说明暂借释义、上升不置）', /Composite 口径/.test(compOut) && /只给行星不置宫位/.test(compOut));
+ok('合盘不带「中点」仍是比较盘', /合盘解读/.test(String(ANA.analyze('1990年8月15日12时 与 1992年3月20日6时 合盘'))));
+console.log('\n=== 三库+功能自测：' + pass + ' 通过 / ' + fail + ' 失败 ===');
+if (fail) process.exit(1);
