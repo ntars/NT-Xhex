@@ -93,5 +93,21 @@ ok('落宿/庙旺已补齐（缺口不再提「落二十八宿/庙旺需权威�
 console.log('6. 缺料拦截');
 ok('缺日期给 prompt', astro.positions({}).err !== undefined);
 
+
+// v3.1.54 追加：岁差精度黄金算例（IAU 2006 + Lahiri 官方基准）
+console.log('\nI. 岁差精度（v3.1.54）');
+ok('precessionLon(0) = 0（J2000 基准）', Math.abs(astro.precessionLon(0)) < 1e-12);
+ok('precessionLon(1) ≈ 1.396639°（IAU2006 一世纪岁差，全项）', Math.abs(astro.precessionLon(1) - (5028.796195 + 1.1054348 + 0.00007964 - 0.000023857 - 0.0000000383) / 3600) < 1e-9, String(astro.precessionLon(1)));
+ok('ayanamsa(2000) = 23.8533°（Lahiri 官方基准）', Math.abs(astro.ayanamsa(2000) - 23.8533) < 0.001, String(astro.ayanamsa(2000)));
+var rate54 = (astro.ayanamsa(2000.5) - astro.ayanamsa(2000)) * 2 * 3600;   // 0.5 年差 ×2 → 年速率
+ok('瞬时岁差速率 ≈ 50.29″/年（公认值）', Math.abs(rate54 - 50.29) < 0.1, rate54.toFixed(3) + '″/年');
+// 二阶项在百年尺度只有 0.0003°（1.1054348×T² 弧秒）——升级的真正价值在基准精度
+// （23.85 → 官方 23.8533，差 0.0033°）与速率的高阶修正，二阶项本身量小，如实标
+ok('岁差含二阶项（1900 年与纯线性差 > 0.0001°，实测 0.0003°）',
+  Math.abs(astro.ayanamsa(1900) - (23.8533 - 1.396888)) > 0.0001,
+  String(Math.abs(astro.ayanamsa(1900) - (23.8533 - 1.396888))));
+ok('岁差单调递增（岁差方向正确）', astro.ayanamsa(2100) > astro.ayanamsa(2000) && astro.ayanamsa(2000) > astro.ayanamsa(1900));
+console.log('  ayanamsa 1900/2000/2100 =', astro.ayanamsa(1900).toFixed(4) + '° /', astro.ayanamsa(2000).toFixed(4) + '° /', astro.ayanamsa(2100).toFixed(4) + '°');
+
 console.log('\n=== astro 自测：' + passed + ' 通过 / ' + failed + ' 失败 ===');
 process.exit(failed ? 1 : 0);

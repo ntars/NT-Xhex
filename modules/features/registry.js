@@ -1826,7 +1826,7 @@
           var vd = VED.vimsLordOf(v.Vimshottari.起限星);
           if (vd) L.push('Vimshottari 起限主题：' + vd);
           L.push('印占口径：二十七宿与 Vimshottari 取印占标准体系（《Brihat Parashara Hora Shastra》系），'
-            + '为印度古典传承；精确岁差与分盘制（Default/Bhava）待权威星历校准，当前大限起算点以月亮宿为准。');
+            + '为印度古典传承；岁差已按 IAU2006 + Lahiri 官方 2000 基准计算（未逐点核对官方年表，估计差 < 0.05°），分盘制（Default/Bhava）未定、待权威星历校准，当前大限起算点以月亮宿为准。');
         }
         L.push('（' + v.缺料 + '）');
         return { text: L.join('\n') };
