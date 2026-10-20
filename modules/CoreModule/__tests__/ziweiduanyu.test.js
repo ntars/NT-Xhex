@@ -84,5 +84,17 @@ ok('lineDuanyu 含星名/宫名/白话', line.indexOf('紫微坐夫妻') === 0 &
 ok('推演格标注「（推演）」', D.lineDuanyu('天机', '官禄').indexOf('（推演）') >= 0);
 ok('古籍格标注「（古籍）」', D.lineDuanyu('紫微', '夫妻').indexOf('（古籍）') >= 0);
 
+
+console.log('\nF. 古籍原文覆盖（v3.1.53 起）');
+var covYuan = 0;
+Object.keys(D.STAR12).forEach(function (st) {
+  PAL.forEach(function (g) { var d = D.duanyuOf(st, g); if (d && d.原文) covYuan++; });
+});
+ok('原文覆盖不少于 111 格（v3.1.53 实测，防回归丢失）', covYuan >= 111, '当前 ' + covYuan);
+ok('巨门十二宫全有原文', PAL.every(function (g) { return D.duanyuOf('巨门', g).原文; }));
+ok('破军十二宫全有原文', PAL.every(function (g) { return D.duanyuOf('破军', g).原文; }));
+ok('无原文格如实标「推」', D.duanyuOf('天机', '财').推 === true);
+console.log('  当前原文覆盖：' + covYuan + ' / 168 格');
+
 console.log('\n=== 紫微断语库自测：' + pass + ' 通过 / ' + fail + ' 失败 ===');
 if (fail) process.exit(1);
