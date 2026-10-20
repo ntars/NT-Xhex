@@ -1,0 +1,17 @@
+玄玖灵犀 NT-Xhex
+Copyright (c) 2026 星玖工作室 Ntarstudio
+
+本项目代码以 MIT 协议开源（见 LICENSE）；界面、品牌「玄玖灵犀 NT-Xhex」、
+版式与设计归 Ntarstudio 所有。
+
+本项目内嵌/引用以下第三方开源项目（均为 MIT 许可，其版权声明随源码保留在对应文件内）：
+
+* lunar-javascript —— 历法内核参考（干支 / 节气 / 四柱 / 建除 的精确离线算法口径）
+  https://github.com/6tail/lunar-javascript
+* iztro@2.6.2 —— 紫微斗数权威引擎（构建期内嵌，运行时不联网）
+  https://github.com/SylarLong/iztro    内嵌于 modules/CoreModule/vendor/iztro.min.js
+* astronomy（cosinekitty）—— 天文历算库（MIT）
+  https://github.com/cosinekitty/astronomy   内嵌于 modules/CoreModule/vendor/astronomy.js
+* opencc-js（MIT + Apache-2.0）—— 简→繁字形映射（姓名学按繁体康熙计数，故先转繁再查）
+
+使用或再分发本项目时，请连同本 NOTICE 与 MIT 协议文本一并保留。
