@@ -802,7 +802,7 @@ page { scrollbar-width: none; -ms-overflow-style: none; }
  *   返回 stage-back：顶层旧页 0→100% 右滑出；底层新页 -33%→0 滑回 + dim .24→0 消暗。
  * 首帧显示「动画前当前页满屏」、新页在屏外/被顶开位 → 无跳变闪烁。与 --d-page(320ms) 同缓动；三端共用。
  * ⚠️ 裁切原则：只裁「转场层」不裁内容 —— overflow-x hidden 仅兜住滑动过程中的层；overflow-y 保持可见。 */
-.nt-stage { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; overflow-x: hidden; overflow-y: visible; }
+.nt-stage { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; overflow-x: hidden; overflow-y: visible; background: var(--nt-bg); /* v3.1.61 切页白边兜底：舞台自身铺满主题底色，转场任意帧的 33% 滑出区都绝不露白（配合 v3.1.35 每层 padding-bottom + v3.1.42 syncWindowBg） */ }
 /* ⚠️ 两层必须各自不透明：静止态两层内容相同、顶层盖在底层上，靠 z-index 分先后。
  *    若两层透明，底层重建时重播的入场动画会从顶层内容背后透出来 → 重影（用户实测反馈）。
  *    不透明后底层只作为「转场时的旧页/新页」可见，静止态被顶层完全遮住。 */
