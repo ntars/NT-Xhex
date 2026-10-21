@@ -66,7 +66,8 @@
       require('../CoreModule/liuren-duanyu.js'),
       require('../CoreModule/taiyi-duanyu.js'),
       require('../CoreModule/meihua-duanyu.js'),
-      require('../CoreModule/huangli-duanyu.js')
+      require('../CoreModule/huangli-duanyu.js'),
+      require('../CoreModule/suntime.js')   // ST：城市经纬度表（合盘·时空中点法取出生地中点用；v3.1.58 加，末位追加不动既有位次）
     );
   } else {
     root.NT = root.NT || {};
@@ -113,10 +114,11 @@
       root.NT.core && root.NT.core.liurenDuanyu,
       root.NT.core && root.NT.core.taiyiDuanyu,
       root.NT.core && root.NT.core.meihuaDuanyu,
-      root.NT.core && root.NT.core.huangliDuanyu
+      root.NT.core && root.NT.core.huangliDuanyu,
+      root.NT.core && root.NT.core.suntime   // ST：城市经纬度表（v3.1.58 加，末位追加）
     );
   }
-})(typeof self !== 'undefined' ? self : this, function (FEI, NUM, NSTAR, ICE, BZH, XS, WX, N81, CORE, BAZI, ZD, ZW, ASTRO, QM, LR, LY, TY, YZ, XSH, QW, CZ, QF, BP, ZR, QG, LBF, LWS, ZHW, AH, BSS, ZWS, JK, QMR, QMK, QNY, XCO, SHEN, ZWD, QZD, AAD, TRD, SYD, VED, LID, TID, MID, HLD) {
+})(typeof self !== 'undefined' ? self : this, function (FEI, NUM, NSTAR, ICE, BZH, XS, WX, N81, CORE, BAZI, ZD, ZW, ASTRO, QM, LR, LY, TY, YZ, XSH, QW, CZ, QF, BP, ZR, QG, LBF, LWS, ZHW, AH, BSS, ZWS, JK, QMR, QMK, QNY, XCO, SHEN, ZWD, QZD, AAD, TRD, SYD, VED, LID, TID, MID, HLD, ST) {
 
   // 占星/紫微五件与其他内核一视同仁：形参直接注入（v3.1.32 曾因分包把它们拆成「工厂内可变变量」，
   //   v3.1.38 改为整体分包后不再需要，恢复形参、去掉那一层间接。）
@@ -1273,6 +1275,34 @@
       }
     },
     {
+      key: 'qimen-bj', 名: '奇门遁甲·宝鉴日奇门（日支定局·九星八门日移）',
+      板块: '三式推演', 短名: '排宝鉴日奇',
+      触发词: ['宝鉴日奇门', '日支定局', '日支奇门', '宝鉴日奇', '奇门宝鉴日奇门'],
+      说明: '《奇門寶鑑》「附日奇門起例」的**日支定局法**（与「日家」六十日一局转盘是两套系统，不可互替）：日支定局（子午2、丑未6、寅申1、卯酉8、辰戌4、巳亥9），冬至后阳遁、夏至后阴遁；九星「顺飞九宫」一日顺移一位（甲子日天蓬起艮八为锚），八门三日顺转一宫、不入中五（甲子日休门起坎一为锚）。原文 4 源独立转录逐字一致。',
+      run: function (ent, text) {
+        if (!ent || !ent.date || !ent.date.year) return { prompt: '宝鉴日奇门需要日期，例如「宝鉴日奇门 2026年2月19日」。以日为单位，不需时辰。' };
+        var y = ent.date.year, m = ent.date.month || 1, d = ent.date.day || 1;
+        if (!QMR || !QMR.bjJian) return { text: '【宝鉴日奇门】内核未加载，暂不可用。' };
+        try {
+          var c = QMR.bjJian({ y: y, m: m, d: d });
+          if (c.err) return { prompt: c.err };
+          var GONG = [1, 8, 3, 4, 9, 2, 7, 6]; // 洛书地理顺时针环（展示顺序）
+          var L = [];
+          L.push('【宝鉴日奇门】' + c.日期 + '（日柱 ' + c.日柱 + '）：');
+          L.push(c.名 + '：' + c.定局依据 + '，' + c.节气界 + '用' + c.阴阳遁 + '（局数固定由日支定，阴阳遁只改顺逆）。');
+          L.push('锚定：' + c.甲子锚日 + '为甲子日（日差 ' + c.日差 + ' 日），九星自艮八每日顺移一位、八门自坎一每三日顺转一宫。');
+          L.push('地盘布仪：' + GONG.map(function (p) { return '宫' + p + c.地盘[p]; }).join(' ') + '（中五' + c.地盘[5] + '，寄坤二）。');
+          L.push('天盘九星：' + GONG.map(function (p) { return '宫' + p + (c.九星[p] || '—'); }).join(' ') + '。');
+          L.push('人盘八门：' + GONG.map(function (p) { return '宫' + p + (c.八门[p] || '—'); }).join(' ') + '。');
+          L.push('与「日家」（六十日一局转盘）的区别：本式不按元、无旬首值符值使，星门位置全由日支与甲子锚日差决定，两套系统输出并列不合并、混排即错盘。');
+          L.push('缺口（如实标注）：' + c.缺口.join(''));
+          return { text: L.join('\n') };
+        } catch (e) {
+          return { text: '【宝鉴日奇门】排局失败：' + String(e && e.message ? e.message : e) + '（内核暂不可用，不影响其他功能）。' };
+        }
+      }
+    },
+    {
       key: 'qimen-nianyue', 名: '奇门遁甲·年家 / 月家（阴遁 1/4/7 局·值符随干）',
       板块: '三式推演', 短名: '排年家月家',
       触发词: ['年家奇门', '年家', '年奇门', '年家遁甲', '年家局', '月家奇门', '月家', '月奇门', '月家遁甲', '月家局'],
@@ -1749,13 +1779,33 @@
         var DATE_RE = /((?:19|20)\d{2})\s*[年\-./]\s*(\d{1,2})\s*[月\-./]\s*(\d{1,2})(?:\s*(\d{1,2})\s*[时:：点])?/g;
         var found = [], mm;
         while ((mm = DATE_RE.exec(t)) !== null) {
-          found.push({ y: +mm[1], m: +mm[2], d: +mm[3], h: mm[4] != null ? +mm[4] : 12 });
+          found.push({ y: +mm[1], m: +mm[2], d: +mm[3], h: mm[4] != null ? +mm[4] : 12, at: mm.index });
         }
         if (found.length < 2) {
           return { prompt: '双人合盘需要两位的出生年月日，例如「1990年8月15日 与 1988年3月20日 合盘」（可含时辰）。' };
         }
+        // 城市归属（v3.1.58 加，时空中点法要用出生地）：
+        //   · 城市数 ≥2：按**出现顺序对应**（「日期A 城市A 与 日期B 城市B」「城市A 日期A 与 城市B 日期B」
+        //     都覆盖；距离法会把 A 的城市误配给紧凑相连的 B，故不按距离）；
+        //   · 城市数 =1：归距离最近的日期（只写了一个城市的情形）；
+        //   · 没有：两人都按北京（AH.houses 同口径，缺口注明）。
+        var cityHits = [];
+        if (ST && ST.CITIES) {
+          Object.keys(ST.CITIES).forEach(function (c) {
+            var idx = t.indexOf(c);
+            if (idx >= 0) cityHits.push({ 名: c, at: idx });
+          });
+          cityHits.sort(function (x, y) { return x.at - y.at; });
+        }
+        function cityOf(rec, i, total) {
+          if (!cityHits.length) return '';
+          if (cityHits.length >= 2) return cityHits[Math.min(i, cityHits.length - 1)].名;
+          var only = cityHits[0];
+          return Math.abs(only.at - rec.at) <= 24 ? only.名 : '';
+        }
         var A = found[0], B = found[1];
-        var na = { y: A.y, m: A.m, d: A.d, h: A.h, tz: 8 }, nb = { y: B.y, m: B.m, d: B.d, h: B.h, tz: 8 };
+        var na = { y: A.y, m: A.m, d: A.d, h: A.h, tz: 8, city: cityOf(A, 0, 2) };
+        var nb = { y: B.y, m: B.m, d: B.d, h: B.h, tz: 8, city: cityOf(B, 1, 2) };
         // Composite 中点盘（v3.1.52 新增）：文本含「中点 / Composite」→ 两人行星黄经取中点成「关系盘」
         if (t.indexOf('中点') >= 0 || t.indexOf('Composite') >= 0 || t.indexOf('composite') >= 0) {
           var pa = ASTRO.positions(na), pb = ASTRO.positions(nb);
@@ -1808,8 +1858,8 @@
             } catch (e) { /* 不阻断 */ }
           }
           // Composite 上升/宫位（v3.1.56 补）：两人上升黄经取中点成「关系上升」，按等宫布 12 宫
-          //   口径：**度数中点法**（与上面中点行星同源——所有点取黄经中点）；另有「时空中点法」
-          //   （取两人出生时刻/地点中点重算一盘），两法结果不同，本版取度数中点法并如实注明。
+          //   口径：**度数中点法**（与上面中点行星同源——所有点取黄经中点）。
+          //   v3.1.58 起与「时空中点法」两派并列输出（见下），不再「只取度数法并注明」。
           if (AH && AH.houses) {
             try {
               var ha = AH.houses(na), hb = AH.houses(nb);
@@ -1833,13 +1883,69 @@
               }
             } catch (e) { /* 不阻断 */ }
           }
+          // Composite 时空中点法（v3.1.58 补，交底缺口⑥收口）：两人出生**时刻的中点** +
+          //   出生地**经纬度的中点** → 在该时空点上**重算一盘**（真实天象）。
+          //   与度数中点法的区别：度数法只对黄经取平均（任何两点都能算，但与任何时刻的
+          //   真实天象无关）；时空法是「关系中点时刻的真实天象」——月亮（月行约 13°/日）
+          //   等快速天体两派结果明显不同，上升也同时受时刻与纬度影响。两派为现代 Composite
+          //   通行两法，并列不合并（◆现代 Composite 通行技法，非单一古籍权威）。
+          //   地点口径：两人都写城市 → 取经纬度简单平均；任一未写 → 按北京并注明（与 AH.houses 同口径）。
+          if (ASTRO.positions && AH && AH.houses) {
+            try {
+              // 出生地（复用 houses 的取城口径：CITIES=经度、CITY_LAT=纬度；缺省北京）
+              function cityGeo(inp) {
+                var lat = null, lng = null;
+                if (ST && ST.CITIES && inp.city && ST.CITIES[inp.city] != null) {
+                  lng = ST.CITIES[inp.city];
+                  if (ST.CITY_LAT && ST.CITY_LAT[inp.city] != null) lat = ST.CITY_LAT[inp.city];
+                }
+                return { lat: lat == null ? 39.90 : lat, lng: lng == null ? 116.40 : lng };
+              }
+              var gA = cityGeo(na), gB = cityGeo(nb);
+              // 时刻中点：JDN（儒略日）平均，防跨日/跨年被简单日期平均算错
+              var JDN0 = 2440587.5;
+              var jA = Date.UTC(na.y, na.m - 1, na.d, na.h - 8) / 86400000 + JDN0;
+              var jB = Date.UTC(nb.y, nb.m - 1, nb.d, nb.h - 8) / 86400000 + JDN0;
+              var jM = (jA + jB) / 2;
+              var bjMs = (jM - JDN0) * 86400000 + 8 * 3600000;   // 中点 JDN → 北京时刻
+              var bj = new Date(bjMs);
+              var midT = {
+                y: bj.getUTCFullYear(), m: bj.getUTCMonth() + 1, d: bj.getUTCDate(),
+                h: bj.getUTCHours() + bj.getUTCMinutes() / 60, tz: 8,
+                lat: (gA.lat + gB.lat) / 2, lng: (gA.lng + gB.lng) / 2
+              };
+              var cityNote = (na.city && nb.city)
+                ? '（' + na.city + ' × ' + nb.city + ' 的中点）'
+                : (na.city || nb.city)
+                  ? '（一方未写城市，按北京与 ' + (na.city || nb.city) + ' 取中，结果偏近似）'
+                  : '（两人均未写城市，按北京计，本段退化为纯时间中点）';
+              var pt = ASTRO.positions(midT);
+              var ht = AH.houses(midT);
+              if (!pt.err && !ht.err) {
+                var tAscSign = ASTRO.signOf(ht.上升黄经);
+                var stLines = ['Composite 时空中点法：关系时空中点 ' + midT.y + '年' + midT.m + '月' + midT.d + '日 '
+                  + String(bj.getUTCHours()) + '时' + (bj.getUTCMinutes() ? String(bj.getUTCMinutes()) + '分' : '')
+                  + '，地点中点 ' + midT.lat.toFixed(2) + '°N ' + midT.lng.toFixed(2) + '°E ' + cityNote + '。'];
+                stLines.push('时空法上升/宫位：关系上升 ' + tAscSign.星座 + ' ' + tAscSign.度数 + '°'
+                  + '（等宫制，逐曜按中点时刻真实黄经落宫）。');
+                // 中点时刻的真实行星位置（与度数中点法的平均黄经并列，供比对）
+                var realP = P7.filter(function (k) { return pt.黄经[k] != null; })
+                  .map(function (k) { var g = ASTRO.signOf(pt.黄经[k]); return k + ' ' + g.星座 + ' ' + g.度数 + '°'; });
+                if (realP.length) stLines.push('时空法行星（中点时刻真实位置）：' + realP.join('，') + '。');
+                stLines.push('两派关系：度数法快而与真实天象无关，时空法是关系中点时刻的真实天象（月亮等差异最大）；'
+                  + '两派并列不裁定，问「关系盘」时任选其一或对照看。');
+                LC.push(stLines.join('\n'));
+              }
+            } catch (e) { /* 不阻断 */ }
+          }
           LC.push('Composite 口径：中点盘 = 两人同行星黄经取中点（走较短弧）合成的「关系本身」盘，'
             + '回答「这段关系是什么」而非「两人合不合」（那是比较盘 Synastry 的事）。'
             + 'v3.1.55 补 Composite 专属结构：关系主轴（日月）框架 + 中点行星彼此相位；'
-            + 'v3.1.56 补上升/宫位（**度数中点法**——所有点含上升取黄经中点，与中点行星同源）。'
+            + 'v3.1.56 补上升/宫位（**度数中点法**——所有点含上升取黄经中点，与中点行星同源）；'
+            + 'v3.1.58 补**时空中点法**（两人出生时刻 JDN 中点 + 出生地经纬度中点，在中点时空重算一盘），'
+            + '与度数中点法两派并列输出、不合并（两派结果不同，月亮等快速天体差异最大）。'
             + '均属**现代 Composite 通行技法**（◆非单一古籍权威，关系语境参考，自我认知工具、不作命运定论）；'
-            + '上升/宫位另有「时空中点法」（取两人出生时刻与地点中点重算一盘），两法结果不同，本版取度数中点法并如实注明；'
-            + '出生地未给按北京（上升对经纬度敏感，建议给城市）。');
+            + '出生地未写按北京计（上升对经纬度敏感，建议给城市，时空中点法会用两地经纬度中点）。');
           return { text: LC.join('\n') };
         }
         var r = ASTRO.synastry(na, nb);

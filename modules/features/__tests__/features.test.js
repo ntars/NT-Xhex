@@ -413,7 +413,7 @@ ok(qnO.text.indexOf('全用阴遁') >= 0 && qnO.text.indexOf('1、4、7 局') >=
 ok(qnO.text.indexOf('年柱 丙午') >= 0 && qnO.text.indexOf('距上元甲子 162 年') >= 0, '给出年柱与距上元年数');
 ok(qnO.text.indexOf('值符随年干') >= 0 && qnO.text.indexOf('值使随年支') >= 0, '给出值符随干/值使随支两条规则');
 ok(qnO.text.indexOf('八神一律逆排') >= 0, '点明八神一律逆排');
-ok(qnO.text.indexOf('未外部整盘锁死') >= 0, '缺口如实标注（未外部整盘锁死）');
+ok(qnO.text.indexOf('✅已核') >= 0, '缺口如实标注（v3.1.58 起：年家取得完整外部算例，标 ✅已核；八门伏吟派分歧仍并列）');
 ok(qnO.text.indexOf('；') < 0, '年家输出无中文分号（切段安全）');
 // 月家
 var qyE = ent(2026, 2, 15, 0);

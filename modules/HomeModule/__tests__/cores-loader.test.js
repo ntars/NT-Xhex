@@ -58,7 +58,7 @@ C.load('analyzer').then(function (A) {
   return C.load('registry');
 }).then(function (R) {
   ok("load('registry') 拿到模块", !!R);
-  ok('registry 有 FEATURES 且为 55 个功能块', !!(R && R.FEATURES && R.FEATURES.length === 55),
+  ok('registry 有 FEATURES 且为 55 个功能块', !!(R && R.FEATURES && R.FEATURES.length === 56),
     R && R.FEATURES ? R.FEATURES.length : '无 FEATURES');
 
   return C.load('export');
@@ -76,7 +76,7 @@ C.load('analyzer').then(function (A) {
 
   // 缓存：同一 key 连续两次都应拿到（且不重复加载）
   return C.load('registry').then(function (R2) {
-    ok('同一 key 二次取用（缓存命中）', !!(R2 && R2.FEATURES && R2.FEATURES.length === 55));
+    ok('同一 key 二次取用（缓存命中）', !!(R2 && R2.FEATURES && R2.FEATURES.length === 56));  // v3.1.58 宝鉴日奇门入册，55→56
 
     // 端到端：真算一卦
     return C.load('analyzer').then(function (A) {

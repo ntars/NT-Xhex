@@ -62,6 +62,13 @@ ok('Composite 有口径行（标注现代通行技法、非单一古籍权威）
 ok('Composite 补关系主轴与中点相位', /关系主轴/.test(compOut) && /中点盘内部相位/.test(compOut));
 // v3.1.56：上升/宫位已补（度数中点法），并如实注明另有时空中点法
 ok('Composite 补上升/宫位（度数中点法）并注明时空中点法', /Composite 上升\/宫位（度数中点法）/.test(compOut) && /时空中点法/.test(compOut));
+// v3.1.58：时空中点法两派并列输出（交底缺口⑥收口）——时刻中点重算、与度数法并列不合并
+ok('Composite 补时空中点法（两派并列）', /Composite 时空中点法：关系时空中点/.test(compOut) && /两派关系：度数法快而与真实天象无关/.test(compOut));
+ok('Composite 时空中点法给中点时刻真实行星位置', /时空法行星（中点时刻真实位置）：太阳/.test(compOut));
+// v3.1.58：带城市时地点取中点，未写按北京并注明（退化口径如实说）
+var compCity = String(ANA.analyze('中点 1990年8月15日14时 北京 与 1992年3月20日6时 上海 合盘'));
+ok('时空中点法两地取中（北京×上海）', /地点中点 35\.56°N 118\.94°E （北京 × 上海 的中点）/.test(compCity), compCity.slice(0, 120));
+ok('时空中点法未写城市按北京并注明', /两人均未写城市，按北京计/.test(compOut));
 ok('合盘不带「中点」仍是比较盘', /合盘解读/.test(String(ANA.analyze('1990年8月15日12时 与 1992年3月20日6时 合盘'))));
 console.log('\n=== 三库+功能自测：' + pass + ' 通过 / ' + fail + ' 失败 ===');
 if (fail) process.exit(1);
