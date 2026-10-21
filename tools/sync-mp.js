@@ -352,6 +352,17 @@ function main() {
       else console.log('  ✓ HomeModule/catalog.js 与 registry.catalog() 一致（介绍页快照是最新的）');
     })();
 
+    // 第九道：HomeModule/refs-snapshot.js（参考文献快照）必须与当前 refs.js 的 refsPage() 一致（v3.1.57 新增）
+    //   同 catalog：它是生成产物，改了 RefsModule/refs.js（书目/原文）忘重跑 → 参考文献页显示旧内容。
+    (function () {
+      var dst = path.join(MP_DIST, 'utils', 'modules', 'HomeModule', 'refs-snapshot.js');
+      if (!fs.existsSync(dst)) { console.log('  ✗ 缺 HomeModule/refs-snapshot.js（参考文献快照）'); bad++; return; }
+      var want = renderRefs(refsSnapshot());
+      var have = fs.readFileSync(dst, 'utf8');
+      if (have !== want) { console.log('  ✗ HomeModule/refs-snapshot.js 与 RefsModule/refs.js 不一致（跑 node tools/sync-mp.js 重新生成）'); bad++; }
+      else console.log('  ✓ HomeModule/refs-snapshot.js 与 refs.js refsPage() 一致（参考文献快照是最新的）');
+    })();
+
     // 第六道之前：project.config.json 的 babelSetting 必须忽略 vendor
     (function () {
       var pcfg = path.join(MP_DIST, 'project.config.json');
@@ -549,6 +560,52 @@ function main() {
   }
 
   /**
+   * 生成主包内的「参考文献」快照 HomeModule/refs-snapshot.js（v3.1.57，与 catalog.js 同一机制）。
+   *
+   * 为什么需要（性能·真机实测口径同 catalog）：
+   *  「参考文献」页 v3.1.57 起含公版古籍可查原文（书目 31 种 + 原文 432 条）。
+   *  其单一真源 RefsModule/refs.js 与内核同住分包 occupy-cores（它要读 ziwei-duanyu 等内核的
+   *  原文字段，按「不复制」铁律不能把原文搬进主包源码）——而主包**不能静态 require 分包文件**
+   *  （微信判「主包引用分包」非法，启动即崩，见本文件跨包引用体检）。
+   *  若打开参考文献页时才懒加载整个分包，等于为看一本书目把 2MB 算法全拉下来（catalog 踩过的坑）。
+   *
+   * 做法（同 catalog）：构建期在 Node 里跑一遍 refs.js 的 refsPage()（Node 环境完整，内核都能
+   *   require），把结果**快照**成这份小文件放进主包 —— settings.js 的 refsPageOf() 同步读它，
+   *   参考文献页**瞬间打开**，不碰分包。单一真源仍是 modules/RefsModule/refs.js。
+   *
+   * ⚠ 本文件是**生成产物**，不在 platform-modules.json 的 files 里（源码树不存在，同 catalog.js）。
+   */
+  function refsSnapshot() {
+    var REFS = require(path.join(ROOT, 'modules', 'RefsModule', 'refs.js'));
+    return (REFS && typeof REFS.refsPage === 'function') ? REFS.refsPage() : [];
+  }
+  function renderRefs(data) {
+    return '/**\n'
+      + ' * modules/HomeModule/refs-snapshot.js —— 「参考文献」页的书目与可查原文（主包静态快照）\n'
+      + ' * 【生成产物 · 请勿手改】由 tools/sync-mp.js 从 modules/RefsModule/refs.js 的 refsPage() 提取。\n'
+      + ' * 为什么放进主包：refs.js 与内核同住分包 occupy-cores（原文单一真源在各内核，按「不复制」\n'
+      + ' *   铁律不能搬进主包源码），而主包不能静态 require 分包文件；若打开参考文献页时才懒加载\n'
+      + ' *   整个分包，等于为看书目把约 2MB 算法全拉下来（功能介绍页 v3.1.45 踩过的同类坑）。\n'
+      + ' *   故构建期快照成此文件，settings.js 的 refsPageOf() 同步读，页面瞬间打开。\n'
+      + ' * 单一真源仍是 RefsModule/refs.js —— 改书目只改那里，本文件由 sync-mp 重新生成。\n'
+      + ' */\n'
+      + '(function (root, factory) {\n'
+      + '  if (typeof module === "object" && module.exports) module.exports = factory();\n'
+      + '  else { root.NT = root.NT || {}; root.NT.core = root.NT.core || {}; root.NT.core.refsSnapshot = factory(); }\n'
+      + '})(typeof self !== "undefined" ? self : this, function () {\n'
+      + '  return ' + JSON.stringify(data, null, 2).replace(/^/gm, '  ').replace(/^\s{2}/, '') + ';\n'
+      + '});\n';
+  }
+  function genRefsSnapshot() {
+    var dst = path.join(MP_DIST, 'utils', 'modules', 'HomeModule', 'refs-snapshot.js');
+    var src = renderRefs(refsSnapshot());
+    fs.mkdirSync(path.dirname(dst), { recursive: true });
+    fs.writeFileSync(dst, src, 'utf8');
+    console.log('  生成 HomeModule/refs-snapshot.js（参考文献快照，主包内，约 '
+      + Math.round(src.length / 1024) + 'KB）');
+  }
+
+  /**
    * 保证 project.config.json 的 babelSetting 正确（v3.1.42）。
    *
    * 为什么不只手写、还要脚本兜底：微信开发者工具会自己改写 project.config.json（加 multiPlatform、
@@ -592,6 +649,7 @@ function main() {
   syncTheme();
   syncStatics();
   genCatalog();
+  genRefsSnapshot();
   ensureBabelSetting();
   // 壳体检（生成模式只告警不中断，便于边改边看；CI 用 --check 会硬失败）
   var problems = lintWxmlTemplates();

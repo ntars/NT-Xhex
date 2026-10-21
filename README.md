@@ -1,4 +1,4 @@
-# 玄玖灵犀 NT-Xhex v3.1.56
+# 玄玖灵犀 NT-Xhex v3.1.57
 
 > 算法演乾坤，一问知天命，以数据重现千年术数。（演乾坤·知天命）  
 > 无后端 / 无网络 / 无登录 · 一套代码自动切换多形态  
@@ -381,6 +381,8 @@ NT-Xhex/
    │  ├─ result.vue         # 结果页（Vue 壳，含导出图片）
    │  ├─ conversation.js    # 共享单轮问答行为（引擎+存储装配，三壳共用）
    │  └─ result-format.js   # 共享结果排版（引擎文本 → 结构化段落）
+   ├─ RefsModule/
+   │  └─ refs.js             # 参考文献页的书目与可查原文【单一真源】（BOOKS 书目 + QUOTERS 从内核汇整公版古籍原文；refsPage() 派生详情页条目；小程序端经主包快照 HomeModule/refs-snapshot.js 同步取，不加载分包）
    ├─ SettingsModule/
    │  ├─ settings.js        # 关于数据 about()（版权/简介/版本/备案/搜索建议词条/四卡/三卡/内容正文，单一真源）
    │  ├─ settings.vue       # 关于页（Vue 壳，含清除缓存弹窗）

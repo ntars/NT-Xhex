@@ -90,17 +90,36 @@ hints.forEach(function (h) {
 });
 ok(badHint.length === 0, '每条建议都能答出来（异常：' + badHint.join('；') + '）');
 
-console.log('== ⑤ 参考文献页（v3.1.31 方案 B：书目+对应内核+查证状态）==');
+console.log('== ⑤ 参考文献页（v3.1.31 方案 B：书目+对应内核+查证状态；v3.1.57 增公版古籍可查原文）==');
 var refs = about.aboutNotes.refs;
 ok(refs.length >= 25, '参考文献条目 ≥25 条（实际 ' + refs.length + '）');
 ok(refs[0].h.indexOf('凡例') >= 0, '第一条是凡例（查证状态四档说明）');
-// 每条必须带四档状态标记之一（凡例条自身讲四档定义、示例条讲排盘例，豁免）
+// v3.1.57 起页面分两区：
+//   ① 「一、书目与查证状态」——书目条目，每条必须带四档状态标记之一
+//      （凡例条自身讲四档定义、示例条讲排盘例，豁免）；
+//   ② 「二、可查原文 · 公版古籍」——古籍原文条目，原文本身不带状态标记，
+//      查证状态在其所属书目条目与导语中说明（版权书只列书目、不进此区）。
+// 故状态标记要求只覆盖书目区；原文区改查「导语存在 + 432 条公版原文 + 无版权书混入」。
+var cutIdx = refs.map(function (r) { return r.h; }).indexOf('二、可查原文 · 公版古籍');
+var bookZone = cutIdx >= 0 ? refs.slice(1, cutIdx) : refs.slice(1);
 var noStatus = [];
-refs.forEach(function (r, i) {
-  if (i === 0 || r.h.indexOf('算法示例') >= 0) return;
+bookZone.forEach(function (r) {
+  // 结构性条目（凡例/总览/示例）不承载单书状态，豁免；其余书目条目必须带四档之一
+  if (r.h.indexOf('凡例') >= 0 || r.h.indexOf('一、书目与查证状态') >= 0 || r.h.indexOf('算法示例') >= 0) return;
   if (!/✅已锁|✅已核|⚠单源待验|◆/.test(r.text)) noStatus.push(r.h);
 });
-ok(noStatus.length === 0, '除凡例/示例外每条都标注查证状态档（缺：' + noStatus.join('，') + '）');
+ok(noStatus.length === 0, '书目区每条都标注查证状态档（缺：' + noStatus.join('，') + '）');
+ok(cutIdx >= 0, '含「二、可查原文」导语（公版古籍原文区）');
+var quoteZone = cutIdx >= 0 ? refs.slice(cutIdx) : [];
+ok(quoteZone.filter(function (r) { return /^紫微 · |^周易 · |^灵签 · |^毕法 · /.test(r.h); }).length === 432,
+  '原文区 432 条公版古籍原文（紫微168+周易64+灵签100+毕法100，实际 '
+  + quoteZone.filter(function (r) { return /^紫微 · |^周易 · |^灵签 · |^毕法 · /.test(r.h); }).length + '）');
+// 版权边界（法律红线）：原文区只允许这四个公版书系的前缀，现代著作/网站整理件不得混入
+var quoteOnly = quoteZone.filter(function (r) {
+  return r.h.indexOf('二、可查原文') < 0 && r.h.indexOf('算法示例') < 0
+    && !/^紫微 · |^周易 · |^灵签 · |^毕法 · /.test(r.h);
+});
+ok(quoteOnly.length === 0, '原文区无其他内容混入（版权书只列书目）', quoteOnly.map(function (r) { return r.h; }).join('、'));
 // 关键古籍必须出现在页面上（与内核头注释一一对应）
 var refsAll = refs.map(function (r) { return r.h + r.text; }).join('');
 var mustBook = ['金函玉镜', '子平真诠', '穷通宝鉴', '滴天髓', '奇门遁甲统宗', '大六壬指南', '心印赋', '毕法赋', '六壬大全', '大六壬金口诀', '增删卜易', '卜筮正宗', '黄金策', '金镜式经', 'iztro', 'astronomy-engine', 'Meeus', '沈氏玄空学', '神相全编', '测字秘牒', '周易小成图简述', 'lunar-javascript'];
