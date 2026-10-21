@@ -53,7 +53,7 @@ ok(R.quotesOf('ziwei-benshu').length === 168, '紫微 168 格（14 主星 × 12 
 ok(R.quotesOf('yijing').length === 64, '周易 64 卦（实际 ' + R.quotesOf('yijing').length + '）');
 ok(R.quotesOf('guanyin').length === 100, '观音灵签 100 签（实际 ' + R.quotesOf('guanyin').length + '）');
 ok(R.quotesOf('bifa').length === 100, '毕法赋 100 法（实际 ' + R.quotesOf('bifa').length + '）');
-ok(R.quoteCount() === 432, '原文总计 432 条（实际 ' + R.quoteCount() + '）');
+ok(R.quoteCount() === 442, '原文总计 442 条（实际 ' + R.quoteCount() + '）');
 // 非公版/无 quoter 的书取原文必须为空（宁空不编）
 ok(R.quotesOf('xiaocheng').length === 0 && R.quotesOf('lunar-js').length === 0, '版权书/无 quoter 书取原文为空');
 ok(R.quotesOf('不存在的id').length === 0, '未知 id 取原文为空');
@@ -77,7 +77,7 @@ ok(bf[70].h === '毕法 · 第71法 病符克宅全家患' && bf[70].text.indexO
 // ============ ⑤ refsPage 面板结构 ============
 console.log('== ⑤ refsPage 面板结构 ==');
 var page = R.refsPage();
-ok(page.length === 467, '面板条目 467 = 凡例1 + 总览1 + 书目31 + 原文导语1 + 原文432 + 示例1（实际 ' + page.length + '）');
+ok(page.length === 477, '面板条目 477 = 凡例1 + 总览1 + 书目31 + 原文导语1 + 原文442 + 示例1（实际 ' + page.length + '）');
 var struct = page.every(function (x) { return x && typeof x.h === 'string' && x.h && typeof x.text === 'string' && x.text; });
 ok(struct, '每条均为 {h, text} 且非空');
 ok(page[0].h === '凡例 · 查证状态四档', '首条为凡例');

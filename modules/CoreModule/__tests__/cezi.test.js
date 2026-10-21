@@ -64,5 +64,21 @@ t('空串给 err', !!CZ.analyze({ 字: '   ' }).err);
 t('说明含「部首不可行」限制', a.说明.indexOf('部首') >= 0 && a.说明.indexOf('Unicode') >= 0);
 t('说明含「未做自动取部首」', a.说明.indexOf('未做自动取部首') >= 0);
 
+// D. 测字十法（v3.1.59：《测字秘牒》卷一十法全量录入 + 5 源互校）
+(function () {
+  t('D0 十法名目十种齐全', Object.keys(CZ.BIAN_FA).length === 8 && !!CZ.DUIGUAN && !!CZ.GUANMEI);
+  t('D1 装头例字 38 条', Object.keys(CZ.BIAN_FA.装头).length === 38);
+  var sf = CZ.shiFaOf('日');
+  t('D2 shiFaOf(日) 命中装头+观梅', sf.length === 2 && sf[0].法 === '装头' && sf[0].变字.join('') === '春皆百');
+  t('D3 shiFaOf(日) 观梅性情原文', sf[1].性情.indexOf('完全而不亏') >= 0);
+  t('D4 shiFaOf(月) 穿心四变字', JSON.stringify(CZ.shiFaOf('月').filter(function (x) { return x.法 === '穿心'; })[0].变字) === '["舟","用","冉","角"]');
+  t('D5 shiFaOf(先) 对关拆解', CZ.shiFaOf('先')[0].拆解 === '牛头虎足、生头死足');
+  t('D6 无命中不编造', CZ.shiFaOf('好').length === 0);
+  var an = CZ.analyze({ 字: '日' });
+  t('D7 analyze 断语含十法段', an.断语.some(function (d) { return d.indexOf('测字十法') >= 0 && d.indexOf('装头法') >= 0; }));
+  // 十法定义原文十法齐全（每法一段）
+  t('D8 十法定义原文齐全', Object.keys(CZ.SHI_FA_TEXT).length === 10);
+})();
+
 console.log('\n测字内核测试：通过 ' + pass + ' / 失败 ' + fail);
 process.exit(fail ? 1 : 0);

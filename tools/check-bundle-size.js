@@ -41,7 +41,11 @@ function walk(dir, acc) {
   return acc;
 }
 
-var files = walk(MP);
+// 测量口径：排除 macOS / 编辑器垃圾（.DS_Store 等）。这些文件被 .gitignore 忽略、
+// 不会进发布包，只是本地 macOS 在 dist 里自动生成，若不排除会虚增主包体积、误导红线判定。
+var JUNK = ['.DS_Store', 'Thumbs.db', '.DS_Store?'];
+function isJunk(p) { var b = path.basename(p); return JUNK.indexOf(b) >= 0; }
+var files = walk(MP).filter(function (f) { return !isJunk(f.p); });
 var total = files.reduce(function (s, f) { return s + f.size; }, 0);
 
 // 分包目录（app.json subPackages 的 root 指向）算「整包」但不计入主包

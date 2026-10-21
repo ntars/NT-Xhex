@@ -38,7 +38,8 @@
       require('../CoreModule/ziwei-duanyu.js'),
       require('../CoreModule/iching-text.js'),
       require('../CoreModule/guanyin-data.js'),
-      require('../CoreModule/liuren-bifa.js')
+      require('../CoreModule/liuren-bifa.js'),
+      require('../CoreModule/cezi.js')
     );
   } else {
     // 浏览器（PWA）：内核已由 <script> 挂到 NT.core.*（加载链保证它们在本文件之前）
@@ -47,10 +48,11 @@
       root.NT.core && root.NT.core.ziweiDuanyu,
       root.NT.core && root.NT.core.ichingText,
       root.NT.core && root.NT.core.guanyinData,
-      root.NT.core && root.NT.core.liurenBifa
+      root.NT.core && root.NT.core.liurenBifa,
+      root.NT.core && root.NT.core.cezi
     );
   }
-})(typeof self !== 'undefined' ? self : this, function (ZIWEI_DY, ICHING_T, GUANYIN, BIFA) {
+})(typeof self !== 'undefined' ? self : this, function (ZIWEI_DY, ICHING_T, GUANYIN, BIFA, CEZI) {
 
   /**
    * 书目单一真源。
@@ -115,8 +117,8 @@
       text: '观音灵签 100 签三源比对（主源天天灵签网 2026-10-17 逐签抓取，统一取「主源∩校一版本一」一系，不混本）；塔罗 78 张、解梦词典 14 类 161 条（传统向+心理向）、占星骰子 1440 组合、答案之书、雷诺曼 36 张、如尼 24 符均为公版/传统词库。状态：✅已核（异本情况逐条标注）。' },
     { id: 'yizhangjing', h: '一掌经 ·《神机妙算·达摩一掌经》', 朝代: '传为达摩（传本）', 公版: true, quoter: null,
       text: '一掌经起法 5 源核对（年宫落生年地支、男顺女逆等铁律）；小六壬/马前课/节律为通用口诀。状态：✅已核。' },
-    { id: 'cezi', h: '测字 ·《测字秘牒》+ 康熙笔画', 朝代: '清·程省', 公版: true, quoter: null,
-      text: '康熙笔画同姓名学单一真源（不另起一套）；《测字秘牒》十法待权威全本比对，本内核只做数理五行+起卦+增删提示+事类比对四类通用法。状态：四通用法 ✅已核；十法 ⚠ 待权威全本（缺口已标）。' },
+    { id: 'cezi', h: '测字 ·《测字秘牒》+ 康熙笔画', 朝代: '清·程省', 公版: true, quoter: 'cezi',
+      text: '康熙笔画同姓名学单一真源（不另起一套）；《测字秘牒》卷一十法 v3.1.59 已补全（装头/接脚/穿心/包笼/破解/添笔/减笔/对关/摘字/观梅，5 源独立转录互校、例字逐字转录，原记「遥照」5 源未见独立条已如实注明），本内核同时做数理五行+起卦+增删提示+事类比对。状态：十法 ✅已核（公版古籍原文照录）；四通用法 ✅已核。' },
     { id: 'xiaocheng', h: '小成图 ·《周易小成图简述》', 朝代: '霍斐然（现代著作，版权作品）', 公版: false, quoter: null,
       text: '霍斐然《周易小成图简述》原文 + 易德轩/卦无忧等 8 处转述；起卦（天地数表）、九宫装图、归藏中宫、取用应期有 1136 外部算例逐宫锁死。状态：骨架 ✅已锁；「阖辟往来」四势吉凶与五行生克转述版互斥（单源），本内核只做象数结构定位、不硬下断语（◆不硬下）。' },
     { id: 'shuzi', h: '数字命理 · 本项目独有', 朝代: '星玖工作室自研', 公版: false, quoter: null,
@@ -172,6 +174,34 @@
           h: '灵签 · 第' + q.号 + '签 ' + q.名 + '（' + q.宫 + '·' + q.吉凶 + '）',
           text: '签诗：' + (q.诗 || []).join('，') + '。诗意：' + q.意 + '。解曰：' + q.解 + '。圣意：' + q.圣 + '。'
         });
+      });
+      return out;
+    },
+    // 《测字秘牒》卷一十法（清·程省，5 源独立转录互校；例字表逐字转录，讹字条不录）
+    cezi: function () {
+      var out = [];
+      if (!CEZI) return out;
+      Object.keys(CEZI.BIAN_FA).forEach(function (fa) {
+        var rows = [];
+        Object.keys(CEZI.BIAN_FA[fa]).forEach(function (ch) {
+          rows.push(ch + '（' + CEZI.BIAN_FA[fa][ch].join('、') + '）');
+        });
+        out.push({
+          h: '测字十法 · ' + fa + '（' + rows.length + ' 例）',
+          text: (CEZI.SHI_FA_TEXT[fa] || '') + ' 例字：' + rows.join(' ')
+        });
+      });
+      var dg = [];
+      Object.keys(CEZI.DUIGUAN).forEach(function (ch) { dg.push(ch + '（' + CEZI.DUIGUAN[ch] + '）'); });
+      out.push({
+        h: '测字十法 · 对关（' + dg.length + ' 例）',
+        text: (CEZI.SHI_FA_TEXT['对关'] || '') + ' 例字：' + dg.join(' ')
+      });
+      var gm = [];
+      Object.keys(CEZI.GUANMEI).forEach(function (ch) { gm.push(ch + '（' + CEZI.GUANMEI[ch] + '）'); });
+      out.push({
+        h: '测字十法 · 观梅（' + gm.length + ' 例）',
+        text: (CEZI.SHI_FA_TEXT['观梅'] || '') + ' 例字：' + gm.join(' ')
       });
       return out;
     },

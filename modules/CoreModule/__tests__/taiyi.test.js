@@ -109,5 +109,31 @@ t('三年一宫与九局一宫为两套（存在分歧年份）', (function () {
     String(TY.chart({ y: 2004 }).太乙落宫).indexOf('两独立算例交叉锁定') >= 0);
 })();
 
+// I. 主客算（v3.1.59：≥4 源一致规则实现 + DestinyNet 算例讹误甄别）
+(function () {
+  var c04 = TY.chart({ y: 2004 });
+  var zk = c04.主客算;
+  t('I0 chart 输出主客算结构完整', !!zk && typeof zk.主算 === 'number' && typeof zk.客算 === 'number');
+  eq('I1 2004 主算=2（大威·正宫午=离2 起算，至太乙艮3前一宫止，仅过离2）', zk.主算, 2);
+  eq('I2 2004 主大将宫=2（弃十取个位 2%10）', zk.主大将宫, 2);
+  eq('I3 2004 客算=27（大武·正宫坤7 起算，经坎8/巽9/乾1/离2 至太乙前）', zk.客算, 27);
+  eq('I4 2004 客大将宫=7（27%10）', zk.客大将宫, 7);
+  // 弃十规则：整十以九除取余
+  eq('I5 弃十规则：10→1、20→2、30→3', [TY.jiangGong(10).宫, TY.jiangGong(20).宫, TY.jiangGong(30).宫].join(','), '1,2,3');
+  // 杜塞：得五无将
+  t('I6 得五为无将（杜塞）', TY.jiangGong(5).无将 === true && TY.jiangGong(25).无将 === true);
+  // 间神起一：阳德(丑)为间神位
+  var js = TY.suanToTaiyi('阳德', 3, false);
+  eq('I7 间神初起为一', js.起点, '间神起一');
+  // 和数/孤数判词
+  t('I8 和数判词（14/18 上和）', TY.suanJudge(14).indexOf('上和') >= 0 && TY.suanJudge(18).indexOf('上和') >= 0);
+  t('I9 孤数判词（24 孤阴）', TY.suanJudge(24).indexOf('孤阴') >= 0);
+  // DestinyNet 算例讹误甄别必须记录在缺口里（不假报已锁）
+  t('I10 缺口记录 DestinyNet 算例讹误甄别', c04.缺料主客算.indexOf('讹误') >= 0 && c04.缺料主客算.indexOf('未经独立算例锁定') >= 0);
+  // 阴遁年（1990 前用阴遁？1990 积年阴阳——用任意阴遁年验证不崩）
+  var cy = TY.chart({ y: 2005 });
+  t('I11 相邻年主客算均正常出数', !!cy.主客算 && typeof cy.主客算.主算 === 'number');
+})();
+
 console.log('\n太乙内核测试：通过 ' + pass + ' / 失败 ' + fail);
 process.exit(fail ? 1 : 0);

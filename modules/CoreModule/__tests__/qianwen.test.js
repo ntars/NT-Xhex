@@ -60,5 +60,19 @@ t('按罗马音查 Sowilo=索维罗', QW.runeCard('Sowilo') && QW.runeCard('Sowi
 t('按关键词查「太阳」命中', QW.runeCard('太阳') && QW.runeCard('太阳').罗马音 === 'Sowilo');
 t('按符形查 ᛟ =奥萨拉', QW.runeCard('ᛟ') && QW.runeCard('ᛟ').中名 === '奥萨拉');
 
+// E. 解梦词典扩容（v3.1.59：古籍逐字/原版汇编/通行整理三级来源）
+(function () {
+  t('E1 总条数 ≥250（原 161 + 扩容）', QW.dreamCount() >= 250, QW.dreamCount());
+  t('E2 动物类 ≥60（古籍逐字 50+）', Object.keys(QW.DREAM.动物).length >= 60);
+  t('E3 综合类 ≥40（原版汇编，剔除跨类重词与三字敷衍条后）', Object.keys(QW.DREAM.综合).length >= 40, Object.keys(QW.DREAM.综合).length);
+  // 古籍出处逐字保真（抽 3 条）
+  t('E4 蛇咬人主得大财（周公解梦）', QW.dreamOf('蛇咬人').传统 === '主得大财。《周公解梦》');
+  t('E5 齿自落父母凶（汇编）', QW.dreamOf('齿自落').传统 === '父母凶。');
+  t('E6 心理栏明标◆通行整理', QW.dreamOf('蛇缠身').心理.indexOf('◆通行整理') >= 0);
+  // 原 161 条不被覆盖（猪的旧条仍在）
+  t('E7 原条目不被覆盖', !!QW.dreamOf('死人'));
+  t('E8 自然语言匹配命中新条', QW.dreamMatch('昨晚梦见杀猪') && QW.dreamMatch('昨晚梦见杀猪').词 === '杀猪');
+})();
+
 console.log('\n签文/解梦/塔罗测试：通过 ' + pass + ' / 失败 ' + fail);
 process.exit(fail ? 1 : 0);

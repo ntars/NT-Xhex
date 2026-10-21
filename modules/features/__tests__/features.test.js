@@ -278,10 +278,19 @@ ok(dmO.text.indexOf('口径：传统向取民间《周公解梦》') >= 0, '标�
 var dmO2 = R.run('qianwen', ent(), '梦见掉牙了');
 ok(dmO2 && dmO2.text.indexOf('「掉牙」（身体类）') >= 0, '长词优先：梦见掉牙 → 掉牙（非「牙」）');
 var dmO3 = R.run('qianwen', ent(), '解梦 动物');
-ok(dmO3 && dmO3.text.indexOf('动物类共 20 条') >= 0, '按类别列举：动物类 20 条');
+ok(dmO3 && dmO3.text.indexOf('动物类共 69 条') >= 0, '按类别列举：动物类 69 条（v3.1.59 扩容后）');
 var dmO4 = R.run('qianwen', ent(), '梦到独角兽跳舞');
-ok(dmO4 && dmO4.text.indexOf('词库现有 161 条 / 14 类') >= 0, '未收录给总览并明说不硬编');
+ok(dmO4 && dmO4.text.indexOf('词库现有 253 条 / 15 类') >= 0, '未收录给总览并明说不硬编（253 条 / 15 类）');
 ok(dmO4.text.indexOf('暂未收录') >= 0, '未收录明确说「暂未收录」');
+
+// ===== v3.1.59 太乙主客算输出 + 阳九百六留接口 =====
+console.log('== v3.1.59 太乙 ==');
+var tyO = R.run('taiyi', ent(2004, 1, 1, 12), '太乙 2004');
+ok(tyO && tyO.text && tyO.text.indexOf('主客算') >= 0, '太乙输出含「主客算」字段');
+ok(tyO.text.indexOf('未作胜负断语') >= 0 || tyO.text.indexOf('不作胜负断语') >= 0, '主客算标注不作胜负断语');
+ok(tyO.text.indexOf('缺料主客算') >= 0, '主客算附「缺料主客算」说明');
+var yjO = R.run('taiyi', ent(2026, 1, 1, 12), '阳九百六');
+ok(yjO && yjO.text && yjO.text.indexOf('阳九百六') >= 0 && yjO.text.indexOf('留接口待权威裁定') >= 0, '阳九百六 触发给单点象意+留接口');
 
 // ===== v3.1.16 六爻分门断语（黄金策用神体系）=====
 console.log('== v3.1.16 六爻分门断语 ==');

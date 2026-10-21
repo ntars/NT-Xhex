@@ -48,5 +48,16 @@ t('analyze 厨房大凶', a.厨厕.some(function (x) { return x.类型 === '厨�
 t('analyze 门对门含家和', a.门对门[0].化解.indexOf('家和万事兴') >= 0);
 t('analyze 楼层比和', a.楼层.匹配.indexOf('比和') >= 0);
 
+// F. 缺角分级 + 凸角（v3.1.59）
+(function () {
+  var r = YZ.analyze({ 缺角: ['西北', '正东'], 凸角: ['西南'] });
+  t('F1 四维缺 = 缺角煞(损丁煞)', r.缺角[0].严重.indexOf('缺角煞') >= 0);
+  t('F2 四正缺分级轻于四维缺', r.缺角[1].严重.indexOf('四正缺') >= 0);
+  t('F3 凸角结构化输出', r.凸角.length === 1 && r.凸角[0].主事.indexOf('妇科增生') >= 0);
+  t('F4 凸角化解只给方向不写法器', r.凸角[0].宜.indexOf('收敛') >= 0);
+  t('F5 缺口说明阈值参数化', r.缺口.indexOf('阈值') >= 0 && r.缺口.indexOf('不替用户裁定') >= 0);
+  t('F6 TUJIAO 表导出且八方位齐全', Object.keys(YZ.TUJIAO).length === 8);
+})();
+
 console.log('\n阳宅风水测试：通过 ' + pass + ' / 失败 ' + fail);
 process.exit(fail ? 1 : 0);

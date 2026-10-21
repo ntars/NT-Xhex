@@ -6,6 +6,8 @@
  *   把 iztro 的英文枚举/对象收成中文键、按 `earthlyBranchOfSoulPalace` 定位命宫、把 star.mutagen 收成四化。
  *   不自研安星法、不自推四化表——一律走 iztro 算好的口径（符合「有权威用权威」铁律）。
  * vendor：modules/CoreModule/vendor/iztro.min.js（iztro@2.6.2 dist UMD bundle，798KB，自包含 dayjs/lunar-lite）。
+ * ◆ 口径边界：四化/安星/流运一律随 vendor iztro@2.6.2 的既定口径，本项目未做中州/三合等流派比对；
+ *   已知四化分歧（如 戊右弼 / 壬左辅 化科）已按流派并列在 ziwei-horoscope.js 头注，此处作整体口径声明。
  * 校验收：modules/CoreModule/__tests__/ziwei.test.js
  * 加载：UMD——require() 得 { chart, starNames, ... }；浏览器挂 NT.core.ziwei（依赖 window.iztro 或 require vendor）。
  *

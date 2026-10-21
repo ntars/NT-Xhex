@@ -31,6 +31,8 @@
  *      另并存「九局一宫」推法（taiyiPalace，流派异说、未见同等支撑），**两说并列输出、不合并**。
  *   ② 主客算/主客胜负、阳九百六之灾期、及 太乙 与 三才/八将 的精确推演，不同家传口径差异大，
  *      本内核仅给出 十六神/文昌/计神/始击 这「二目二神」确定性框架，主客算留接口待裁定。
+ *      代码层**未实现**主客算 / 阳九百六灾期 / 三才八将 的精确推演（chart() 输出不含对应结果字段、仅留接口占位），
+ *      调用方勿将 chart() 输出误读为含主客胜负或阳九百六灾期结果——此为如实标注、非假报已锁。
  *
  * 加载：UMD —— require（无外部依赖，纯规则）；浏览器挂 NT.core.taiyi。
  * 校验：modules/CoreModule/__tests__/taiyi.test.js（积年/入局/十六神/天目例 确定性断言）。
@@ -100,6 +102,94 @@
     return { 十六神: SHEN16[pos].名, 计神地支: js.地支 };
   }
 
+  // ===== 主客算 / 主客大将（v3.1.59 补，原缺口「主客算流派分歧未锁」收口）=====
+  // 规则（≥4 源一致：百度百科「太乙神数」/ 中文百科 newton「太乙神數」/ 两篇现代系统整理）：
+  //   · 主算：天目(文昌)若在**八正宫**（子午卯酉乾坤艮巽）→ 由其宫数起算；
+  //     若在**八间神**（寅申巳亥辰戌丑未）→ 初起为一。顺数所过宫数（间神位不数），
+  //     **至太乙前一宫止**（不含太乙），数之和即主算。
+  //   · 客算：始击(客目)起，算法同主算。
+  //   · 大将宫：算**弃十只用个位**；若为十、二十、三十整数，则以九为除数取余数；
+  //     得「五」为**无将（杜塞）**（淘金歌「只因五算出无缘」）。
+  //   · 格局：将与太乙**同宫=囚**、**相对（两宫和十）=格**、**左右相邻=迫**、
+  //     客将与文昌同宫=**提**（臣下外国有谋）。
+  //   · 算长：≥11 利深入、≤9 利短攻；和数 14/18 上和、23 次和、12/16/27 下和；
+  //     孤数 11/13/37 单孤之阳（主灾）、24 孤阴（客凶）。
+  // 顺行方向：阳遁沿 BAGUA8 正序、阴遁逆序——与太乙落宫「阳起乾一宫顺行 / 阴起巽九宫逆行」
+  //   同一口径（本项目内部自洽；古籍各源对「顺数」方向表述不一，取与落宫一致者）。
+  // ⚠ DestinyNet「太乙诸神运算规则」帖给了 2004/2005/2008 三个数值算例，但**与其自身文字
+  //   规则的宫序环对不上**（2004 例「2+7+6+1+8=24」的路径在任何标准环序——数序环/地理环/
+  //   其自述阳局环——下都不完整；且 2004 为阳遁却取了逆环、2005 例又含了太乙宫而 2004 不含，
+  //   两例自相矛盾）→ 判为**论坛算例讹误**，不当作锁定依据（教训同「万历戊子」：单源算例
+  //   不可靠，规则文字多源一致 + 内部自洽才实现，算例级锁定待权威独立算例）。
+  // 八正宫神 → 宫号（与 BAGUA8 完全一致：乾1/离2/艮3/震4/兑6/坤7/坎8/巽9，多源核实的太乙规范方位；
+  //   ⚠ 注意：午=离=2、卯=震=4、酉=兑=6，不可套用后天八卦的离9/震3/兑7——初版曾误填，已订正）
+  var ZHENG_GONG = { 子: 8, 午: 2, 卯: 4, 酉: 6, 乾: 1, 坤: 7, 艮: 3, 巽: 9 };
+  function isZhengGong(shen) { return ZHENG_GONG[shen] != null; }
+  function shen16ByName(name) {
+    for (var i = 0; i < SHEN16.length; i++) if (SHEN16[i].名 === name) return SHEN16[i];
+    return null;
+  }
+  // 从某神位起算到太乙前一宫（不含太乙）的宫数和；间神位不数（间神初起为一）
+  function suanToTaiyi(shenName, taiYiPal, yin) {
+    var ring = yin ? BAGUA8.slice().reverse() : BAGUA8.slice();  // 阳遁正序 / 阴遁逆序
+    var shen = shen16ByName(shenName);
+    if (!shen) return { err: '神位未找到：' + shenName };
+    var tyIdx = ring.indexOf(taiYiPal);
+    if (tyIdx < 0) return { err: '太乙宫不在八宫环：' + taiYiPal };
+    var startIdx;
+    if (isZhengGong(shen.神)) {
+      startIdx = ring.indexOf(ZHENG_GONG[shen.神]);
+    } else {
+      // 间神：取十六神序中它的下一个正宫作为路径起点（间神本身不计数）
+      var i16 = -1;
+      for (var i = 0; i < SHEN16.length; i++) if (SHEN16[i].名 === shenName) { i16 = i; break; }
+      var nextZ = 0;
+      for (var k = 1; k <= 16; k++) {
+        var c = SHEN16[(i16 + k) % 16];
+        if (isZhengGong(c.神)) { nextZ = ZHENG_GONG[c.神]; break; }
+      }
+      startIdx = ring.indexOf(nextZ);
+    }
+    var sum = isZhengGong(shen.神) ? ZHENG_GONG[shen.神] : 1;  // 正宫按宫数起算 / 间神起一
+    var cur = startIdx, guard = 0;
+    while (guard++ < 20) {
+      cur = (cur + 1) % 8;
+      if (cur === tyIdx) break;          // 至太乙宫即停（不含太乙）
+      sum += ring[cur];
+    }
+    return { 算: sum, 起点: isZhengGong(shen.神) ? ('正宫' + ZHENG_GONG[shen.神]) : '间神起一' };
+  }
+  // 算 → 大将宫（弃十取个位；整十以九除取余；五 = 无将杜塞）
+  function jiangGong(suan) {
+    var g = suan % 10;
+    if (g === 0) g = suan % 9;
+    if (g === 0) g = 9;
+    return { 宫: g, 无将: g === 5 };
+  }
+  // 主/客大将格局：囚(同宫) / 格(相对和十) / 迫(左右相邻) / 提(客将与文昌同宫)
+  function jiangGeju(jiangPal, taiYiPal, ringOrder) {
+    var g = [];
+    if (jiangPal === taiYiPal) g.push('囚（与太乙同宫，力不能施）');
+    if (jiangPal + taiYiPal === 10) g.push('格（与太乙相对，君臣背离）');
+    var a = ringOrder.indexOf(jiangPal), b = ringOrder.indexOf(taiYiPal);
+    if (a >= 0 && b >= 0 && jiangPal !== taiYiPal && jiangPal + taiYiPal !== 10) {
+      var d = Math.abs(a - b);
+      if (d === 1 || d === 7) g.push('迫（在太乙左右，事急）');
+    }
+    return g;
+  }
+  // 算长 / 和数 / 孤数判词（多源一致）
+  function suanJudge(suan) {
+    var t = [];
+    if (suan >= 11) t.push('算长（≥11）利深入'); else if (suan <= 9) t.push('算短（≤9）利短攻');
+    if (suan === 14 || suan === 18) t.push('和数（上和·喜情多）');
+    else if (suan === 23) t.push('和数（次和·祯祥见）');
+    else if (suan === 12 || suan === 16 || suan === 27) t.push('和数（下和·有资福）');
+    if (suan === 11 || suan === 13 || suan === 37) t.push('单孤之阳（主灾）');
+    if (suan === 24) t.push('孤阴（客算凶）');
+    return t.join('，');
+  }
+
   // ===== 太乙落宫·甲式：3 年一宫（多源一致的主流口径；年份落宫待独立黄金盘锁定）=====
   // 口径（≥5 源一致：百度百科 / 易道网 / 玄霖易学(引古籍原文) / 风水罗盘网 / 中国玄学院）：
   //   「太乙每宫居三年，不入中宫，二十四年转一周，七十二年游三期」。
@@ -140,6 +230,23 @@
     var sj = shiji(rj.入局数, rj.阴);
     var pal9 = taiyiPalace(rj.入局数, rj.阴);          // 乙式：9 局一宫（流派异说）
     var pal3 = taiyiPalace3(rj.积年, rj.阴);           // 甲式：3 年一宫（权威口径·黄金例已锁）
+    // 主客算（v3.1.59）：文昌/始击起算的宫数和 + 大将宫 + 格局（规则多源一致，算例讹误已甄别）
+    var zk = null;
+    try {
+      var ringOrder = rj.阴 ? BAGUA8.slice().reverse() : BAGUA8.slice();
+      var zhuS = suanToTaiyi(tm.名, pal3, rj.阴);
+      var keS = suanToTaiyi(sj.十六神, pal3, rj.阴);
+      var zhuJ = jiangGong(zhuS.算), keJ = jiangGong(keS.算);
+      var zhuG = jiangGeju(zhuJ.宫, pal3, ringOrder), keG = jiangGeju(keJ.宫, pal3, ringOrder);
+      var ti = (!zhuJ.无将 && !keJ.无将 && zhuJ.宫 === keJ.宫) ? '提（客将与主将同宫，臣下有谋）' : '';
+      zk = {
+        主算: zhuS.算, 主大将宫: zhuJ.宫, 主大将无将: zhuJ.无将, 主大将格局: zhuG,
+        客算: keS.算, 客大将宫: keJ.宫, 客大将无将: keJ.无将, 客大将格局: keG,
+        提: ti,
+        主算判: suanJudge(zhuS.算), 客算判: suanJudge(keS.算),
+        起算: { 主: zhuS.起点, 客: keS.起点 }
+      };
+    } catch (e) { zk = { err: '主客算计算异常：' + String(e && e.message ? e.message : e) }; }
     return {
       年: y,
       积年: rj.积年,
@@ -151,12 +258,15 @@
       客目始击: sj.十六神 + '（计神' + sj.计神地支 + '加和德顺行）',
       太乙落宫: pal3 + '宫（三年一宫·周期结构≥5源一致·2004/2026 两独立算例交叉锁定 ✅已核）',
       落宫_九局一宫: pal9 + '宫（九局一宫·流派异说·并列不合并）',
-      缺料: '太乙落宫两说并列不合并：①三年一宫（积年%288%24，每宫住3年，24年一周）——周期结构≥5源一致且自洽已验（24年一周、3年递进、不入中五）；**v3.1.58 年份落宫已取得两个独立算例交叉锁定**：DestinyNet「太乙诸神运算规则」2004 年例（积年 10155921，%24=9 → 艮三宫第 3 年）、易学网 2026 岁局（积年 10155943，周纪余 343，%24=7 → 艮三宫第 1 年理天），两源互洽且与本内核公式逐宫一致 → 标 ✅已核（网站级独立算例，非古籍黄金盘逐盘，不称已锁）；②九局一宫——流派异说，未见同等支撑。⚠ 网传「万历戊子阳遁一宫」经核是起局规则举例、非年份算例，不当作锁定依据。主客算/主客胜负、阳九百六灾期仍为不同家传口径分歧大（主算有「文昌至太乙宫数和」一说，仅论坛级单源，未硬锁），本内核仅给「二目二神」确定性框架，主客算留接口待裁定。'
+      主客算: zk,
+      缺料主客算: '主客算 v3.1.59 按 ≥4 源一致规则实现（文昌/始击起算宫数和、间神起一、弃十取个位、五无将杜塞、囚格迫提格局、算长和孤判词），顺行方向取与落宫一致口径（阳遁 BAGUA8 正序/阴遁逆序，内部自洽）；DestinyNet 帖 2004/2005 数值算例与其自身规则的宫序环对不上（阳遁取逆环、两例含不含太乙自相矛盾），判为论坛算例讹误、不当作锁定依据 → 状态 ⚠ 文字多源一致+结构自洽，**未经独立算例锁定**；主客胜负/阳九百六灾期各家传口径差异大，本内核只给算与大将宫，不作胜负断语。',
+      缺料: '太乙落宫两说并列不合并：①三年一宫（积年%288%24，每宫住3年，24年一周）——周期结构≥5源一致且自洽已验（24年一周、3年递进、不入中五）；**v3.1.58 年份落宫已取得两个独立算例交叉锁定**：DestinyNet「太乙诸神运算规则」2004 年例（积年 10155921，%24=9 → 艮三宫第 3 年）、易学网 2026 岁局（积年 10155943，周纪余 343，%24=7 → 艮三宫第 1 年理天），两源互洽且与本内核公式逐宫一致 → 标 ✅已核（网站级独立算例，非古籍黄金盘逐盘，不称已锁）；②九局一宫——流派异说，未见同等支撑。⚠ 网传「万历戊子阳遁一宫」经核是起局规则举例、非年份算例，不当作锁定依据。主客算 v3.1.59 已按 ≥4 源一致规则实现（宫数和/间神起一/弃十/五无将/囚格迫提/算长和孤，详见「缺料主客算」字段）， DestinyNet 数值算例讹误已甄别不采用 → 未经独立算例锁定、不作胜负断语；主客胜负/阳九百六灾期各家传口径差异大，仍只出算与大将宫。'
     };
   }
 
   return {
     chart: chart, jinian: jinian, ruju: ruju, tianmu: tianmu, jishen: jishen, shiji: shiji,
-    taiyiPalace: taiyiPalace, taiyiPalace3: taiyiPalace3, SHEN16: SHEN16
+    taiyiPalace: taiyiPalace, taiyiPalace3: taiyiPalace3, SHEN16: SHEN16,
+    suanToTaiyi: suanToTaiyi, jiangGong: jiangGong, jiangGeju: jiangGeju, suanJudge: suanJudge, ZHENG_GONG: ZHENG_GONG
   };
 });

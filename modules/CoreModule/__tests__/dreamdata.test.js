@@ -1,5 +1,6 @@
 /**
- * modules/CoreModule/__tests__/dreamdata.test.js —— 解梦词库（v3.1.15 扩容到 14 类 / 160+ 词）自测
+ * modules/CoreModule/__tests__/dreamdata.test.js —— 解梦词库（v3.1.15 扩到 14 类 / 160+ 词；
+ * v3.1.59 有据扩容到 15 类 / 250+ 词，新增「综合」类收无明确归属的通用条）自测
  * 覆盖：分类与条数、每条两栏（传统/心理）非空且有理有据、跨类不重词、
  *       精确取词、自然句取梦象（最长优先 + 先出现优先）、壳词剥离、未收录不瞎猜。
  * 跑法：node modules/CoreModule/__tests__/dreamdata.test.js
@@ -14,11 +15,11 @@ function ok(name, cond, extra) {
 
 console.log('A. 分类与规模');
 var cats = Q.dreamCats();
-ok('共 14 类', cats.length === 14, cats.length);
-ok('类别名与顺序固定（人物/动物/自然/身体/财物/出行/鬼神/居所/婚恋/职场/饮食/器物/丧葬/天象）',
-  cats.map(function (x) { return x.类别; }).join(',') === '人物,动物,自然,身体,财物,出行,鬼神,居所,婚恋,职场,饮食,器物,丧葬,天象',
+ok('共 15 类（v3.1.59 起新增「综合」）', cats.length === 15, cats.length);
+ok('类别名与顺序固定（人物/动物/自然/身体/财物/出行/鬼神/居所/婚恋/职场/饮食/器物/丧葬/天象/综合）',
+  cats.map(function (x) { return x.类别; }).join(',') === '人物,动物,自然,身体,财物,出行,鬼神,居所,婚恋,职场,饮食,器物,丧葬,天象,综合',
   cats.map(function (x) { return x.类别; }).join(','));
-ok('词条总数 160+（实际 ' + Q.dreamCount() + '）', Q.dreamCount() >= 160);
+ok('词条总数 250+（实际 ' + Q.dreamCount() + '）', Q.dreamCount() >= 250);
 ok('每类至少 7 条（没有空壳类）', cats.every(function (x) { return x.词数 >= 7; }),
   cats.map(function (x) { return x.类别 + x.词数; }).join(' '));
 ok('各类词数之和 = 总数', cats.reduce(function (n, x) { return n + x.词数; }, 0) === Q.dreamCount());
@@ -69,8 +70,8 @@ ok('空串返回 null', Q.dreamMatch('') === null);
 
 console.log('E. 分类列举');
 var lst = Q.dreamList('动物');
-ok('dreamList(动物) 20 条', lst.length === 20, lst.length);
-ok('dreamList 吃「动物类」写法', Q.dreamList('动物类') && Q.dreamList('动物类').length === 20);
+ok('dreamList(动物) 69 条（v3.1.59 扩容后）', lst.length === 69, lst.length);
+ok('dreamList 吃「动物类」写法', Q.dreamList('动物类') && Q.dreamList('动物类').length === 69);
 ok('dreamList 未收录返回 null', Q.dreamList('天宫') === null);
 ok('分类列举的词都能单独取到释义', cats.every(function (c) {
   return Q.dreamList(c.类别).every(function (e) { return !!Q.dreamOf(e.词); });
