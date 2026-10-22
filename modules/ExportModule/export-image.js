@@ -10,7 +10,7 @@
  *   · wrap(ctx, text, max, w, s) → 中英混排换行（中文逐字断行，英文/数字按词断行）
  *   · optsFrom(about)          → 由 settings.js 的 about() 装配 meta（三端同一份）
  *
- * 壳只做各自平台的"取 canvas / 出文件"（public/pwa/app.js、dist/mp-weixin/pages/index/index.js、
+ * 壳只做各自平台的"取 canvas / 出文件"（仓库根 app.js、dist/mp-weixin/pages/index/index.js、
  * HomeModule/result.vue），版式与绘制一律走本模块 —— 不在壳里各画一遍。
  *
  * 版式（v3.1.1，严格照设计稿「导出图片格式」画板 · 坐标相对 402pt 宽画板，可变高度长图）：

@@ -52,10 +52,12 @@
       if (typeof window === 'undefined' || !window.dispatchEvent) return;
       try { window.dispatchEvent(new CustomEvent('nt:' + type)); } catch (e) { /* noop */ }
     }
-    registerServiceWorker() {
+    registerServiceWorker(swPath) {
       if (this.detectPlatform() !== 'h5' || typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return Promise.resolve(null);
       try {
-        return navigator.serviceWorker.register('sw.js').then(function (reg) { return reg; }).catch(function () { return null; });
+        // swPath 由各 H5 壳传入：uni-app H5 用默认 'sw.js'（根目录，manifest.json → h5.sw.path）；
+        // PWA 壳传 'pwa-sw.js'（v3.2.2 起 PWA 上移仓库根，与 uni-app 的 sw.js 同名避让）。
+        return navigator.serviceWorker.register(swPath || 'sw.js').then(function (reg) { return reg; }).catch(function () { return null; });
       } catch (e) { return Promise.resolve(null); }
     }
   }

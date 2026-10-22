@@ -134,6 +134,21 @@
     });
   }
 
+  // ==================== 3.2b 中文农历「初X/十X/二十X/三十」日 → 阿拉伯数字 ====================
+  //   为什么单独做：通用 chineseNumberToArabic 不认「初」（初不在数字字符集），
+  //   「初三/初十/初八」原样留着 → extractDate 认不出 day。这里只在农历语境下转换：
+  //   初一~初十 → 1~10；十一~十九 → 11~19；二十/廿X → 20+；三十 → 30。
+  //   「正/冬/腊/闰」（月名）由 extractDate 的 LUNAR_MONTH_RE 处理，此处只管「日」。
+  function lunarDayToArabic(text) {
+    return text
+      .replace(/初([一二三四五六七八九十])/g, function (_, c) { return '初' + cnToNum(c); })
+      .replace(/初([0-9])/g, '$1')                                    // 初3 → 3（半角已转过的）
+      .replace(/(十|二十)([一二三四五六七八九])(?![月日初])/g, function (_, ten, c) {
+        return (ten === '十' ? 10 : 20) + cnToNum(c);                  // 十五→15 / 二十三→23
+      })
+      .replace(/二十(?![0-9])/g, '20').replace(/三十(?![0-9])/g, '30');
+  }
+
   // ==================== 3.5 英文月份映射 ====================
   function mapEnglishMonths(text) {
     return text.toLowerCase().replace(/[a-z]+/g, function (w) {
@@ -257,6 +272,76 @@
     return split.replace(new RegExp(time.rawText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), ' ');
   }
 
+  // ==================== 4.1b 中文农历日期提取（v3.2.2 新增）====================
+  //   处理「农历/阴历 + 二〇〇五/2005 + 正/二…冬/腊(±闰)月 + 初X/十X/二十X/三十」整套中文农历写法。
+  //   输出与 extractDate 同形的 date 实体，另带 _lunarLeap 标记闰月，由 analyzer 层用 CoreModule/lunar
+  //   的 fromLunar 换算成公历（intent 层保持纯函数、不依赖历法内核）。
+  //   月名表：正=1 … 十=10，冬=11，腊=12（民间冬月/腊月）。
+  var LUNAR_MONTHS = { '正': 1, '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9, '十': 10, '冬': 11, '腊': 12, '十一': 11, '十二': 12 };
+  //   年部分：既认「2005」，也认中文四位年「二〇〇五 / 二零零五 / 二0〇五」（OCR/手抄常见混写）。
+  //   月/日同时容忍中文与已被 chineseNumberToArabic 数字化过的写法（五月初三 / 5月初3），
+  //   因为本函数可能被传 p.half（原貌）也可能被传 p.cn（已数字化）。
+  var LUNAR_CN_RE = /(?:农历|阴历|旧历|夏历)?\s*(?:((?:二[〇零0一二三四五六七八九]{3})|(?:[0-9]{3,4}))\s*年\s*)?(闰)?(十一|十二|正|一|二|三|四|五|六|七|八|九|十|冬|腊|[0-9]{1,2})\s*月\s*(三十|初[一二三四五六七八九十0-9]|廿[一二三四五六七八九]|二十[一二三四五六七八九]|二十|十[一二三四五六七八九]|[0-9]{1,2})\s*[日号]?/;
+  //   中文四位年逐字映射（〇/零/0 都当 0）
+  var CN_YEAR_DIGIT = { '〇': '0', '零': '0', '0': '0', '一': '1', '二': '2', '三': '3', '四': '4', '五': '5', '六': '6', '七': '7', '八': '8', '九': '9' };
+
+  function extractLunarDate(cnText, now) {
+    var isLunarWord = /农历|阴历|旧历|夏历/.test(cnText);
+    // ⚠️ v3.2.2 反例：「查农历 2026年8月15日」「公历换农历 2026年8月15日」里的「农历」
+    //   是**换算请求**（要的是「这天对应农历几号」），日期本身是公历。
+    //   判据：动词（查/看/换/转/换算）+ 农历词 → 不当作农历日期，交回通用 extractDate。
+    if (/(查|看|问|换算|换|转|推|对)\s*(农历|阴历|旧历|夏历|阳历|公历)/.test(cnText)) return null;
+    var m = cnText.match(LUNAR_CN_RE);
+    if (!m) return null;
+    // 防误吞：无农历词时，只有「中文年（二〇〇五）」或「中文日（初三/廿三/三十）」才算农历；
+    //   纯阿拉伯「2005年5月3日」是公历，交给通用 extractDate。
+    var hasCnDay = /^(初|廿|三十)/.test(m[4]);
+    var yearIsCn = !!(m[1] && /[〇零一二三四五六七八九]/.test(m[1]));
+    if (!isLunarWord && !yearIsCn && !hasCnDay) return null;
+    var leap = !!m[2];
+    var mon = LUNAR_MONTHS[m[3]] || (/^[0-9]{1,2}$/.test(m[3]) && +m[3] >= 1 && +m[3] <= 12 ? +m[3] : 0);
+    var dayCn = m[4];
+    var day;
+    if (/^初/.test(dayCn)) day = cnToNum(dayCn.charAt(1));
+    else if (/^(廿|二十)/.test(dayCn)) day = 20 + (dayCn.length > 2 ? cnToNum(dayCn.charAt(2)) : dayCn.length === 2 && /廿/.test(dayCn) ? cnToNum(dayCn.charAt(1)) : 0);
+    else if (/^三十/.test(dayCn)) day = 30;
+    else if (/^十/.test(dayCn)) day = 10 + (dayCn.length > 1 ? cnToNum(dayCn.charAt(1)) : 0);
+    else day = +dayCn;
+    if (!mon || !day || day < 1 || day > 30) return null;
+    // 年：给过 → 用（中文四位逐字转，阿拉伯直接取）；没给 → 默认当年（农历新年在公历 1-2 月，analyzer 层换算后
+    //   若落到下一公历年属正常，不再回调）
+    var year;
+    if (m[1]) {
+      if (/^[0-9]+$/.test(m[1])) year = +m[1];
+      else {
+        var ys = '';
+        for (var i = 0; i < m[1].length; i++) ys += (CN_YEAR_DIGIT[m[1].charAt(i)] || '');
+        year = +ys;
+      }
+    } else year = now.getFullYear();
+    if (year < 100) year = year <= 26 ? 2000 + year : 1900 + year;
+    if (year < 1900 || year > 2100) return null;
+    return { year: year, month: mon, day: day, isLunar: true, rawText: m[0], _lunarLeap: leap };
+  }
+
+  // ==================== 4.1c 四柱提取（v3.2.2 新增）====================
+  //   四柱 = 3~4 组「天干+地支」（如「乙酉 壬午 甲子 甲子」或「乙酉年壬午月甲子日甲子时」）。
+  //   判据（防误吞）：至少 3 组、每组干支都合法；时柱可缺（缺时柱排不了盘，由 analyzer 引导补时辰，
+  //   但这里仍把三柱记下来，追问时不必重问）。
+  //   输出 { pillars:['乙酉','壬午','甲子','甲子'|null], rawText }，换算成日期由 analyzer 层用
+  //   CoreModule/lunar._SL.Solar.fromBaZi 反查（intent 层保持纯函数）。
+  var GAN_SET = '甲乙丙丁戊己庚辛壬癸';
+  var ZHI_SET = '子丑寅卯辰巳午未申酉戌亥';
+  var PILLAR_RE = /([甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥])/g;
+
+  function extractPillars(cnText) {
+    var hits = cnText.match(PILLAR_RE);
+    if (!hits || hits.length < 3) return null;
+    // 连续位置要求太严会把「甲子年…丙寅月」这类碎片误并；放宽：取前 4 组、去重复即可
+    var pillars = hits.slice(0, 4);
+    return { pillars: pillars, rawText: pillars.join('') };
+  }
+
   // ==================== 4.1 日期提取 ====================
   function extractDate(restSplit, cnText, now) {
     // 相对日期
@@ -288,7 +373,10 @@
         return { year: zy, month: null, day: null, isLunar: false, rawText: ZODIAC[z] + '年', _zodiacYear: true };
       }
     }
-    var isLunar = /农历|阴历|旧历|夏历/.test(cnText);
+    // ⚠️ v3.2.2：「查农历 2026年8月15日」里的「农历」是换算请求，日期本身是公历，
+    //   不能打 isLunar 标记（否则 analyzer 层会把 2026-8-15 当成农历八月十五再换算一次）。
+    var isQueryLunarWord = /(查|看|问|换算|换|转|推|对)\s*(农历|阴历|旧历|夏历|阳历|公历)/.test(cnText);
+    var isLunar = !isQueryLunarWord && /农历|阴历|旧历|夏历/.test(cnText);
     var s = restSplit;
     // 完整公历 Y-M-D（时间已先行剥离，故只需禁止后跟数字）
     // ⚠️ 年份须落在 1900–2100（与历法底座 lunar-javascript 的可算范围一致；超出无法排盘）
@@ -435,8 +523,19 @@
     var hasBaziKw = KW.bazi.some(function (k) { return cnText.indexOf(k) >= 0; });
     var hasNameKw = false; // v3.2.0：nameology 关键词表已移除，姓名类输入不再触发名称识别分支
 
+    // v3.2.2：四柱写法（乙酉 壬午 甲子 甲子）里的干支组绝不能被当人名 ——
+    //   否则「乙酉」会被 2 字名规则吃掉，整句四柱就废了。
+    var pls = (entities && entities._pillars) || [];
+    function isPillarWord(w) {
+      for (var i = 0; i < pls.length; i++) {
+        if (w === pls[i] || pls[i].indexOf(w) >= 0 || w.indexOf(pls[i]) >= 0) return true;
+      }
+      return false;
+    }
+
     for (var i = 0; i < words.length; i++) {
       var w = words[i];
+      if (isPillarWord(w)) continue;
       if (isExcludedName(w)) {
         // 词首/尾黏连功能字（如「看白玖玖」「白玖玖这」）→ 清洗后再判
         var cw = cleanName(w);
@@ -476,12 +575,21 @@
     var hasTime = !!ent.time;
     var hasGender = !!ent.gender;
     var hasName = !!ent.name;
+    var hasPillars = !!(ent._pillars && ent._pillars.length >= 3);
     var kwBazi = keywords.some(function (k) { return KW.bazi.indexOf(k) >= 0; });
     var kwAlmanac = keywords.some(function (k) { return KW.almanac.indexOf(k) >= 0; });
     var kwSelect = keywords.some(function (k) { return KW.select.indexOf(k) >= 0; });
     var kwEvent = keywords.some(function (k) { return KW.event.indexOf(k) >= 0; });
     var kwJieqi = keywords.some(function (k) { return KW.jieqi.indexOf(k) >= 0; });
     var kwGanzhi = keywords.some(function (k) { return KW.ganzhi.indexOf(k) >= 0; });
+
+    // v3.2.2 四柱写法（乙酉 壬午 甲子 甲子 / 乙酉年壬午月甲子日甲子时）：
+    //   干支本身就是完整生辰，直接归八字排盘；缺时柱（只给 3 柱）时追问时辰。
+    //   放在最前：四柱句里常带「八字」等关键词，不能被后面的黄历/节气分支抢走。
+    if (hasPillars) {
+      if (ent._pillars.length >= 4) return { intent: 'bazi', confidence: 'high', candidates: null, prompt: null };
+      return { intent: 'bazi', confidence: 'medium', candidates: null, prompt: '已收到三柱（年/月/日），请补充出生时辰（如「子时」或「00:30」）以完成四柱排盘。' };
+    }
 
     if (!hasDate && !hasPartialDate && !hasTime && !hasGender && !hasName && keywords.length === 0) {
       return { intent: 'unknown', confidence: 'none', candidates: null, prompt: null };
@@ -548,7 +656,20 @@
     // 时间先提取并剥离，避免干扰日期
     entities.time = extractTime(p, p.cn);
     var restSplit = stripTime(p.split, entities.time);
-    entities.date = extractDate(restSplit, p.cn, now);
+
+    // v3.2.2 四柱优先：3~4 组干支是「四柱/八字」写法，与公历/农历日期互斥，先认它。
+    //   识别到的四柱由 analyzer 层用 CoreModule/lunar 的 Solar.fromBaZi 反查成公历日期；
+    //   intent 层保持纯函数，只把干支原样记下。
+    var pl = extractPillars(p.half || p.cn);
+    if (pl) entities._pillars = pl.pillars;
+
+    // v3.2.2 农历优先：中文农历写法（正月初三 / 腊月廿三 / 闰四月初三 / 二〇〇五年五月初三）。
+    //   ⚠️ 必须用 p.half（只做了全角转半角、保留原貌）而不是 p.cn ——
+    //   p.cn 已被 chineseNumberToArabic 数字化（「五月初三」→「5月初3」、「廿三」→「33」），
+    //   农历月名与「初X」写法在那一步就被打散了。
+    //   四柱已命中时不再跑任何日期解析（干支已定日，混进公历会打架）。
+    var lu = pl ? null : extractLunarDate(p.half, now);
+    entities.date = pl ? null : (lu || extractDate(restSplit, p.cn, now));
     entities.gender = entities.gender || extractGender(p.cn);
     entities.city = entities.city || extractCity(p.cn);
     var nameRes = extractName(p.cn, entities);
@@ -584,7 +705,7 @@
   }
 
   function emptyEntities() {
-    return { name: null, date: null, time: null, gender: null, city: null, keywords: [] };
+    return { name: null, date: null, time: null, gender: null, city: null, keywords: [], _pillars: null };
   }
 
   // 追问合并：新输入补足旧输入缺失的字段
@@ -595,15 +716,18 @@
       time: newE.time || oldE.time || null,
       gender: newE.gender || oldE.gender || null,
       city: newE.city || oldE.city || null,
-      keywords: (oldE.keywords || []).concat(newE.keywords || []).filter(function (v, i, a) { return a.indexOf(v) === i; })
+      keywords: (oldE.keywords || []).concat(newE.keywords || []).filter(function (v, i, a) { return a.indexOf(v) === i; }),
+      // v3.2.2 四柱：新输入给了就覆盖，没给就沿用上一轮记下的
+      _pillars: newE._pillars || oldE._pillars || null
     };
   }
 
-  // 对外只暴露 parse（主入口）+ KW（analyzer.js 的节气分支读 INTENT.KW.jieqi 用）。
-  // 曾经的 5 个「测试钩子」导出（_preprocess/_cnToNum/_normalizeSeparators/_validateDate/_validateTime）
-  // 与 JIEQI_LIST 导出全仓零调用（测试改用行为断言，不读内部实现），已删；内部函数本体保留（parse 仍依赖）。
+  // 对外只暴露 parse（主入口）+ KW（analyzer.js 的节气分支读 INTENT.KW.jieqi 用）
+  // + toSolarDate（v3.2.2：把农历/四柱实体换算成公历，纯函数不碰内核，靠调用方注入换算器）。
   return {
     parse: parse,
-    KW: KW
+    KW: KW,
+    hasPillars: function (e) { return !!(e && e._pillars && e._pillars.length >= 3); },
+    lunarText: function (text) { return LUNAR_CN_RE.test(String(text == null ? '' : text)); }
   };
 });

@@ -14,7 +14,7 @@
  *     真值以「看得见的东西 + 设计稿标注尺寸」为准。
  *
  * 三端共用方式（同一份文件，绝不复制）：
- *   · 浏览器 PWA（public/pwa/index.html）  → <link rel="stylesheet" href="../../modules/UIModule/theme.css">
+ *   · 浏览器 PWA（仓库根 index.html）   → <link rel="stylesheet" href="./modules/UIModule/theme.css">
  *   · uni-app（modules/**.vue）            → import 本文件（构建期内联）
  *   · 微信小程序（dist/mp-weixin）          → tools/sync-mp.js 生成 theme.wxss，app.wxss @import 引入
  *
@@ -145,9 +145,7 @@ page {
   --d-theme: 320ms;    /* 主题切换：界面色板（底/面/字/图标）的交叉过渡 */
   --d-splash: 400ms;   /* 启动页淡出 */
   --d-modal-out: 200ms; /* 弹窗出场：比进场(--d-drawer 280ms)快一档，退场干脆 */
-  /* 搜索胶囊「常驻强调光环」一圈呼吸的时长（涨 2.2s + 收 2.2s）。
-   * ⚠️ 原来的 --d-ph-rotate（滚动搜索建议轮换时长，与 searchHints 条数耦合）已随
-   *    「滚动词条 → 固定一句话占位」的改版删除，见下方 .nt-ph 注释。 */
+  /* 搜索胶囊「常驻强调光环」一圈呼吸的时长（涨 2.2s + 收 2.2s）。光环只管氛围。 */
   --d-halo: 4400ms;
   /* 光环几何（v3.1.0：只留柔晕一层，范围收小）。
    * --halo-gap = 柔晕最外沿距胶囊的缝隙（2px → 1px，收小范围）；
@@ -389,6 +387,38 @@ page { scrollbar-width: none; -ms-overflow-style: none; }
 .res-section + .res-section { margin-top: var(--sp-3); }
 .res-section-title { color: var(--nt-text-2); }
 
+/* 结果页 · 全套排盘八大类分组（用户规定顺序：万年历黄历 / 八字命理 / 紫微斗数 /
+ * 六爻占卜 / 奇门遁甲 / 梅花易数 / 风水堪舆 / 解梦）。
+ * 层级做法：类名用「你的提问」同级（17pt 半粗 纯黑）+ 段前多一档间距（--sp-5 = 24pt），
+ *   让 8 个类成为肉眼可分的大锚点；块名降一档（15pt 中粗 --nt-text-2）并缩进 12pt，
+ *   与类的 17pt 形成明确的父子差；正文沿用 --nt-dl-text（15/18 黑 50%）。
+ * 为什么不用描边/底色/分割线：v3.0.4 起全站不画描边，层级只靠字号、字重、字色、间距。 */
+.res-group + .res-group { margin-top: var(--sp-5); }
+.res-group-title {
+  display: block;
+  color: var(--nt-ink);
+  margin-bottom: var(--sp-3);
+}
+.res-group-block + .res-group-block { margin-top: var(--sp-4); }
+.res-group-block { padding-left: var(--sp-3); }
+.res-block-head {
+  display: block;
+  font-size: var(--fs-body-15); line-height: var(--lh-15); font-weight: var(--fw-mid);
+  color: var(--nt-text-2);
+  margin-bottom: var(--sp-2);
+}
+
+/* 全套排盘的类外尾巴：哪几块因缺额外条件没排（解梦要梦境、阳宅要户型、八等婚要坐向…）。
+   与正文同字号同字色（不喧宾夺主），只加上边距把它与最后一类隔开一级。 */
+.res-tail-note {
+  display: block;
+  margin-top: var(--sp-5);
+  font-size: var(--fs-body-15);
+  line-height: var(--lh-long);
+  color: var(--nt-text-20);
+  white-space: pre-wrap;
+}
+
 /* 结构化条目：左侧 2px 纯黑竖线标记（业务排版，非设计稿元素）
  * ⚠️ 已删除：全项目无任何元素使用 `.nt-mark`（僵尸钩子类），且竖线本身也属"常驻装饰"。 */
 
@@ -456,7 +486,7 @@ page { scrollbar-width: none; -ms-overflow-style: none; }
  * 右端内嵌 48pt 正圆区域放放大镜作发送键（设计稿「右辅助圆」289,464 48×48；
  * 放大镜整体字形 18.5003×18.2825 恰好居中于该圆心）。左端 48pt 辅助圆设计稿内无内容，不渲染。 */
 .nt-pill {
-  position: relative;                 /* 滚动建议词条 .nt-ph 的定位基准 */
+  position: relative;                 /* 常驻文案 .nt-ph 的定位基准 */
   display: flex;
   align-items: center;
   height: var(--pill-h);
@@ -515,27 +545,24 @@ page { scrollbar-width: none; -ms-overflow-style: none; }
  *   （占位由下面的 .nt-ph 固定一句话承担，见 .nt-ph-item 自己的字色）。
  *   留着就是「有用到、其实用不到」的僵尸规则，按项目规范删掉。 */
 
-/* —— 搜索框占位（固定一句话，来自 settings.js 的 searchPlaceholder 单一真源）——
- * 输入框为空时的"占位"是**一句固定提示**，让用户一眼看出「这里能问什么」。
- *   · 结构：.nt-pill > .nt-ph(裁切窗) > .nt-ph-item（单行，不再有整列 track）
+/* —— 搜索框常驻文案（固定一句，不轮换）——
+ * 输入框为空时，胶囊内显示 settings.js 的 searchPlaceholder（单一真源），
+ * 让用户一眼看到"这里可以输入什么"。设计稿「起始页」此处原文即「滚动搜索建议...」，
+ * 用户 2026-10-22 明确指定固定显示「今天想了解点什么」，故改为单条静态文案。
+ *   · 结构：.nt-pill > .nt-ph(裁切窗) > 单个 .nt-ph-item
  *   · pointer-events:none → 点击穿透到 input，不挡输入
- *   · 让位规则：**输入非空 或 已聚焦** → 挂 .nt-ph-off，整块隐去
- * ⚠️ 历史：v3.0.4 起这里曾是「滚动搜索建议」（settings.js 的 searchHints + 末条副本
- *    实现无缝轮换，靠 @keyframes nt-ph-step 与 --d-ph-rotate）。用户定稿改为固定
- *    一句话后，track / keyframe / 时长变量全部删除，只保留 .nt-ph 裁切窗与
- *    .nt-ph-item 字色 —— 三个壳（小程序 / uni-app / PWA）都复用这一套类。 */
+ *   · 让位规则：**输入非空 或 已聚焦** → 挂 .nt-ph-off，整块隐去 */
 /* ⚠️ 为什么「聚焦」也要让位（不只是"有内容"）：
- *    ① 聚焦即开始输入，占位提示不该与光标/真实输入重叠；
+ *    ① 一点进搜索框，提示语就该让位给光标（输入时当然更不显示）；
  *    ② 技术：微信官方文档《原生组件说明》明确写「input 仅在 focus 时表现为原生组件」——
- *      聚焦态下它的层级高于 WebView 里的一切元素（z-index 无效），占位会被直接盖住。
+ *      聚焦态下它的层级高于 WebView 里的一切元素（z-index 无效），文案会被直接盖住。
  *      干脆在聚焦瞬间就隐掉，不依赖层级谁压谁。
  * ⚠️ 只写「让位时隐藏」这一条，不写 :not() —— WXSS 对 :not 支持不稳，三端容易不一致。
  *    默认（壳不加 .nt-ph-off）即显示。 */
 .nt-ph {
   position: absolute;
   left: var(--sp-5);
-  /* 右侧让出 48pt（= 放大镜发送键的宽）—— 词条再长也不许压到发送键上。
-     不写 right 就是 shrink-to-fit（由最长词条决定宽度），实测最长那条会钻到放大镜底下。 */
+  /* 右侧让出 48pt（= 放大镜发送键的宽）—— 文案再长也不许压到发送键上。 */
   right: var(--pill-h);
   top: 0;
   height: var(--pill-h);
@@ -551,15 +578,15 @@ page { scrollbar-width: none; -ms-overflow-style: none; }
   font-size: var(--fs-h);
   color: var(--nt-placeholder);
   white-space: nowrap;
-  overflow: hidden;          /* 万一将来加了超长词条：裁掉… */
+  overflow: hidden;          /* 万一将来改成超长文案：裁掉… */
   text-overflow: ellipsis;   /* …并给省略号，而不是钻到放大镜底下 */
 }
-/* ⚠️ 历史耦合点（v3.0.4–v3.2.0 的滚动搜索建议）：这里原有一份
- *    @keyframes nt-ph-step，档位个数/百分比必须与 settings.js 的 searchHints 条数
- *    一致，且 --d-ph-rotate = 条数 × 5.5s。改版为固定一句话占位后，
- *    轮换动画、时长变量、track 结构一并删除，两处注释的互相指向也随之解除。
- *    若将来要恢复滚动词条：先在 settings.js 重建 searchHints 单一真源，
- *    再按上面的公式补 keyframe 与变量，三个壳补回 track + 末条副本结构。 */
+/* ⚠️ 常驻文案的演变史（别再反复横跳）：
+ *    v3.1.61 基线 = 9 条滚动词条（track + @keyframes nt-ph-step + --d-ph-rotate）；
+ *    v3.2.1 玖玖曾擅改成"请输入生辰…"（越界：任务清单只约束算法认生辰，不授权改 UI 文案）；
+ *    按基线恢复后，用户 2026-10-22 明确指定「搜索框固定显示：今天想了解点什么」，
+ *    遂把滚动词条机制（track / keyframes / --d-ph-rotate）彻底删除，只留单条静态文案。
+ *    当前口径 = 固定一句，由 settings.js 的 searchPlaceholder 单一真源驱动。 */
 .nt-pill-search {
   flex: 0 0 var(--pill-h);
   width: var(--pill-h); height: var(--pill-h);

@@ -1,6 +1,11 @@
 /**
  * 玄玖灵犀 NT-Xhex · 浏览器 PWA 壳（薄壳）
  *
+ * 位置说明（v3.2.2）：本文件原在 public/pwa/，现位于仓库根目录 —— EdgeOne Pages
+ *   静态服务仓库根时根 URL 即 PWA 入口；相对路径基准为仓库根（./modules、./static）。
+ *   Service Worker 由 env.js 注册，文件名传 'pwa-sw.js'（根目录的 sw.js 是
+ *   uni-app H5 构建用的，同名避让）。
+ *
  * 五视图：首页（输入）→ 结果页（展示分析）→ 关于页 → 关于我们页 → 内容详情页；不做聊天区、不显示历史。
  * 本壳只做三件事：① 用引擎+存储创建「问答」实例；② 视图切换与 DOM 绑定；③ 把 settings.js 的文案填进 DOM。
  *   · 问答行为  → modules/HomeModule/conversation.js
@@ -47,10 +52,10 @@
   }
 
   // ---- 黑白主题（全局反色；危险红等语义色不翻）----
-  // PWA 从 public/pwa/ 静态服务，logo 用相对前缀 ../../static/icons/（与本页 HTML 一致）；
+  // PWA 从仓库根静态服务，logo 用相对前缀 ./static/icons/（与本页 HTML 一致）；
   //   「深色用白色词标」的决策与小程序/uni-app 同一份（theme.js），此处只套本页路径前缀。
   var Theme = N.theme;
-  var LOGO_BASE = '../../static/icons/';
+  var LOGO_BASE = './static/icons/';
   var heroLogo = $('heroLogo'), aboutLogo = $('aboutLogo'), splashLogo = $('splashLogo');
   function applyTheme(theme) {
     // 反色根（把 .nt-dark 挂到 documentElement）统一交给 theme.js 的 apply()（单一真源，
@@ -105,8 +110,8 @@
   }
 
 
-  // ---- 搜索框占位（固定一句话；内容来自 settings.js 的 searchPlaceholder 单一真源）----
-  // 占据与滚动词条相同的 .nt-ph 裁切窗（48pt 高），样式复用 .nt-ph-item。
+  // ---- 搜索框常驻文案（固定一句；内容来自 settings.js 的 searchPlaceholder 单一真源）----
+  // 结构：.nt-ph（裁切窗，48pt 高）> 单个 .nt-ph-item。
   var pill = $('heroPill');
   var phBox = $('heroPh');
   if (phBox && about.searchPlaceholder) {
@@ -115,10 +120,10 @@
     phEl.textContent = about.searchPlaceholder;
     phBox.appendChild(phEl);
   }
-  // 让位规则：**输入非空 或 已聚焦** → 给胶囊加 .nt-ph-off，把固定占位整体隐去
+  // 让位规则：**输入非空 或 已聚焦** → 给胶囊加 .nt-ph-off，把常驻文案整块隐去
   //   （HIG：占位提示不与真实输入重叠；聚焦时也让位，因为微信官方文档写明「input 仅在 focus 时
-  //    表现为原生组件」，聚焦态它的层级高于 WebView 里的一切元素，词条会被直接盖住）。
-  // 统一走 setInput / syncPhOff，避免"用 JS 清空 value 却没同步类名"导致清空后词条不回来。
+  //    表现为原生组件」，聚焦态它的层级高于 WebView 里的一切元素，文案会被直接盖住）。
+  // 统一走 setInput / syncPhOff，避免"用 JS 清空 value 却没同步类名"导致清空后文案不回来。
   var heroInput = $('heroinput');
   var heroFocused = false;
   function syncPhOff() {
@@ -170,10 +175,42 @@
     secs.innerHTML = '';
     box.innerHTML = '';
     if (f.multi) {
-      // 多算法：单算法那套 lead/blocks 整体隐藏，改渲染 N 个 .res-section
+      // 多算法：单算法那套 lead/blocks 整体隐藏，改渲染 N 个小节
       lead.style.display = 'none';
       box.style.display = 'none';
       secs.hidden = false;
+      if (f.grouped) {
+        // 全套排盘：三级结构 = 类 → 块 → 段落
+        (f.groups || []).forEach(function (g) {
+          var gw = document.createElement('div');
+          gw.className = 'res-group';
+          var gh = document.createElement('span');
+          gh.className = 'nt-dl-h1 res-group-title';
+          gh.textContent = g.name;
+          gw.appendChild(gh);
+          (g.blocks || []).forEach(function (s) {
+            var bw = document.createElement('div');
+            bw.className = 'res-group-block';
+            if (s.title) {
+              var bh = document.createElement('span');
+              bh.className = 'res-block-head';
+              bh.textContent = s.title;
+              bw.appendChild(bh);
+            }
+            renderSection(bw, s);
+            gw.appendChild(bw);
+          });
+          secs.appendChild(gw);
+        });
+        // 类外尾巴：哪几块因缺额外条件没排（解梦要梦境、阳宅要户型…），放最末
+        if (f.note) {
+          var tn = document.createElement('span');
+          tn.className = 'res-tail-note';
+          tn.textContent = f.note;
+          secs.appendChild(tn);
+        }
+        return;
+      }
       (f.sections || []).forEach(function (s) {
         var wrap = document.createElement('div');
         wrap.className = 'res-section';
@@ -197,6 +234,49 @@
     renderSection(box, f);
   }
 
+  // ================= 生辰拦下弹窗（v3.2.2）=================
+  //   搜索框只认农历 / 国历 / 四柱 / 八字四种生辰写法，其余输入不跳二级页，
+  //   就地弹这一层提醒。版式完全复用设计稿「弹窗」画板（.nt-mask / .nt-modal /
+  //   .nt-modal-btns），与「清除数据」弹窗同一套样式，零新增视觉规范。
+  //   ⚠️ 只有一键（知道了）：它不是「取消/确认」的决策，没有可取消的动作。
+  var bm = about.birthModal;
+  var noticeMask = document.createElement('div');
+  noticeMask.className = 'nt-mask';
+  noticeMask.style.display = 'none';
+  noticeMask.innerHTML =
+    '<div class="nt-modal">' +
+    '<span class="nt-modal-title" id="n-title"></span>' +
+    '<span class="nt-modal-desc" id="n-desc"></span>' +
+    '<div class="nt-modal-btns">' +
+    '<button class="nt-pill-btn" id="n-ok">' + bm.confirm + '</button>' +
+    '</div></div>';
+  document.body.appendChild(noticeMask);
+  var NOTICE_OUT_MS = (N.transition && N.transition.TIMING) ? N.transition.TIMING.MODAL_OUT : 200;
+  /** 按 analyzer.lastReject 的取值挑标题与描述（文案全部来自 settings.js 的 birthModal） */
+  function openNotice(reason) {
+    var title = bm.title, desc = bm.desc;
+    if (reason === 'lunar') { title = bm.lunarTitle; desc = bm.lunarDesc; }
+    else if (reason === 'pillar') { title = bm.pillarTitle; desc = bm.pillarDesc; }
+    else if (reason === 'nonmeta') { title = bm.nonmetaTitle; desc = bm.nonmetaDesc; }
+    noticeMask.querySelector('#n-title').textContent = title;
+    noticeMask.querySelector('#n-desc').textContent = desc;
+    clearTimeout(noticeMask._outTimer);
+    noticeMask.classList.remove('nt-mask-out');
+    noticeMask.style.display = 'flex';
+  }
+  function closeNotice() {
+    if (noticeMask._closing) return;
+    noticeMask._closing = true;
+    noticeMask.classList.add('nt-mask-out');
+    noticeMask._outTimer = setTimeout(function () {
+      noticeMask.style.display = 'none';
+      noticeMask.classList.remove('nt-mask-out');
+      noticeMask._closing = false;
+    }, NOTICE_OUT_MS);
+  }
+  noticeMask.addEventListener('click', function (e) { if (e.target === noticeMask) closeNotice(); });
+  noticeMask.querySelector('#n-ok').addEventListener('click', closeNotice);
+
   // ================= 提问 =================
   function send() {
     var raw = $('heroinput').value;
@@ -210,6 +290,10 @@
     }
     var r = conversation.ask(raw);
     if (!r.ok) return;
+    // v3.2.2：被拦下（不是生辰 / 农历日期不存在 / 四柱查不到 / 非玄学）→ **不跳结果页**，
+    //   就地弹窗提醒（用户明确要求「其他形式信息提醒……不跳转到二级页面，弹窗提醒」）。
+    //   输入框保留原文方便直接改。
+    if (r.reject) { openNotice(r.reject); return; }
     // 多算法并列：r.hits > 1 时 result-format 按【标题】切小节
     var f = N.resultFormat.format(r.answer, (r.hits || 1) > 1);
     f.question = r.question;
@@ -421,7 +505,7 @@
 
   // ================= PWA 安装引导（依赖注入的 env）=================
   if (N.env) {
-    if (N.env.registerServiceWorker) N.env.registerServiceWorker();
+    if (N.env.registerServiceWorker) N.env.registerServiceWorker('pwa-sw.js');
     if (N.env.initInstallPrompt) N.env.initInstallPrompt();
     var bar = $('installbar');
     $('installbtn').addEventListener('click', function () { if (N.env.promptInstall) N.env.promptInstall(); });

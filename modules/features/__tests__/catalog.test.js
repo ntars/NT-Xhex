@@ -74,8 +74,17 @@ cat.forEach(function (b, i) {
 });
 ok(rowBad.length === 0, '每板块正文 = 说明 1 行 + 功能 N 行（异常：' + rowBad.join('，') + '）');
 
+// 搜索框常驻文案：固定一句（用户 2026-10-22 指定「今天想了解点什么」）。
+//   这条断言从 v3.2.1 起换了口径：不再校验 9 条滚动词条，改校验单条静态文案 ——
+//   滚动词条机制（track / @keyframes / --d-ph-rotate）已按用户指令整体删除。
 var ph = about.searchPlaceholder;
-ok(typeof ph === 'string' && ph.length > 0, '首页占位为一句非空文案（实际：' + ph + '）');
+ok(typeof ph === 'string' && ph.length > 0, '搜索框常驻文案存在（实际：' + JSON.stringify(ph) + '）');
+ok(ph === '今天想了解点什么', '常驻文案 = 「今天想了解点什么」（实际：' + JSON.stringify(ph) + '）');
+// 宽度护栏：胶囊内可用横向空间 200pt（272 − 左内边距 24 − 右端放大镜键 48），
+//   17pt 字下约合 9 个汉字（≈153pt）。超过就会被裁成省略号，故文案不许超过 9 字。
+ok(ph.length <= 9, '常驻文案不超过 9 字（实际 ' + ph.length + ' 字）');
+// 滚动词条的旧字段必须已清干净：两种源并存会让三端壳各显示一套、互相打架。
+ok(!about.searchHints, '滚动词条字段 searchHints 已移除（不再与固定文案并存）');
 
 console.log('== ⑤ 参考文献页（v3.1.31 方案 B：书目+对应内核+查证状态；v3.1.57 增公版古籍可查原文）==');
 var refs = about.aboutNotes.refs;

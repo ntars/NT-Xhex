@@ -46,6 +46,11 @@ Page({
     detailBack: 'about',
     clearOpen: false,
     clearClosing: false,   // 退场动画门控：true 时给 .nt-mask 挂 .nt-mask-out 播 nt-fall
+    // 生辰拦下弹窗（v3.2.2）：搜索框只认农历/国历/四柱/八字，其余输入不跳二级页、就地弹窗
+    noticeOpen: false,
+    noticeClosing: false,
+    noticeTitle: '',
+    noticeDesc: '',
     splashShow: true,      // 开屏 overlay 是否挂载（冷启动 true，退场后卸载）
     splashOut: false,      // 开屏退场门控：true 时挂 .nt-splash-out（品牌组缩放到起始页比例 + 背景/副标淡出）
     toastOpen: false,
@@ -208,7 +213,32 @@ Page({
     }
     var r = this.conv.ask(text)
     if (!r.ok) return
+    // v3.2.2：被拦下（不是生辰 / 农历日期不存在 / 四柱查不到 / 非玄学）→ **不跳结果页**，
+    //   就地弹窗提醒（用户明确要求「其他形式信息提醒……不跳转到二级页面，弹窗提醒」）。
+    //   输入框保留原文方便直接改。
+    if (r.reject) { this.openNotice(r.reject); return }
     this.go('result', { input: '', result: this.shape(r.question, r.answer, r.hits) })
+  },
+
+  /** 打开生辰拦下弹窗：按 analyzer.lastReject 的取值挑标题与描述（文案全部来自 settings.js） */
+  openNotice: function (reason) {
+    var m = (this.data.about && this.data.about.birthModal) || {}
+    var title = m.title || '请输入生辰'
+    var desc = m.desc || ''
+    if (reason === 'lunar') { title = m.lunarTitle || title; desc = m.lunarDesc || desc }
+    else if (reason === 'pillar') { title = m.pillarTitle || title; desc = m.pillarDesc || desc }
+    else if (reason === 'nonmeta') { title = m.nonmetaTitle || title; desc = m.nonmetaDesc || desc }
+    this.setData({ noticeTitle: title, noticeDesc: desc, noticeClosing: false, noticeOpen: true })
+  },
+
+  /** 关闭弹窗：先播退场（.nt-mask-out）再卸载，节奏同清除缓存弹窗 */
+  closeNotice: function () {
+    if (this.data.noticeClosing) return
+    var self = this
+    this.setData({ noticeClosing: true })
+    setTimeout(function () {
+      self.setData({ noticeOpen: false, noticeClosing: false })
+    }, 200)   // = theme.wxss 的 --d-modal-out
   },
 
   // 返回输入页（清空当前结果）

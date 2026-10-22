@@ -39,6 +39,21 @@
     </view>
   </view>
 
+  <!-- 生辰拦下弹窗（v3.2.2）：搜索框只认农历 / 国历 / 四柱 / 八字四种生辰写法，
+       其余输入**不跳二级页**，就地弹这一层提醒。版式完全复用设计稿「弹窗」画板
+       （.nt-mask/.nt-modal/.nt-modal-btns），与清除缓存弹窗同一套样式，零新增视觉规范。
+       ⚠️ 只有一键（知道了）：它不是「取消/确认」的决策，没有可取消的动作。
+       退场同清除缓存弹窗：noticeClosing 挂 .nt-mask-out 播 nt-fall，播完再卸载。 -->
+  <view class="nt-mask {{noticeClosing ? 'nt-mask-out' : ''}}" wx:if="{{noticeOpen}}" bindtap="closeNotice">
+    <view class="nt-modal" catchtap="noop">
+      <text class="nt-modal-title">{{noticeTitle}}</text>
+      <text class="nt-modal-desc">{{noticeDesc}}</text>
+      <view class="nt-modal-btns">
+        <view class="nt-pill-btn" bindtap="closeNotice">{{(about.birthModal && about.birthModal.confirm) || '知道了'}}</view>
+      </view>
+    </view>
+  </view>
+
   <view class="nt-toast" wx:if="{{toastOpen}}">{{toastText}}</view>
 
   <!-- 开屏页（冷启动品牌瞬间：品牌组 Logo + 玄玖灵犀 + 副标 演乾坤·知天命，停留后退场）。
@@ -78,13 +93,11 @@
           <view class="nt-halo"></view>
           <input class="nt-pill-input" value="{{input}}" confirm-type="send"
                  bindinput="onInput" bindconfirm="send" bindfocus="onFocus" bindblur="onBlur" />
-          <!-- 搜索框占位（固定一句话，来自 settings.js 的 searchPlaceholder 单一真源）。
-               占据与滚动词条相同的 .nt-ph 裁切窗（48pt 高），样式复用 .nt-ph-item。
-               输入非空或已聚焦 → 根节点带 .nt-ph-off，整体隐去（HIG：占位提示不与真实输入重叠；
-               聚焦时也让位，因为微信官方文档写明「input 仅在 focus 时表现为原生组件」，
-               此时它层级高于 WebView 里的一切元素，词条会被直接盖住）。 -->
+          <!-- 搜索框常驻文案（固定一句，来自 settings.js 的 searchPlaceholder 单一真源）。
+               结构：.nt-ph（裁切窗，48pt 高）> 单个 .nt-ph-item。
+               输入非空或已聚焦 → 根节点带 .nt-ph-off，整块隐去。 -->
           <view class="nt-ph" wx:if="{{about.searchPlaceholder}}">
-            <text class="nt-ph-item">{{ about.searchPlaceholder }}</text>
+            <text class="nt-ph-item">{{about.searchPlaceholder}}</text>
           </view>
           <view class="nt-pill-search nt-press" bindtap="send">
             <view class="nt-icon nt-i-search"></view>
@@ -107,14 +120,33 @@
         <view class="nt-nav-back nt-press" bindtap="gotoHome"><view class="nt-icon nt-i-back"></view></view>
         <text class="nt-nav-title">{{about.navTitle}}</text>
       </view>
-      <text class="nt-page-h">{{result.title || about.resultPageTitle}}</text>
+      <!-- 页名：单算法用算法标题；多算法/全套排盘沿用「搜索结果」 -->
+      <text class="nt-page-h">{{(result.multi ? '' : result.title) || about.resultPageTitle}}</text>
       <scroll-view class="nt-pgbody" scroll-y enhanced show-scrollbar="{{false}}">
         <view class="nt-dl-card">
           <text class="nt-dl-h1">{{about.questionLabel}}</text>
           <text class="nt-dl-text nt-dl-text-light">{{result.question}}</text>
+          <!-- 全套排盘：八大类分组（用户规定顺序：万年历黄历 / 八字命理 / 紫微斗数 /
+               六爻占卜 / 奇门遁甲 / 梅花易数 / 风水堪舆 / 解梦）。
+               三级结构 = 类 → 块 → 段落，层级只靠字号/字重/字色/间距（全站不画描边）。 -->
+          <block wx:if="{{result.grouped}}">
+            <view class="res-group" wx:for="{{result.groups}}" wx:key="index">
+              <text class="nt-dl-h1 res-group-title">{{item.name}}</text>
+              <view class="res-group-block" wx:for="{{item.blocks}}" wx:for-item="s" wx:key="index">
+                <text class="res-block-head" wx:if="{{s.title}}">{{s.title}}</text>
+                <text class="nt-dl-text nt-dl-text-light" wx:if="{{s.lead}}">{{s.lead}}</text>
+                <view class="res-block" wx:for="{{s.blocks}}" wx:for-item="b" wx:key="index">
+                  <text class="res-block-label" wx:if="{{b.label}}">{{b.label}}</text>
+                  <text class="nt-dl-text nt-dl-text-light">{{b.text}}</text>
+                </view>
+              </view>
+            </view>
+            <!-- 类外尾巴：哪几块因缺额外条件没排，不归入任何一类 -->
+            <text class="res-tail-note" wx:if="{{result.note}}">{{result.note}}</text>
+          </block>
           <!-- 多算法并列：一次提问命中多个功能块时，每个【标题】一小节
                （设计稿「结果页文本范围内可显示多个算法」）。节间距与节标题样式见 theme.css。 -->
-          <block wx:if="{{result.multi}}">
+          <block wx:elif="{{result.multi}}">
             <view class="res-section" wx:for="{{result.sections}}" wx:key="index">
               <text class="res-section-title nt-dl-h1" wx:if="{{item.title}}">{{item.title}}</text>
               <text class="nt-dl-text nt-dl-text-light" wx:if="{{item.lead}}">{{item.lead}}</text>

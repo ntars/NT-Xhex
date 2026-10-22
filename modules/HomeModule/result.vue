@@ -11,16 +11,36 @@
       <text class="nt-nav-title">{{ about.navTitle }}</text>
     </view>
 
-    <text class="nt-page-h">{{ result.title || about.resultPageTitle }}</text>
+    <!-- 页名：单算法时用该算法标题（设计稿「搜索结果」是兜底）；多算法/全套排盘时
+         沿用「搜索结果」—— 否则页名会变成第一个算法的名字，看着像只算了一样。 -->
+    <text class="nt-page-h">{{ (result.multi ? '' : result.title) || about.resultPageTitle }}</text>
 
     <scroll-view class="nt-pgbody" scroll-y enhanced :show-scrollbar="false">
       <view class="nt-dl-card">
         <text class="nt-dl-h1">{{ about.questionLabel }}</text>
         <text class="nt-dl-text nt-dl-text-light">{{ result.question }}</text>
-        <!-- 多算法并列：一次提问命中多个功能块时，每个【标题】一小节（设计稿「结果页
-             文本范围内可显示多个算法」）。小节之间用 12pt 间距 + 细分隔感区分，
-             不加额外描边/底色（v3.0.4 起全站不画描边，层级靠间距与字色）。 -->
-        <template v-if="result.multi">
+        <!-- 全套排盘：八大类分组（用户规定顺序：万年历黄历 / 八字命理 / 紫微斗数 /
+             六爻占卜 / 奇门遁甲 / 梅花易数 / 风水堪舆 / 解梦）。
+             三级结构 = 类 → 块 → 段落。类名与块名都用 .nt-dl-h1（17pt 半粗），
+             块名缩进一级、字号降为 15pt 只用中粗，靠字号与缩进分层，不加描边底色。 -->
+        <template v-if="result.grouped">
+          <view class="res-group" v-for="(g, gi) in result.groups" :key="gi">
+            <text class="nt-dl-h1 res-group-title">{{ g.name }}</text>
+            <view class="res-group-block" v-for="(s, si) in g.blocks" :key="si">
+              <text class="res-block-head" v-if="s.title">{{ s.title }}</text>
+              <text class="nt-dl-text nt-dl-text-light" v-if="s.lead">{{ s.lead }}</text>
+              <view class="res-block" v-for="(b, bi) in s.blocks" :key="bi">
+                <text class="res-block-label" v-if="b.label">{{ b.label }}</text>
+                <text class="nt-dl-text nt-dl-text-light">{{ b.text }}</text>
+              </view>
+            </view>
+          </view>
+          <!-- 类外尾巴：哪几块因缺额外条件没排（解梦要梦境、阳宅要户型…），
+               不归入任何一类，放最末一行，用户可直接追问。 -->
+          <text class="res-tail-note" v-if="result.note">{{ result.note }}</text>
+        </template>
+        <!-- 多算法并列（用户点名多个算法时）：每个【标题】一小节 -->
+        <template v-else-if="result.multi">
           <view class="res-section" v-for="(s, si) in result.sections" :key="si">
             <text class="res-section-title nt-dl-h1" v-if="s.title">{{ s.title }}</text>
             <text class="nt-dl-text nt-dl-text-light" v-if="s.lead">{{ s.lead }}</text>
@@ -114,7 +134,9 @@ export default {
      */
     exportImage() {
       var r = this.result
-      if (!r || (!r.question && !(r.blocks && r.blocks.length))) { this.toast('暂无可导出的内容'); return }
+      // 多算法（grouped / multi）时正文在 groups/sections 里，判定要一并看，否则会误报「暂无可导出」
+      if (!r || (!r.question && !(r.blocks && r.blocks.length) && !(r.sections && r.sections.length)
+        && !(r.groups && r.groups.length))) { this.toast('暂无可导出的内容'); return }
       // meta 统一走 optsFrom（about 的单一装配，三端同一份；含二维码指向 exportMeta.qrUrl）
       var meta = ExportImage.optsFrom(this.about)
 

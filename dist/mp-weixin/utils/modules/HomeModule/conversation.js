@@ -32,10 +32,14 @@
       }
     }
 
-    /** 提问：返回 {ok, question, answer, hits}
-     *  hits = 本次分析命中的功能块数（analyzer 命中单块时为 1）。
-     *  壳层据此决定 result-format 是否按【标题】切小节（多算法并列展示）。
-     *  hits 同时写进持久化记录，恢复路径（刷新/重进）也能拿到，不必靠文本猜。 */
+    /** 提问：返回 {ok, question, answer, hits, reject}
+     *  hits   = 本次分析命中的功能块数（analyzer 命中单块时为 1）。
+     *           壳层据此决定 result-format 是否按【标题】切小节（多算法并列展示）。
+     *  reject = null 正常出结果；非 null 时表示被拦下，壳层**不跳结果页**、改为弹窗：
+     *           'birth' 没有出生信息（也不是黄历查询）→「请输入农历、国历、四柱、八字」
+     *           'lunar' 农历日期不存在 / 'pillar' 四柱查不到 / 'nonmeta' 非玄学话题
+     *  只有 reject 为空的结果才写进持久化 —— 弹窗提醒不该覆盖上一条真结果，
+     *  否则用户点「再问一个」返回时会看到那条被拦下的文案。 */
     function ask(text) {
       text = (text || '').trim();
       if (!text) return { ok: false, reason: 'empty' };
@@ -44,9 +48,14 @@
       if (analyzer && analyzer.lastHits) {
         try { hits = analyzer.lastHits() || 1; } catch (e) { hits = 1; }
       }
+      var reject = null;
+      if (analyzer && analyzer.lastReject) {
+        try { reject = analyzer.lastReject() || null; } catch (e) { reject = null; }
+      }
+      if (reject) return { ok: true, question: text, answer: answer, hits: 1, reject: reject };
       current = { question: text, answer: answer, hits: hits };
       persist();
-      return { ok: true, question: text, answer: answer, hits: hits };
+      return { ok: true, question: text, answer: answer, hits: hits, reject: null };
     }
 
     /** 恢复上次的结果（刷新/重进时用）；无则返回 null。

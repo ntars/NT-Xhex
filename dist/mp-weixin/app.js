@@ -28,7 +28,8 @@ App({
   onLaunch() {
     syncWindowBg()
     var a = Settings.about()
-    console.log('[NT-Xhex] 玄玖灵犀 ' + a.version + ' · ' + a.copyright)
+    // 注意：settings.js 的 about() 自 v3.0.7 起已删 copyright 字段（曾误用 → 日志打成 undefined）
+    console.log('[NT-Xhex] 玄玖灵犀 ' + a.version + ' · 星玖工作室')
   },
   onShow() {
     syncWindowBg()   // 从后台回前台时再对一次（用户可能在系统里切了深/浅色）

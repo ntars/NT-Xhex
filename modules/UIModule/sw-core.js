@@ -4,7 +4,7 @@
  * 背景：仓库有两份 SW 各服务一个部署形态，install/activate/fetch 三段逻辑近乎逐字相同，
  *       改一处易漏另一处（v3.1.0 统一收敛，用户要求「能统一调用的就统一调用」）：
  *   · 根 `sw.js`            —— uni-app H5 构建（manifest.json → h5.sw.path），CACHE 名 `nt-xhex-v<ver>`
- *   · `public/pwa/sw.js`    —— 浏览器 PWA 独立壳（env.js 相对注册），CACHE 名 `nt-xhex-pwa-v<ver>`
+ *   · `pwa-sw.js`          —— 浏览器 PWA 独立壳（app.js 经 env.js 注册，位于仓库根），CACHE 名 `nt-xhex-pwa-v<ver>`
  *
  * 收敛手法：SW 不能 import ES module，用 `importScripts` 引本文件，共享全部缓存逻辑；
  *   两个薄壳**只传差异参数**（CACHE 命名空间 + CORE 清单 + 兜底页），逻辑此处一份：

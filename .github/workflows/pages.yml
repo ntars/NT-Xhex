@@ -1,11 +1,13 @@
 # 玄玖灵犀 NT-Xhex · 把「网页版（PWA）」发布到 GitHub Pages
 #
-# 为什么只发布这三个目录：
-#   · public/  —— PWA 运行壳（index.html / app.js / sw.js / manifest.json）
+# 为什么只发布这几类文件：
+#   · 根 index.html / app.js / pwa-sw.js / pwa-manifest.json —— PWA 运行壳
+#     （v3.2.2 起 PWA 从 public/pwa/ 上移仓库根：EdgeOne Pages 静态服务仓库根时，
+#       根 URL 直接就是 PWA 入口，无需再 302 跳 /public/pwa/）
 #   · modules/ —— 业务引擎与视觉规范【单一真源】，PWA 用 <link>/<script> 直接引用
 #   · static/  —— logo / 图标
-# 三者必须保持「同级的相对位置」，因为 PWA 里写的是 ../../modules/...、../../static/...
-# 一旦换目录层级就会 404 —— 这也是本工作流坚持整目录搬运、不改结构的原因。
+# 三者必须保持「同级的相对位置」，因为 PWA 里写的是 ./modules/...、./static/...
+# 一旦换目录层级就会 404 —— 这也是本工作流坚持按相对层级搬运、不改结构的原因。
 #
 # 小程序（dist/mp-weixin）不在这里发布：它靠微信开发者工具上传，GitHub Pages 无法运行。
 
@@ -41,7 +43,7 @@ jobs:
           set -e
           for f in modules/UIModule/theme.css modules/UIModule/theme.js \
                    modules/SettingsModule/settings.js static/icons/logo.png \
-                   static/icons/logo-white.png public/pwa/index.html; do
+                   static/icons/logo-white.png index.html app.js pwa-sw.js pwa-manifest.json; do
             test -f "$f" || { echo "缺少 $f"; exit 1; }
           done
           echo "PWA 依赖齐全"
@@ -58,16 +60,11 @@ jobs:
         run: |
           set -e
           mkdir -p _site
-          cp -R public _site/public
+          # PWA 壳（v3.2.2 起位于仓库根，平铺进站点根，根 URL 即入口）
+          cp index.html app.js pwa-sw.js pwa-manifest.json _site/
+          # 引擎与视觉规范、静态资源：保持与 PWA 壳同级的相对位置
           cp -R modules _site/modules
           cp -R static _site/static
-          # 访问根路径时直接跳到网页版
-          printf '%s\n' \
-            '<!DOCTYPE html><meta charset="utf-8">' \
-            '<meta http-equiv="refresh" content="0;url=./public/pwa/index.html">' \
-            '<title>玄玖灵犀 NT-Xhex</title>' \
-            '<a href="./public/pwa/index.html">进入玄玖灵犀网页版</a>' \
-            > _site/index.html
           # GitHub Pages 默认不跑 Jekyll（本项目无 _ 开头目录，关掉更快）
           touch _site/.nojekyll
       - uses: actions/configure-pages@v5

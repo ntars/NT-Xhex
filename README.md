@@ -1,4 +1,4 @@
-# 玄玖灵犀 NT-Xhex v3.2.1
+# 玄玖灵犀 NT-Xhex v3.2.2
 
 > 中国传统术数文献整理、校勘与数字化演算的学术研究辅助工具（品牌副标「演乾坤·知天命」）  
 > 无后端 / 无网络 / 无登录 · 一套代码自动切换多形态  
@@ -166,9 +166,9 @@
 
 导航上的三个元件（`.nt-nav-title` 标题、`.nt-nav-about`、`.nt-nav-back`）本身就是靠 `transform` 做居中的，**绝对不能给缩放**，否则会被推离中心位。
 
-**第 4 层 · 搜索框占位提示（固定一句话）**
+**第 4 层 · 搜索框常驻文案（固定一句）**
 
-首页搜索框为空时显示**一句固定提示**「请输入生辰，如『白玖玖，女，2005年6月9日子时』」—— 文案不是写死的提示语，而是 `settings.js` 的 `searchPlaceholder`（单一真源），三端只负责渲染。v3.2.1 起按任务清单第 10 条改为**生辰引导口径**：所有排盘解盘只认生辰，占位直接告诉用户该输入什么（原「今天想了解点什么」与该口径不符）。
+首页搜索框为空时固定显示 **「今天想了解点什么」** —— 文案不是写死在壳里，而是 `settings.js` 的 `searchPlaceholder`（单一真源），三端只负责渲染。v3.2.1 曾一度被改成「请输入生辰，如…」（误把「算法只认生辰」这条算法约束外溢成改 UI 文案，已纠正），最终按用户 2026-10-22 明确指令固定为现在这一句。
 
 | 结构 / 规则           | 说明                                                                                                                                                                                                                                                                       |
 | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -178,7 +178,7 @@
 | 让位规则              | **输入非空 或 已聚焦** → 给 `.nt-pill` 加 `.nt-ph-off`，`.nt-ph` 整体 `opacity: 0`（两种情形都该让位：① 聚焦即开始输入，占位不该与光标/真实输入重叠；② 微信官方文档写明「input 仅在 focus 时表现为原生组件」，聚焦态它层级高于 WebView 里的一切元素，占位会被直接盖住 —— 干脆主动隐掉，不赌层级）。只写「让位时隐藏」这一条，**不写 `:not()`** —— WXSS 对 `:not` 支持不稳，三端容易不一致 |
 | ⚠️ 切页要清 `focused` | 小程序壳里 `go()` 的 patch 必须带 `focused: false`。不清的话：点一下搜索框（`focused=true`）→ 点「关于」→ 返回首页时新渲染的 `<input>` 其实没聚焦，但 data 里还是 `true`，占位提示就再也不回来了                                                                                                                                    |
 | 输入穿透              | `.nt-ph` 带 `pointer-events: none`，点击照常落到 `<input>` 上                                                                                                                                                                                                                     |
-| ⚠️ 曾经的滚动词条       | v3.0.4–v3.2.0 这里是一列**轮换的真实示例问句**（`searchHints` 单一真源 + `@keyframes nt-ph-step` + `--d-ph-rotate`，节奏同百度首页）。用户定稿改为固定一句话后，track 结构 / keyframe / 时长变量全部删除，`theme.css` 内留有一段「历史耦合点」注释说明恢复方法。真实示例问句现由**功能短名**（「查×× / 排×× / 解××」）与各页示例文案承担 |
+| ⚠️ 曾经的滚动词条       | v3.0.4–v3.2.0 这里是一列**轮换的真实示例问句**（`searchHints` 单一真源 + `@keyframes nt-ph-step` + `--d-ph-rotate`，节奏同百度首页）。用户定稿改为固定一句话后，track 结构 / keyframe / 时长变量与 `searchHints` 字段**全部彻底删除**（`theme.css` 只在注释里留一段演变史说明），当前为单条静态文案。真实示例问句现由**功能短名**（「查×× / 排×× / 解××」）与各页示例文案承担 |
 
 **第 5 层 · 搜索框常驻强调光环（呼吸，不是入场）**
 
@@ -203,7 +203,7 @@ v3.0.6 曾做「1px 细环 + 极淡柔晕」；v3.1.0 按用户反馈「白边�
 | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 开关                       | 根节点上的门控类 **`.nt-theme-fade`**。带着它，`theme.css` 里那一大串「带界面色的类」才有 `transition`；摘掉就等于关掉这个动效                                                                                                                                                                                                                                                                      |
 | 为什么必须门控                  | ① 浏览器端首帧要先按系统偏好落一次主题（浅色 → 深色），常开的话冷启动会「先白后黑闪一次渐变」；② 常开会把日常的按压/悬停也一起拖慢                                                                                                                                                                                                                                                                                       |
-| 三端谁挂、何时挂                 | **PWA** → `public/pwa/app.js` 在**首次** `applyTheme()` 之后、**同一 tick 内**挂到 `<html>`（首帧之前，所以不闪，又在用户第一次切换前早就生效）；**小程序** → `dist/mp-weixin/pages/index/index.wxml` 根 `<view class="page">` 上**静态写死**；**uni-app** → `pages/index/index.vue` 根 `<view class="page">` 上静态写死（两者首帧就是正确主题，不存在闪烁）                                                                        |
+| 三端谁挂、何时挂                 | **PWA** → 仓库根 `app.js` 在**首次** `applyTheme()` 之后、**同一 tick 内**挂到 `<html>`（首帧之前，所以不闪，又在用户第一次切换前早就生效）；**小程序** → `dist/mp-weixin/pages/index/index.wxml` 根 `<view class="page">` 上**静态写死**；**uni-app** → `pages/index/index.vue` 根 `<view class="page">` 上静态写死（两者首帧就是正确主题，不存在闪烁）                                                                        |
 | 为什么不用 `.nt-theme-fade *` | WXSS 官方支持的选择器列表里**没有通配选择器**，为三端一致只能**显式枚举类名**。好处是这份名单顺带成了一份清单 ——「哪些元素带界面色、需要随主题过渡」，缺了谁一眼看得出来                                                                                                                                                                                                                                                                |
 | ⚠️ 按压反馈不能被吃掉             | 门控选择器是 `.nt-theme-fade .x`（特异度 `0,2,0`），**高于** `.nt-setrow` / `.nt-pill` / `.nt-pill-btn` 自己的 `transition`（`0,1,0`）—— 被点名的元件，它自己那行 `transition` 会被**整条替换**（不是叠加）。所以本块必须把 `opacity` / `transform` 也一起写上（用 `--d-press`），否则按钮按下淡出、设置卡按下缩放会因为没有 transition 而瞬间硬切。代价：`.nt-setrow` 桌面端 hover 换底由 120ms 变成 320ms —— 同一个 `background-color` 不可能「换主题时慢、悬停时快」，这是刻意的取舍 |
 | 图标也要跟着走                  | 线性图标靠 `filter: invert()` 反色。`.nt-icon` 基线显式写了 `filter: invert(0)`（`none` 无法插值，只能硬切），并把 `filter` 列进过渡 → 深浅切换时图标是「灰→白/黑→灰」地走，不会出现「底和字在渐变、图标已经跳色」的错帧                                                                                                                                                                                                           |
@@ -220,7 +220,7 @@ v3.0.6 曾做「1px 细环 + 极淡柔晕」；v3.1.0 按用户反馈「白边�
 | **品牌交接（v3.1.0）**     | 开屏的 Logo + 「玄玖灵犀」包成品牌组 `.nt-splash-brand`，退场时整组**缩放到起始页比例 0.75（=64.27/85.69）并淡出**（`nt-splash-brand-out`）—— 品牌组与起始页同名元素**同轴居中**，摘节点瞬间正好落到起始页 Logo 尺寸/位置；背景色前 55% 保持不透明、后 45% 淡出（`nt-splash-bg`）揭示起始页，副标随背景一起消失。观感是品牌「落」到起始页，而非整屏硬切                                                                                                                                                                                                                                                       |
 | 退场「先播后摘」             | 与弹窗同一手法：先挂 `.nt-splash-out` 触发两条 keyframe（400ms，`--d-splash`），播完再摘节点；直接 `display:none`/卸载则动画来不及播                                                                                                                                                                                                                                                       |
 | 停留时长                  | `1200ms`（冷启动给品牌被记住的时长；设计稿只定了退场 400ms、未定停留，故放壳里作体验参数，三端各写一个带注释常量）。之后 overlay（`z-index:200`）移除，不再拦截点击                                                                                                                                                                                                                                             |
-| 三端落地                   | **PWA** → `public/pwa/index.html` 的 `#splash` + `app.js`（⚠️ 开屏块必须放在 `about` 声明之后，文案才取得到）；**uni-app** → `pages/index/index.vue` 的 `splashShow/splashOut` 双状态 + `runSplash()`；**小程序** → `dist/mp-weixin/.../index.wxml` + `index.js` 同款双状态。均复用 `themeLogo`（随主题换白版）                                                                                                                                                          |
+| 三端落地                   | **PWA** → 仓库根 `index.html` 的 `#splash` + `app.js`（⚠️ 开屏块必须放在 `about` 声明之后，文案才取得到）；**uni-app** → `pages/index/index.vue` 的 `splashShow/splashOut` 双状态 + `runSplash()`；**小程序** → `dist/mp-weixin/.../index.wxml` + `index.js` 同款双状态。均复用 `themeLogo`（随主题换白版）                                                                                                                                                          |
 
 **第 8 层 · 弹窗进出场（v3.0.7 补出场）**
 
@@ -271,7 +271,7 @@ v3.0.6 曾做「1px 细环 + 极淡柔晕」；v3.1.0 按用户反馈「白边�
 
 | 平台      | 引用方式                                                                                                        |
 | ------- | ----------------------------------------------------------------------------------------------------------- |
-| 浏览器 PWA | `public/pwa/index.html` 里 `<link href="../../modules/UIModule/theme.css">`                                  |
+| 浏览器 PWA | 仓库根 `index.html` 里 `<link href="./modules/UIModule/theme.css">`（v3.2.2 起 PWA 壳从 `public/pwa/` 上移根目录）                                  |
 | uni-app | 各 `.vue` 视图 `import '@/modules/UIModule/theme.css'`；H5 端的边界带覆盖写在 `App.vue` 的 `#ifdef H5` 块                  |
 | 微信小程序   | `tools/sync-mp.js` 生成 `dist/mp-weixin/theme.wxss`（图标 `url()` 内嵌 base64），`app.wxss` 里 `@import "theme.wxss"` |
 
@@ -303,12 +303,12 @@ v3.0.6 曾做「1px 细环 + 极淡柔晕」；v3.1.0 按用户反馈「白边�
 ```
 NT-Xhex/
 ├─ main.js / App.vue / pages.json / manifest.json / h5/   # uni-app Vue3 骨架（App.vue 含 H5 边界带覆盖）
-├─ sw.js                                                    # Service Worker（uni H5 构建用）
+├─ sw.js                                                    # Service Worker（uni-app H5 构建用，manifest.json → h5.sw.path）
+├─ index.html / app.js / pwa-sw.js / pwa-manifest.json      # 浏览器 PWA 独立壳（v3.2.2 起位于仓库根，无需构建）
+│                                                           # index.html 按依赖顺序 <script> 引入 modules/（挂全局 NT.*）
+│                                                           # app.js PWA 薄壳：装配会话 + 视图切换 + 导出图片 + 主题/页脚装配
+│                                                           # sw/manifest 因根目录被 uni-app 的 sw.js/manifest.json 占用而改名避让
 ├─ pages/index/index.vue                                    # 单页壳：组装 首页/结果/关于/关于我们/详情 五视图
-├─ public/pwa/                                              # 浏览器 PWA 独立壳（无需构建）
-│  ├─ index.html   # 按依赖顺序 <script> 引入 modules/（挂全局 NT.*）
-│  ├─ app.js       # PWA 薄壳：装配会话 + 视图切换 + 导出图片 + 主题/页脚装配
-│  ├─ manifest.json / sw.js
 ├─ static/icons/                                            # logo.png(黑) + logo-white.png(白) + icon-192/512/512-maskable
 │  ├─ icon-back.svg / icon-forward.svg / icon-forward-danger.svg   # chevron（viewBox = 墨迹盒 8.8628×17.0606，臂 45°/开合 90°/平头）
 │  └─ icon-search.svg                                       # 放大镜（viewBox = 墨迹盒 19.7806×19.5628）
@@ -360,12 +360,16 @@ NT-Xhex/
    │  ├─ bazi.js            # 八字排盘/命理（四柱/日主强弱/喜用/简批）
    │  ├─ ganzhi-analysis.js # 干支节气分析（含黄历宜忌/择日，v3.2.0 曾随归档移除、后按用户要求恢复）
    │  ├─ intent.js          # 输入解析与意图识别（5 核心意图：bazi / calendar / selection / almanac + 日期 1900–2100 校验）
-   │  └─ analyzer.js        # 主入口：触发词功能优先 → 意图 → 话题守卫（对外仅 analyze）
+   │  ├─ full-chart.js      # 全套排盘编排（八大类 24 块一次跑齐，顺序按用户规定：万年历黄历→八字命理→紫微斗数→六爻占卜→奇门遁甲→梅花易数→风水堪舆→解梦；自足块白名单详见文件头）
+   │  ├─ __tests__/         # full-chart.test.js（八大类顺序/覆盖 31 块/七块不自编输入/该触发与不该触发/状态不串味/单块崩不拖垮）
+
+   │  └─ analyzer.js        # 主入口：触发词功能优先 → 全套排盘（只给生辰时）→ 意图 → 话题守卫（对外 analyze / lastHits / lastSections）
    ├─ HomeModule/
    │  ├─ index.vue          # 首页（Vue 壳）
    │  ├─ result.vue         # 结果页（Vue 壳，含导出图片）
    │  ├─ conversation.js    # 共享单轮问答行为（引擎+存储装配，三壳共用；`ask()` 带回 `hits`=本次命中功能块数并随结果持久化，供结果页判断是否多算法并列）
-   │  └─ result-format.js   # 共享结果排版（引擎文本 → 结构化段落；`format(text, multi)` 多命中时按【标题】切小节返回 `{multi, sections}`，另附摊平视图 `title/lead/blocks` 供 export-image.js 的 build() 消费）
+   │  ├─ __tests__/         # cores-loader.test.js · mp-startup.test.js · result-format.test.js（三分支/块边界只认「空格·空格」/尾巴不占类/恢复路径一致）
+   │  └─ result-format.js   # 共享结果排版（引擎文本 → 结构化段落；`format(text, multi, sections)` 三分支：单算法 → `{title,lead,blocks}`；多命中 → `{multi, sections}`；全套排盘 → `{multi, grouped, groups}`（类→块→段落三级，块边界靠 `full-chart.retitle()` 生成的「类名 · 短名」判定，见文件内注释）；另附摊平视图供 export-image.js 的 build() 消费）
    ├─ RefsModule/
    │  └─ refs.js             # 参考文献页的书目与可查原文【单一真源】（BOOKS 书目 + QUOTERS 从内核汇整公版古籍原文 432 条；refsPage() 派生详情页条目；小程序端经主包快照 HomeModule/refs-snapshot.js 同步取，不加载分包）。**原书全文**另放仓库根 `refs-texts/`（4 份公版古籍，由 `tools/gen-refs-texts.js` 从本内核导出，`--check` 校验逐字一致；不进小程序包）
    ├─ SettingsModule/
@@ -401,19 +405,25 @@ NT-Xhex/
 
 ### 2. 浏览器 PWA（无需构建，直接运行）
 
-必须从**项目根目录**起静态服务（`public/pwa/` 内的相对路径 `../../modules/…` 才能解析）：
+PWA 壳就在仓库根（v3.2.2 起从 `public/pwa/` 上移），从**项目根目录**起静态服务即可（壳内相对路径 `./modules/…`、`./static/…` 才能解析）：
 
 ```bash
 cd <仓库根>
 python3 -m http.server 8090      # 8080 常被本机 WebDAVNav 占用，故用 8090
-# 访问 http://localhost:8090/public/pwa/index.html
+# 访问 http://localhost:8090/index.html
 ```
 
-自动注册 Service Worker（离线可用）；检测 `beforeinstallprompt` 显示安装引导。
+自动注册 Service Worker（离线可用，文件名 `pwa-sw.js`）；检测 `beforeinstallprompt` 显示安装引导。
 
 ### 3. 多端原生（Android / iOS / 鸿蒙）
 
 `npx uni build app`。业务逻辑复用 `modules/`，无需改代码。
+
+### 4. 自动部署（GitHub Pages / EdgeOne Pages）
+
+- **GitHub Pages**：`.github/workflows/pages.yml` —— push 到 `main` 自动触发；先跑 `sync-mp --check` 等校验，不绿不发；再把「PWA 壳（根 `index.html` / `app.js` / `pwa-sw.js` / `pwa-manifest.json`）+ `modules/` + `static/`」按原相对层级组装成站点发布。
+- **EdgeOne Pages**：项目 `nt-xhex-pwa`（`.edgeone/project.json`）绑定本仓库，发布目录为仓库根 —— v3.2.2 起 PWA 壳就在根目录，push 后根 URL 直接就是应用入口（原来的 302 跳 `/public/pwa/` 一去掉）；`modules/`、`static/` 与壳同级，相对路径天然解析。
+- 两边发布内容同源同层级，唯一差别是 Pages 走 `_site` 组装（只带站点所需文件），EdgeOne 服务仓库根（仓库为公开开源项目，无敏感文件）。
 
 ---
 
@@ -463,6 +473,8 @@ node modules/CoreModule/__tests__/qimenfei.test.js # 奇门·飞盘(飞宫法) C
 node modules/CoreModule/__tests__/liuren.test.js   # 大六壬 C16（月将加占时；天地盘/四课/九宗门黄金范例/三传/天将/旬空/驿马/遁干，97 项）
 node modules/features/__tests__/features.test.js    # 31 功能块触发词路由 + 有料/缺料 验收
 node modules/features/__tests__/catalog.test.js     # 板块分类 / 短名可检索 / 功能介绍页数据 验收
+node modules/AnalyzerModule/__tests__/full-chart.test.js   # 全套排盘：八大类顺序 / 覆盖 31 块 / 七块拒绝自编输入 / 不该触发的情形 / 状态不串味 / 单块崩不拖垮
+node modules/HomeModule/__tests__/result-format.test.js    # 结果页三分支排版：单算法 / 多命中 / 全套分组 / 块边界只认「空格·空格」/ 尾巴不占类 / 恢复路径一致
 node tools/audit-features.js       # 全功能巡检（31 块逐个可跑 / 触发词不冲突 / 缺料守门）
 node tools/gen-refs-texts.js --check  # refs-texts/ 原书资料库与内核逐字一致（4 份）
 node tools/sync-mp.js --check      # dist 与 modules 一致性 + WXML 模板传参 + PWA 加载顺序 + 包体（主包 2MB / 单分包 2MB 双红线）
@@ -478,12 +490,21 @@ node tools/sync-version.js --check # 版本号 7 处与 version.json 一致
 
 ## 九、更新日志
 
+- **v3.2.2**（🔐 搜索框只认四种生辰写法：国历 / 农历 / 四柱 / 八字 —— 用户要求「搜索框只支持输入各种形式的生辰，农历、国历、四柱、八字，其他形式信息提醒为请输入农历、国历、四柱、八字，不跳转到二级页面，弹窗提醒」）：
+  ① **`intent.js` 补农历与四柱识别** —— 新增 `lunarDayToArabic()`（`初三→3 / 廿三→23 / 三十→30 / 初一→1`）、`LUNAR_MONTHS`（`正·冬·腊·十一·十二` 齐全）、`extractLunarDate()`（支持 `农历/阴历/旧历/夏历` 前缀、`二〇〇五` 这类中文年、`闰` 月标记）、`extractPillars()`（连续干支对取前四组，3 柱即命中）。**关键坑**：农历识别必须走 `preprocess` 的 `half`（只做全角转半角的中间态），不能走 `cn` —— 后者的 `chineseNumberToArabic` 已经把「五月初三」改成「5月初3」、「廿三」改成「33」，农历写法的月名与「初X」在那一步就散了。
+  ② **修掉「农历日期被当公历直接排」的老问题** —— 此前 `isLunar` 全仓只打标记、**从不换算**（`grep isLunar modules/CoreModule` 零命中），实测 `农历2005年5月3日子时 女` 排出的四柱是「2005年5月3日」那一组、全错。现在 `analyzer.js` 新增 ⓪ 归一化段，经 `CoreModule/lunar.js` 的 `fromLunar()` 换到公历（闰月用负月份）再进后续流程；`fromLunar` 返回的 `solar` 是**短键 `{y,m,d,h,i,s,text,cn}`**，不是 `{year,month,day}`（此处曾写错导致闸门判不出生辰）。
+  ③ **四柱反查** —— `_SL.Solar.fromBaZi(yGZ,mGZ,dGZ,tGZ,2,1900)` 返回候选日期数组；句中有 `19xx/20xx 年` 线索时取最接近该年的候选，否则取**离今天最近**的；缺时柱时用五鼠遁（`甲己→甲、乙庚→丙、丙辛→戊、丁壬→庚、戊癸→壬` 起子）补一个合法时柱 —— 因为 `timeGanZhi` 传 `null` 会在 `modules/CoreModule/solarlunar.js:582` 抛 `TypeError`，而时柱本身不影响返回的日期集合（枚举 12 个时柱结果恒同）。四柱三写法（空格分隔 / `乙酉年壬午月甲子日甲子时` / 只给三柱）都认，三柱时追问时辰；干支串也不再被误当成人名（「乙酉」曾被 `extractName` 当 2 字姓名）。
+  ④ **非生辰一律弹窗、不跳页** —— `analyzer.js` 新增 `lastReject()` 状态机（`birth` 不是生辰 / `lunar` 农历日期不存在 / `pillar` 四柱查不到 / `nonmeta` 非玄学话题），`conversation.ask()` 把它带出来且**不写持久化**（被拦下的提醒不该覆盖上一条真结果，否则点「再问一个」会看到提醒文案）；三端壳拿到 `r.reject` 后**不 `go('result')`**，就地弹设计稿「弹窗」画板同款：`.nt-mask > .nt-modal`（354×184、圆角 24、标题 22/26、描述 15/18 黑 50%、单键黑底胶囊 44pt 高），**零新增视觉规范**；一键「知道了」而非取消/确认（它不是决策，没有可取消的动作）；输入框保留原文方便直接改。文案走 `settings.js` 的 `birthModal` 单一真源（描述必须压在 2 行内：面板 184 里标题 26+14、按钮 44 已占 84）。
+  ⑤ **修掉两处路由被抢** —— ⓐ `查农历 2026年8月15日` 原先被当农历日期又换算一次（出「2026年9月25日」），现「动词 + 农历词」一律判为换算请求、不打 `isLunar` 标记；ⓑ 生辰句天然含「农历/公历/阴历/阳历」，原先会被 `date-convert` 的触发词抢走只出日期换算，现 `analyzer.js` 加 `onlyGenericDateHits()` —— 命中的每个触发词都只是日期单位泛词时不算「点名算法」，完整生辰照常铺全套。`查农历 / 日期换算 / 换算 / 儒略日` 这些**明确点名**的词不入泛词表。
+  ⑥ **验证** —— 新增 `modules/AnalyzerModule/__tests__/birth-forms.test.js`（七组断言：国历四写法 / 农历九写法 / 换换算锚点对底座 / 四柱三写法与反查 / 「查农历」不重复换算 / 生辰句走全套 / 五种 reject 码与文案），全量测试 **41/41 全绿**；`audit-features` 31 块全过；`sync-mp --check` 8 护栏全过；包体主包 **0.92MB（46%）** / 分包 **1.65MB（82.5%）** 双红线达标。
+  ⑦ **网页端 PWA 上移仓库根（EdgeOne 自动部署适配）** —— `public/pwa/` 四件套（`index.html` / `app.js` / `manifest.json` / `sw.js`）整体上移仓库根：EdgeOne Pages 静态服务仓库根时根 URL 直接就是入口，原来根目录那个 302 跳 `/public/pwa/` 的重定向壳一去掉；`manifest` 与 `sw` 因根目录已被 uni-app 的 `manifest.json` / `sw.js`（`h5.sw.path`）占用，分别改名 `pwa-manifest.json` / `pwa-sw.js` 避让（`env.js` 的 `registerServiceWorker(swPath)` 随之增加壳级参数：PWA 传 `pwa-sw.js`，uni-app H5 不传走默认 `sw.js`，小程序不注册——三端仍共用同一份函数）；PWA 内相对路径 `../../modules`、`../../static` 全量改为 `./modules`、`./static`（三者同级相对位置不变，「换层级即 404」的约束依旧）；`sync-version.js` / `check-load-order.js` / `platform-modules.json` / `.github/workflows/pages.yml`（`_site` 组装改为平铺根级壳文件，verify 检查项同步）/ README 路径说明同步修订；`sync-mp` 重生成 dist。
 - **v3.2.1**（🧭 手势条白边收口 + 择日块中文天数修复 + 白话覆盖盘点）：
   ① **uni-app 五页面根摘掉 `nt-page-safe`**（任务清单第 3/15 条收尾）—— `modules/HomeModule/index.vue` / `result.vue`、`modules/SettingsModule/settings.vue` / `us.vue` / `detail.vue` 的页面根原来同时挂 `nt-page-safe`（`padding-bottom: 34px`）与 `pageStyle()` 的 `paddingBottom: nav.bottom`（`MP-WEIXIN` 分支行内注入），小程序端是**双重底部避让**；且页面根留底正是 v3.1.35 定位的「切页时 `.nt-stage` 只覆盖屏高减手势条、手势条区不属于任何 `.nt-layer` → 露白边」病灶。现五页统一只由各视图根 `pageStyle` 单独承担（`MP-WEIXIN` 行内 / 其余端 `env(safe-area-inset-bottom)`），`theme.css` 的 `.nt-page-safe` 适用范围收窄为「最外层唯一根容器」（现仅 PWA `#app` 一处）并在注释里写明；`pages/index/index.vue` 与 `dist/mp-weixin/pages/index/index.wxss` 的旧口径注释同步订正（含「11 个画板」→「12 个画板」）。
   ② **修 `zeri` 择日块中文天数必崩** —— `modules/features/registry.js` 的 `zeri.run()` 调用未定义的 `cnNum(md[1])`，任何含「N 天」的择日请求（如「结婚择日 三十天」）都抛 `ReferenceError: cnNum is not defined`；改用同文件已有的 `numOf()`（支持汉字数字与「三十」这类整十），并加 `|| days` 兜底。实测「三十天 / 15天 / 一周」三条分别得 30 / 15 / 7 天。
   ③ **原文 + 白话覆盖盘点（任务清单第 9 条）** —— 31 块实跑量化：`ziwei`（落宫断语「『原文』+ 白话（古籍）」并列）、`zhouyi`（卦爻辞 + 白话 + 出处注）、`name-shuzi`（断语逐条「原文：…｜白话：…」）、`qianwen`（签诗/诗意/解曰/圣意原文 + 解梦双栏「传统向 + 心理向」）四块为严格配对；`liuren-bifa` / `qimen-ge` / `liuyao-wangshuai` / `bazi-pattern` / `meihua` / `liuren` / `qimen-ri` / `liuyao` 八块为「引古籍格名 + 括号内白话断语」形态（如「罡塞鬼户，任谋为（谋事无阻）」）；其余块以「口径 / 标注」行交代推演边界。观音签的白话整段解读按 `guanyin-data.js` 头注释的既定决策**不写**（诗意与圣意已能直接回答，再写属二次创作，须另行标注）。
   ④ **验证**：全量测试 **38/38 全绿**；`audit-features` 31 块全过；`sync-mp` 重生成 + `--check` 8 道护栏全过；`check-bundle-size` 主包 **0.904MB（45.2%）** / 分包 **1.63MB（81.5%）**双红线达标；`sync-version --check` 7 处一致 **3.2.0**；14 条端到端探针（八字/紫微/奇门/六爻/六壬/解梦/抽签/黄历/择日/农历/小成图/数字八字/周易）无崩、无未定义引用。
-- **v3.2.1**（🎯 搜索框只接受生辰 —— 任务清单第 10 条「搜索框接受的信息就只有生辰（四柱八字），所有功能据此排盘解盘」）：① **`analyzer.js` 加生辰闸门** —— 在功能块触发词、归档领域识别之后、核心意图之前插入判定：`hasBirth(e)`（出生**年月日三者俱全**）不满足、且 `isQuery(text)` 不命中（黄历/万年历/择日/干支节气的查询型问法，与 `intent.js` 的 `KW.almanac/select/jieqi/ganzhi` 同口径）时，一律返回 **`BIRTH_HINT`**「请输入出生生辰，例如『白玖玖，女，2005年6月9日子时』…只认生辰：姓名、性别、出生年月日（带时辰更准）」；② **黄历/万年历查询不受伤**（任务清单第 1 条）——「今日黄历 / 明天黄历 / 查吉日 / 查农历 / 今天宜忌 / 下周结婚哪天好 / 节气 / 干支」照常出料，`huangli`/`zeri`/`date-convert` 三块的触发词路径本就先于闸门；闸门只拦「算命」「测运势」「hello」这类没给生辰的空请求；③ **非玄学词仍直拒**（`_nonMeta`：天气/外卖/股票…）—— 排在闸门之后单独一道，避免「今天天气」因含「今天」被放行后跑成 GUIDE；④ **首页占位改生辰引导**：`settings.js` 的 `searchPlaceholder` 由「今天想了解点什么」改为「请输入生辰，如『白玖玖，女，2005年6月9日子时』」（单一真源，三端首页同步），README 两处占位说明同步；⑤ **验证**：26 项场景断言（REFUSED/BIRTH/HUANGLI/ZERI/DATE/JIEQI/GANZHI/DREAM/BAZI/GUIDE/MULTI/ASK）全部符合预期；全量测试 **38/38 全绿**；`intent.test` 34/34；`audit-features` 31 块全过；`sync-mp --check` 8 护栏全过；`check-bundle-size` 主包 0.904MB（45.2%）/ 分包 1.63MB（81.5%）双红线达标；`sync-version --check` 7 处一致 **3.2.0**。
+- **v3.2.1**（🎯 只给生辰 → 全套排盘一次跑齐 —— 用户要求「提供生辰八字，然后自动调取算法计算，并且显示所有算法提供的结果，结果展示顺序按照：万年历黄历、八字命理（子平四柱）、紫微斗数、六爻占卜（纳甲筮法）、奇门遁甲（大六壬）、梅花易数、风水堪舆、解梦」）：① **新建 `modules/AnalyzerModule/full-chart.js`** —— 八大类 `SECTIONS` 编排（万年历黄历 huangli/date-convert/zeri；八字命理 bazi-chart/dayun/bazi-pattern/bazi-shensha/bazi-hehun/name-shuzi；紫微斗数 ziwei/ziwei-sihua；六爻占卜 liuyao/liuyao-wangshuai；奇门遁甲 qimen/qimen-ri/qimen-ke/qimen-bj/qimen-nianyue/qimen-fei/qimen-ge/liuren/liuren-bifa；梅花易数 meihua/iching/zhouyi/xiaocheng；风水堪舆 bazhai/feixing/fengshui/yangzhai；解梦 qianwen），`SELF_SUFFICIENT` 白名单只放「纯生辰即可自足」的 24 块，其余（合婚要两人、择日要事项、风水要坐向、解梦要梦境、周易要卦名、小成图要报数）走 `allowed()` 判「用户是否点名」，**坚决不拿同一份生辰凑两个人的合婚、不把日期数字当报数、不从姓名里扫卦单字**（任务清单第 8 条禁止胡编乱造）；② **`analyzer.js` 接全套分支** —— 新增 `isBirthChart(e)`（`hasBirth && !date._relative && (name||gender||time)`，故「今天宜忌」这种相对日期查询不会被铺成 24 块 1.4 万字），命中即 `FULL.runAll()` 并按用户规定顺序拼接；触发词点名仍最优先（说「排紫微」就只跑紫微）；导出扩为 `analyze / lastHits / lastSections`；③ **`result-format.js` 三分支** —— 单算法 `{title,lead,blocks}` / 多命中 `{multi,sections}` / 全套排盘 `{multi,grouped,groups}`（类→块→段落三级）；**块边界判定是最大的坑**：块内部也自带【】小标题（黄历的【宜】【忌】【神煞断语·建除】、数字八字的【三宫】【十神】），按【】一刀切会把块剁碎并错归「其他」类 —— 最终靠 `full-chart.retitle()` 生成的 **「类名 + 空格 + · + 空格 + 短名」** 与块内紧凑写法（无空格）区分，实测 31 块输出里含「空格·空格」的内部标题 0 个；无 `sections` 的恢复路径按首次出现顺序重建分组，实测与有 sections 路径**名称序列与块数完全一致**；④ **三端渲染** —— `result.vue` 加 `result.grouped` 分支、`theme.css` 加 `.res-group/.res-group-title/.res-group-block/.res-block-head`（类名 17pt 纯黑 + 24pt 段前距，块名 15pt 中粗缩进 12pt，只靠字号字重字色间距分层，不加描边底色）、小程序 `tpl-result` 加三级 wx:for、PWA `renderResult` 加 grouped 分支；⑤ **验证**：纯生辰 → **7 类 24 块 14465 字**（解梦因无梦境被自足白名单正确拦掉，故 7 类而非 8 类）；`2005年6月9日 女` → 22 块；「今天宜忌」→ 1 块 476 字（不铺全套）；**新增 `AnalyzerModule/__tests__/full-chart.test.js` 与 `HomeModule/__tests__/result-format.test.js` 两份测试**（前者锁八大类顺序/覆盖 31 块/七块拒绝自编输入/不该触发的情形/状态不串味/单块崩不拖垮，后者锁三分支排版/块边界只认「空格·空格」/尾巴不占类/恢复路径一致）；全量 **40/40 测试全绿**、`audit-features` 31 块全过、`sync-mp --check` 8 护栏全过、包体主包 0.92MB（46%）/ 分包 1.632MB（81.6%）双红线达标、`sync-version --check` 7 处一致、`gen-refs-texts --check` 4 份逐字一致。
+- **v3.2.1**（🎯 搜索框只接受生辰 —— 任务清单第 10 条「搜索框接受的信息就只有生辰（四柱八字），所有功能据此排盘解盘」）：① **`analyzer.js` 加生辰闸门** —— 在功能块触发词、归档领域识别之后、核心意图之前插入判定：`hasBirth(e)`（出生**年月日三者俱全**）不满足、且 `isQuery(text)` 不命中（黄历/万年历/择日/干支节气的查询型问法，与 `intent.js` 的 `KW.almanac/select/jieqi/ganzhi` 同口径）时，一律返回 **`BIRTH_HINT`**「请输入出生生辰，例如『白玖玖，女，2005年6月9日子时』…只认生辰：姓名、性别、出生年月日（带时辰更准）」；② **黄历/万年历查询不受伤**（任务清单第 1 条）——「今日黄历 / 明天黄历 / 查吉日 / 查农历 / 今天宜忌 / 下周结婚哪天好 / 节气 / 干支」照常出料，`huangli`/`zeri`/`date-convert` 三块的触发词路径本就先于闸门；闸门只拦「算命」「测运势」「hello」这类没给生辰的空请求；③ **非玄学词仍直拒**（`_nonMeta`：天气/外卖/股票…）—— 排在闸门之后单独一道，避免「今天天气」因含「今天」被放行后跑成 GUIDE；④ **首页占位（⚠️ 曾误改，已纠正两次）**：一度把 `settings.js` 的占位改成固定一句「请输入生辰，如『白玖玖，女，2005年6月9日子时』」，理由是「搜索框只接受生辰」——但任务清单第 10 条讲的是**算法只认生辰输入**（算法行为），第 22 条明确「只改介绍侧重点，其他不要更改」，改 UI 占位文案属越界。当时先按基线 v3.1.61 原样恢复成滚动词条（`searchHints` 9 条 + `--d-ph-rotate` + `@keyframes nt-ph-step` + 三端 `.nt-ph-track`）；随后用户 2026-10-22 明确指定「搜索框固定显示：今天想了解点什么」，于是**彻底删除**滚动词条机制、改为单条静态 `searchPlaceholder`（见下文「第 4 层 · 搜索框常驻文案」）；⑤ **验证**：26 项场景断言（REFUSED/BIRTH/HUANGLI/ZERI/DATE/JIEQI/GANZHI/DREAM/BAZI/GUIDE/MULTI/ASK）全部符合预期；全量测试 **38/38 全绿**；`intent.test` 34/34；`audit-features` 31 块全过；`sync-mp --check` 8 护栏全过；`check-bundle-size` 主包 0.904MB（45.2%）/ 分包 1.63MB（81.5%）双红线达标；`sync-version --check` 7 处一致 **3.2.0**。
 - **v3.2.1**（📚 参考文献原书入库 —— 任务清单第 13 条「参考文献原书放项目里可查原文」）：① 新建仓库根 **`refs-texts/`** 原书资料库，收 4 份公版古籍全文：《周易》64 卦经文（1295 行）、紫微斗数全书断语库 168 格（713 行）、观音灵签一百签（1012 行）、《毕法赋》一百法（412 行），合计 3476 行、432 条，与 `refs.js` 的 `QUOTERS` 汇整条数**逐条等量**；② 新增 **`tools/gen-refs-texts.js`** 从内核导出这 4 份（不手抄，防止资料库与内核漂移成「错的第二来源」），带 `--check` 模式（不一致即 exit 1，可接 CI）；③ **版权边界写进 `.gitignore` 与 `refs-texts/README.md`**：`docs/` 忽略规则加 `!refs-texts/` 例外，只收公版古籍（明清及以前传本 / 作者不详民俗文本），现代著作、开源库、网站整理件一律不入（只列书目）；④ **不进小程序包**（未登记进 `tools/platform-modules.json`），App 内可查原文仍走 `refs.js` 的 432 条内核汇整（单一真源），本目录只作仓库内查阅与逐字核对；⑤ README 目录树新增 `refs-texts/` 与 `gen-refs-texts.js` 两行，`refs.js` 行补「原书全文另见 refs-texts/」，内容详情页表格补原书入口；⑥ **验证**：`node tools/gen-refs-texts.js --check` 一致 ✓；全量测试 38/38 全绿；`audit-features` 31 块全过；`sync-mp --check` 8 护栏全过；包体零增长（主包 0.903MB / 分包 1.627MB，未进包故不变量）。
 - **v3.2.1**（🧩 结果页多算法并列 + 正文档行高对拍设计稿）：① **结果页支持「一次提问、多算法同框」**（任务清单第 5 条）—— 全链路四层：`analyzer.js` 新增 `lastHits()` 记录本次命中功能块数；`conversation.js` 的 `ask()` 返回 `hits` 并**随结果一起持久化**（刷新/重进恢复时不靠文本猜，旧数据无该字段回落 1 → 单算法形态，与旧行为一致）；`result-format.js` 的 `format(text, multi)` 在多命中时按行首【标题】切小节返回 `{multi:true, sections:[{title, lead, blocks}]}`，另附**摊平视图** `title/lead/blocks` 专供 `export-image.js` 的 `build()` 消费（它只吃单流，不改导出版式）；三端渲染同步 —— `result.vue` 的 `result.multi` 分支、小程序 `index.wxml` 的 `wx:if="{{result.multi}}"` 分支、PWA/uni-app 提问与恢复两路都传 `hits`。节标题复用「你的提问」同级字规格（17/20）但字色降一档 `--nt-text-2`，节间距 `--sp-3`，**不画描边/底色**（v3.0.4 起全站不画描边，层级靠间距与字色）。设计稿依据：搜索结果页正文区原文「推演信息：/ 最多两行内容 / 玄玖灵犀推演结果：/ 黄历、生辰、八字、星座、MBTI、易经、择吉日…」= 同框并列即设计意图。② **正文档行高改回设计稿口径 18**：Sketch 全部 12 画板里 15px 节点共 14 个（搜索结果页正文区 + 5 张内容详情页正文区 + 关于页 4 条卡描述 + 关于我们 3 条卡描述 + 弹窗描述），`paragraphStyle` 的 `minimumLineHeight` 与 `maximumLineHeight` 无一例外都是 **18**；此前 `--lh-long` 取 22 是按 HIG 行高 ≥1.4× 的舒适值，与「必须完全吻合设计稿」冲突，故改回 18（`theme.css` 唯一开关，`sync-mp` 重生成 theme.wxss）。③ **验证**：全量测试 **38/38 全绿**；`audit-features` 31 块全过；`sync-mp` 重生成 + `--check` 8 道护栏全过；`check-bundle-size` 主包 0.903MB（45.2%）/ 分包 1.627MB（81.4%）双红线达标；`sync-version --check` 7 处一致 **3.2.0**；端到端实测 `… 奇门 六爻` → hits=2、2 小节（奇门遁甲 / 六爻纳甲），`查黄历` → hits=1、单算法（黄历自身 16 个【】行不被切碎）。
 - **v3.2.1**（介绍口径修订：只改对外介绍文案，不改功能与算法）：① 定位表述统一为「中国传统术数文献的整理、校勘与数字化演算工具 / 传统文化与古籍研究辅助」，覆盖应用介绍、协议条款服务性质段、免责段、关于页页脚与首页免责提示；② 各端描述字段同步（`package.json`、`manifest.json` 两处、`public/pwa/manifest.json`、`public/pwa/index.html` 的 meta description）；③ 明示所有推算在设备本地完成、不联网、不收集数据，内容与结论仅供传统文化学习与学术研究参考；④ 算法代码、功能块、UI 布局数值、触发词与短名、测试期望、包体配置全部未变更。

@@ -26,9 +26,9 @@
           @focus="onFocus"
           @blur="onBlur"
         />
-        <!-- 搜索框占位（固定一句话，来自 settings.js 的 searchPlaceholder 单一真源）。
-             占据与滚动词条相同的 .nt-ph 裁切窗（48pt 高），样式复用 .nt-ph-item。
-             输入非空或已聚焦 → 根节点带 .nt-ph-off，整体隐去（HIG：占位提示不与真实输入重叠；
+        <!-- 搜索框常驻文案（固定一句，内容来自 settings.js 的 searchPlaceholder 单一真源）。
+             结构：.nt-ph（裁切窗，48pt 高）> 单个 .nt-ph-item。
+             输入非空或已聚焦 → 根节点带 .nt-ph-off，整块隐去（HIG：占位提示不与真实输入重叠；
              聚焦时也让位，因为微信里聚焦态的 input 是原生组件、层级更高）。 -->
         <view class="nt-ph" v-if="about.searchPlaceholder">
           <text class="nt-ph-item">{{ about.searchPlaceholder }}</text>
@@ -54,6 +54,21 @@
     <view class="nt-foot">
       <text class="nt-setfoot-line">{{ about.icp }}</text>
       <text class="nt-setfoot-line">{{ about.footerCopy }}</text>
+    </view>
+
+    <!-- 生辰拦下弹窗（v3.2.2）：搜索框只认农历 / 国历 / 四柱 / 八字四种生辰写法，
+         其余输入**不跳二级页**，就地弹这一层提醒。版式完全复用设计稿「弹窗」画板
+         （面板 354×184 圆角 24、标题 22/26 左、描述 15/18 左 黑50%、按钮 135×44 胶囊），
+         样式类与「清除数据」确认弹窗同一套（.nt-mask / .nt-modal / .nt-modal-btns），零新增视觉规范。
+         ⚠️ 只有一键（知道了）：它不是「取消/确认」的决策，没有可取消的动作。 -->
+    <view class="nt-mask" :class="{ 'nt-mask-out': noticeClosing }" v-if="noticeOpen" @click="closeNotice">
+      <view class="nt-modal" @click.stop>
+        <text class="nt-modal-title">{{ noticeTitle }}</text>
+        <text class="nt-modal-desc">{{ noticeDesc }}</text>
+        <view class="nt-modal-btns">
+          <view class="nt-pill-btn" @click="closeNotice">{{ (about.birthModal && about.birthModal.confirm) || '知道了' }}</view>
+        </view>
+      </view>
     </view>
   </view>
 </template>
@@ -86,7 +101,13 @@ export default {
       canInstall: false,
       nav: SafeArea.DEFAULTS,
       themeLogo: Theme.logoFor(th),
-      about: Settings.about()
+      about: Settings.about(),
+      // 生辰拦下弹窗（v3.2.2）：noticeOpen 控制显隐，noticeClosing 是退场门控
+      //   （先挂 .nt-mask-out 播完 --d-modal-out 再真卸载，否则退场动画看不见）
+      noticeOpen: false,
+      noticeClosing: false,
+      noticeTitle: '',
+      noticeDesc: ''
     }
   },
   computed: {
@@ -160,11 +181,36 @@ export default {
       // 问答流转走共享 conversation.js；命中后把结构化结果抛给壳层切到结果页
       var r = this.conv.ask(this.input)
       if (!r.ok) return
+      // v3.2.2：被拦下（不是生辰 / 农历日期不存在 / 四柱查不到 / 非玄学）→ **不跳结果页**，
+      //   就地弹窗提醒。用户明确要求「其他形式信息提醒……不跳转到二级页面，弹窗提醒」。
+      //   输入框保留用户原文，方便直接改，不清空。
+      if (r.reject) { this.openNotice(r.reject); return }
       // 多算法并列：conv.hits 记录本次命中的功能块数，>1 时 result-format 按【标题】切小节
       var shaped = ResultFormat.format(r.answer, (r.hits || 1) > 1)
       shaped.question = r.question
       this.input = ''
       this.$emit('result', shaped)
+    },
+    /** 打开生辰拦下弹窗：按 analyzer.lastReject 的取值挑标题与描述（文案全部来自 settings.js） */
+    openNotice(reason) {
+      // 兜底空对象：about 万一还没注入（冷启动极早期），也只会弹出默认文案而不是崩在 undefined 上
+      var m = this.about.birthModal || {}
+      if (reason === 'lunar') { this.noticeTitle = m.lunarTitle; this.noticeDesc = m.lunarDesc }
+      else if (reason === 'pillar') { this.noticeTitle = m.pillarTitle; this.noticeDesc = m.pillarDesc }
+      else if (reason === 'nonmeta') { this.noticeTitle = m.nonmetaTitle; this.noticeDesc = m.nonmetaDesc }
+      else { this.noticeTitle = m.title; this.noticeDesc = m.desc }
+      // 单键文案同样要兜底（confirm 是唯一必填的）
+      if (!this.noticeTitle) this.noticeTitle = '请输入生辰'
+      if (!this.noticeDesc) this.noticeDesc = '只支持农历、国历、四柱、八字四种写法。'
+      this.noticeClosing = false
+      this.noticeOpen = true
+    },
+    /** 关闭弹窗：先播退场再卸载（与「清除数据」弹窗同一套节奏） */
+    closeNotice() {
+      if (this.noticeClosing) return
+      this.noticeClosing = true
+      var self = this
+      setTimeout(function () { self.noticeOpen = false; self.noticeClosing = false }, 200)
     },
     // #ifdef H5
     installApp() { Env.promptInstall() },

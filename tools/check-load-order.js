@@ -13,7 +13,7 @@
  *   本脚本**只读**，不改任何文件；已并入 sync-mp --check（见 sync-mp.js 末尾）。
  *
  * 校验逻辑：
- *   1) 读 public/pwa/index.html 里所有 `../../modules/<dir>/<file>.js` 的加载顺序；
+ *   1) 读仓库根 index.html 里所有 `./modules/<dir>/<file>.js` 的加载顺序；
  *   2) 对每个被加载模块，读其文件头 UMD 里 `require('./x.js')` 的**同目录**依赖；
  *   3) 若该依赖也在 index.html 中、却排在当前模块**之后** → 违例（被依赖者必须在前）。
  *   （依赖不在 index.html 的情况：浏览器分支走全局兜底，非顺序问题，不算违例。）
@@ -21,11 +21,11 @@
 'use strict';
 var fs = require('fs'), path = require('path');
 var ROOT = path.resolve(__dirname, '..');
-var htmlPath = path.join(ROOT, 'public/pwa/index.html');
+var htmlPath = path.join(ROOT, 'index.html');
 var html = fs.readFileSync(htmlPath, 'utf8');
 
 // 1) 提取 index.html 里 modules 脚本的加载顺序（有序）
-var order = (html.match(/src="\.\.\/\.\.\/modules\/[^"]+"/g) || []).map(function (m) {
+var order = (html.match(/src="\.\/modules\/[^"]+"/g) || []).map(function (m) {
   return m.match(/modules\/(.*?)"/)[1];
 });
 var pos = {};
