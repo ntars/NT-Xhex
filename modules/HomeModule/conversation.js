@@ -32,24 +32,32 @@
       }
     }
 
-    /** 提问：返回 {ok, question, answer} */
+    /** 提问：返回 {ok, question, answer, hits}
+     *  hits = 本次分析命中的功能块数（analyzer 命中单块时为 1）。
+     *  壳层据此决定 result-format 是否按【标题】切小节（多算法并列展示）。
+     *  hits 同时写进持久化记录，恢复路径（刷新/重进）也能拿到，不必靠文本猜。 */
     function ask(text) {
       text = (text || '').trim();
       if (!text) return { ok: false, reason: 'empty' };
       var answer = (analyzer && analyzer.analyze) ? analyzer.analyze(text) : '引擎未加载。';
-      current = { question: text, answer: answer };
+      var hits = 1;
+      if (analyzer && analyzer.lastHits) {
+        try { hits = analyzer.lastHits() || 1; } catch (e) { hits = 1; }
+      }
+      current = { question: text, answer: answer, hits: hits };
       persist();
-      return { ok: true, question: text, answer: answer };
+      return { ok: true, question: text, answer: answer, hits: hits };
     }
 
-    /** 恢复上次的结果（刷新/重进时用）；无则返回 null */
+    /** 恢复上次的结果（刷新/重进时用）；无则返回 null。
+     *  带上持久化的 hits（旧数据无此字段时回落 1 → 单算法形态，与旧行为一致）。 */
     function restore() {
       if (current) return current;
       if (storage && storage.getConversation) {
         try {
           var v = storage.getConversation();
           if (Array.isArray(v) && v.length && v[v.length - 1] && v[v.length - 1].answer) {
-            current = { question: v[v.length - 1].question || '', answer: v[v.length - 1].answer };
+            current = { question: v[v.length - 1].question || '', answer: v[v.length - 1].answer, hits: v[v.length - 1].hits || 1 };
             return current;
           }
         } catch (e) { /* noop */ }

@@ -64,11 +64,19 @@ function subFileSet() {
   Object.keys(map).forEach(function (k) { map[k].files.forEach(function (f) { set[f] = k; }); });
   return set;
 }
+// 主包公共内核（v3.2.0 恢复黄历/万年历后分包逼近 2MB 红线，故把「体积大、无依赖、被多个分包文件 require」
+// 的大件放主包，并在分包里生成一行转发 shim。微信规则：分包可引用主包、主包不得引用分包，故此方向合法。
+function sharedMainFiles() {
+  var p = manifest();
+  return Array.isArray(p.sharedMain) ? p.sharedMain : [];
+}
 function neededFiles() {
   var p = manifest();
   var inSub = subFileSet();
-  // 主包 files = 清单 files 去掉已在分包里的（分包文件不进主包，避免重复计体积）
-  return p.files.filter(function (f) { return !inSub[f]; });
+  // 主包 files = 清单 files 去掉已在分包里的（分包文件不进主包，避免重复计体积）+ 主包公共内核
+  var base = p.files.filter(function (f) { return !inSub[f]; });
+  sharedMainFiles().forEach(function (f) { if (base.indexOf(f) < 0) base.push(f); });
+  return base;
 }
 
 // 视觉规范产物 = theme.css 的「图标 url 内嵌 base64」版本（源 = static/icons/ 的 3 个源 SVG，单一真源不变）
@@ -206,10 +214,15 @@ function main() {
       console.log('  ✗ 主包超 2MB 红线（跑 node tools/check-bundle-size.js 看体积构成，考虑把大内核挪进分包）');
       bad++;
     }
-    // 全功能巡检：55 个功能块逐个跑一遍（抛错/空输出/事故标记/切段/触发词冲突/缺料守门）
+    // 全功能巡检：逐个功能块跑一遍（抛错/空输出/事故标记/切段/触发词冲突/缺料守门）
     try {
+      var featCount = 0;
+      try {
+        var REG = require(path.join(ROOT, 'modules', 'features', 'registry.js'));
+        featCount = (REG.FEATURES || []).length;
+      } catch (e) { }
       cp.execSync('node tools/audit-features.js', { cwd: ROOT, stdio: 'inherit' });
-      console.log('  ✓ 全功能巡检（55 个功能块逐个可跑、无冲突）');
+      console.log('  ✓ 全功能巡检（' + (featCount || '全部') + ' 个功能块逐个可跑、无冲突）');
     } catch (e) {
       console.log('  ✗ 全功能巡检有失败项（跑 node tools/audit-features.js 看详情）');
       bad++;
@@ -468,6 +481,13 @@ function main() {
         if (!fs.existsSync(srcP)) throw new Error('分包「' + pkg + '」缺少源文件：' + rel);
         var dst = path.join(MP_DIST, pkg, 'utils', 'modules', rel);
         fs.mkdirSync(path.dirname(dst), { recursive: true });
+        if (sharedMainFiles().indexOf(rel) >= 0) {
+          // 主包公共内核：分包侧只留一行转发（分包引用主包合法），避免同一份大文件两处计体积
+          var up = '../'.repeat(1 + 2 + (rel.split('/').length - 1)); // pkg/utils/modules/<目录层级>
+          fs.writeFileSync(dst, '// 生成产物：主包公共内核转发（源 modules/' + rel + '，见 tools/platform-modules.json 的 sharedMain）\nmodule.exports = require(\'' + up + 'utils/modules/' + rel + '\');\n', 'utf8');
+          console.log('  分包转发[' + pkg + ']', rel, '→ 主包');
+          return;
+        }
         fs.copyFileSync(srcP, dst);
         console.log('  分包生成[' + pkg + ']', rel);
       });

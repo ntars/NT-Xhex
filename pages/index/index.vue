@@ -90,10 +90,10 @@ export default {
     this.conv = Conversation.createConversation({ analyzer: Analyzer, storage: Storage })
     this.syncWindowTheme()
     this.runSplash()
-    // 恢复上次这一问（刷新/重进不丢）
+    // 恢复上次这一问（刷新/重进不丢）。hits 已随 conversation 持久化（v3.2.1）
     var last = this.conv ? this.conv.restore() : null
     if (last) {
-      var f = ResultFormat.format(last.answer)
+      var f = ResultFormat.format(last.answer, (last.hits || 1) > 1)
       f.question = last.question
       this.result = f
       this.view = 'result'
@@ -192,7 +192,9 @@ export default {
 <style scoped>
 /* 布局仅此一处；尺寸/字色/圆角/间距全部走 theme.css 的 --nt-* 与 .nt-*（单一真源）。
    本容器只负责「满视口纵向弹性 + 宽屏限宽居中」；顶部/底部安全区避让由各视图根节点承担
-   （H5/APP 走 .nt-page-safe 的 env()；小程序走 safe-area.js 行内注入）。 */
+   （H5/APP 走各视图根的 env(safe-area-inset-*)；小程序走 safe-area.js 行内注入）。
+   ⚠️ 本容器不挂 .nt-page-safe：页面根留底会让转场舞台只覆盖「屏高 − 手势条」那块，
+      切页时手势条那一带不属于任何层 → 露白边（v3.1.35 修复「整体切页」的病灶）。 */
 .page {
   position: relative;
   height: 100vh;

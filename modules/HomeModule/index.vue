@@ -3,7 +3,7 @@
        导航「关于」左上（24,62）+ 空态块（Logo 64.27×72 → 玄玖灵犀 22pt → 搜索胶囊 272×48
        → 内容仅供交流学习 12pt，间距恒 16、整块垂直居中）+ 页脚两行（798 起，12pt 黑30%）。
        注意：起始页**没有**「演乾坤 · 知天命」副标（以设计稿文档为准，其内嵌缩略图是旧版）。 -->
-  <view class="home nt-page-safe" :style="pageStyle">
+  <view class="home" :style="pageStyle">
     <view class="nt-nav" :style="navStyle">
       <text class="nt-nav-about nt-press" @click="$emit('about')">关于</text>
     </view>
@@ -26,17 +26,12 @@
           @focus="onFocus"
           @blur="onBlur"
         />
-        <!-- 滚动搜索建议（真实词条，内容来自 settings.js 的 searchHints 单一真源）。
-             结构：.nt-ph（裁切窗，48pt 高）> .nt-ph-track（整列）> N 个 .nt-ph-item + 1 个首词条副本。
-             轮换节奏（停留 5s → 上滑一行 0.5s，同百度首页）与分档 keyframe `nt-ph-step`
-             全在 theme.css，本壳不写任何动画值；该 keyframe 与词条条数绑定（当前 9 条）。
-             末尾副本是无缝衔接的关键（滑到 -N×48 时窗口里那行与第一行逐像素相同）。
+        <!-- 搜索框占位（固定一句话，来自 settings.js 的 searchPlaceholder 单一真源）。
+             占据与滚动词条相同的 .nt-ph 裁切窗（48pt 高），样式复用 .nt-ph-item。
              输入非空或已聚焦 → 根节点带 .nt-ph-off，整体隐去（HIG：占位提示不与真实输入重叠；
              聚焦时也让位，因为微信里聚焦态的 input 是原生组件、层级更高）。 -->
-        <view class="nt-ph" v-if="about.searchHints && about.searchHints.length">
-          <view class="nt-ph-track">
-            <text class="nt-ph-item" v-for="(t, i) in phItems" :key="i">{{ t }}</text>
-          </view>
+        <view class="nt-ph" v-if="about.searchPlaceholder">
+          <text class="nt-ph-item">{{ about.searchPlaceholder }}</text>
         </view>
         <view class="nt-pill-search nt-press" @click="send">
           <view class="nt-icon nt-i-search"></view>
@@ -95,11 +90,6 @@ export default {
     }
   },
   computed: {
-    // 滚动词条渲染列表 = searchHints + 首词条副本（副本是实现"无缝循环"的像素级对位，见模板注释）
-    phItems() {
-      var h = this.about.searchHints || []
-      return h.length ? h.concat([h[0]]) : []
-    },
     // 小程序端用行内避让状态栏/胶囊（.nt-nav 顶部 = margin-top nav.top）；H5/APP 走 CSS env()
     navStyle() {
       // #ifdef MP-WEIXIN
@@ -109,7 +99,10 @@ export default {
       return {}
       // #endif
     },
-    // 小程序端 WXSS 不支持 env() → 手势条避让由 safe-area.js 行内注入；H5/APP 走 .nt-page-safe 的 env()
+    // 手势条避让：H5/APP 走 .home 的 env(safe-area-inset-bottom)（theme.css H5 样式块已升为
+    // 「设计带 与 设备安全区取大者」）；小程序端 WXSS 不支持 env()，由 safe-area.js 算出行内注入。
+    // ⚠️ 不要再给页面根挂 .nt-page-safe：那个类的 34px 会与这里的行内值叠加成双重避让
+    //    （v3.1.35 起因：小程序侧避让已改由 .nt-layer 每层承担，页面根留底正是「手势条白边」病灶）。
     pageStyle() {
       // #ifdef MP-WEIXIN
       return { paddingBottom: this.nav.bottom + 'px' }
@@ -167,7 +160,8 @@ export default {
       // 问答流转走共享 conversation.js；命中后把结构化结果抛给壳层切到结果页
       var r = this.conv.ask(this.input)
       if (!r.ok) return
-      var shaped = ResultFormat.format(r.answer)
+      // 多算法并列：conv.hits 记录本次命中的功能块数，>1 时 result-format 按【标题】切小节
+      var shaped = ResultFormat.format(r.answer, (r.hits || 1) > 1)
       shaped.question = r.question
       this.input = ''
       this.$emit('result', shaped)

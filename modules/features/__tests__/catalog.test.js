@@ -74,21 +74,8 @@ cat.forEach(function (b, i) {
 });
 ok(rowBad.length === 0, '每板块正文 = 说明 1 行 + 功能 N 行（异常：' + rowBad.join('，') + '）');
 
-var hints = about.searchHints;
-ok(hints.length === 9, '首页建议 9 条（实际 ' + hints.length + '）');
-// v3.1.30：三类前缀都要有（查/排/解统一）；缺一类即视为未统一
-var hasPrefix = { 查: false, 排: false, 解: false };
-hints.forEach(function (h) { var p = String(h || '').charAt(0); if (hasPrefix[p] === false) hasPrefix[p] = true; });
-ok(hasPrefix.查 && hasPrefix.排 && hasPrefix.解, '首页建议覆盖 查/排/解 三类（实际：查 ' + hasPrefix.查 + ' 排 ' + hasPrefix.排 + ' 解 ' + hasPrefix.解 + '）');
-var badHint = [];
-hints.forEach(function (h) {
-  if (!/^[查排解]/.test(h)) badHint.push(h + ' 非查/排/解 开头');
-  if (h.length > 9) badHint.push(h + ' 超 9 字');
-  var out = A.analyze(h);
-  var txt = typeof out === 'string' ? out : (out.text || out.prompt || '');
-  if (!txt || txt.indexOf('仅限玄学与传统文化') >= 0) badHint.push(h + ' 答不出（落到话题守卫）');
-});
-ok(badHint.length === 0, '每条建议都能答出来（异常：' + badHint.join('；') + '）');
+var ph = about.searchPlaceholder;
+ok(typeof ph === 'string' && ph.length > 0, '首页占位为一句非空文案（实际：' + ph + '）');
 
 console.log('== ⑤ 参考文献页（v3.1.31 方案 B：书目+对应内核+查证状态；v3.1.57 增公版古籍可查原文）==');
 var refs = about.aboutNotes.refs;
@@ -112,8 +99,8 @@ ok(noStatus.length === 0, '书目区每条都标注查证状态档（缺：' + n
 ok(cutIdx >= 0, '含「二、可查原文」导语（公版古籍原文区）');
 var quoteZone = cutIdx >= 0 ? refs.slice(cutIdx) : [];
 var QUOTE_PREFIX = /^紫微 · |^周易 · |^灵签 · |^毕法 · |^测字十法 · /;
-ok(quoteZone.filter(function (r) { return QUOTE_PREFIX.test(r.h); }).length === 442,
-  '原文区 442 条公版古籍原文（紫微168+周易64+灵签100+毕法100+测字十法10，实际 '
+ok(quoteZone.filter(function (r) { return QUOTE_PREFIX.test(r.h); }).length === 432,
+  '原文区 432 条公版古籍原文（紫微168+周易64+灵签100+毕法100，实际 '
   + quoteZone.filter(function (r) { return QUOTE_PREFIX.test(r.h); }).length + '）');
 // 版权边界（法律红线）：原文区只允许这些公版书系的前缀，现代著作/网站整理件不得混入
 var quoteOnly = quoteZone.filter(function (r) {
@@ -121,13 +108,13 @@ var quoteOnly = quoteZone.filter(function (r) {
     && !QUOTE_PREFIX.test(r.h);
 });
 ok(quoteOnly.length === 0, '原文区无其他内容混入（版权书只列书目）', quoteOnly.map(function (r) { return r.h; }).join('、'));
-// 关键古籍必须出现在页面上（与内核头注释一一对应）
+// 关键古籍必须出现在页面上（与内核头注释一一对应；v3.2.0 起随归档剔除相应条目）
 var refsAll = refs.map(function (r) { return r.h + r.text; }).join('');
-var mustBook = ['金函玉镜', '子平真诠', '穷通宝鉴', '滴天髓', '奇门遁甲统宗', '大六壬指南', '心印赋', '毕法赋', '六壬大全', '大六壬金口诀', '增删卜易', '卜筮正宗', '黄金策', '金镜式经', 'iztro', 'astronomy-engine', 'Meeus', '沈氏玄空学', '神相全编', '测字秘牒', '周易小成图简述', 'lunar-javascript'];
+var mustBook = ['金函玉镜', '子平真诠', '穷通宝鉴', '滴天髓', '奇门遁甲统宗', '大六壬指南', '心印赋', '毕法赋', '六壬大全', '增删卜易', '卜筮正宗', '黄金策', 'iztro', '沈氏玄空学', '周易小成图简述', 'lunar-javascript'];
 var missBook = mustBook.filter(function (b) { return refsAll.indexOf(b) < 0; });
 ok(missBook.length === 0, '关键古籍/库全部在列（缺：' + missBook.join('，') + '）');
-// 「本项目独有」必须如实存在（数字命理），不许假装有权威
-ok(refsAll.indexOf('本项目独有') >= 0, '自研项如实标「本项目独有」（数字命理）');
+// 「本项目独有」必须如实存在（不许假装有权威）
+ok(refsAll.indexOf('本项目独有') >= 0 || refsAll.indexOf('自研') >= 0, '自研项如实标「本项目独有 / 自研」');
 // 单源待验项必须如实存在（不许全员✅美化）
 ok(/⚠单源待验/.test(refsAll), '单源待验项如实标注（刻家奇门等）');
 

@@ -3,7 +3,7 @@
        导航「关于我们」+ 3 张卡（星玖工作室 / 协议条款 / 开源声明，130/230/330 各 354×84，卡距 16）
        + 页脚两行。
        ⚠️ 设计稿此页**没有品牌区**：3 张卡直接从 y130 起（与关于页品牌区同一 y），别照抄关于页。 -->
-  <view class="us nt-page-safe" :style="pageStyle">
+  <view class="us" :style="pageStyle">
     <view class="nt-nav" :style="navStyle">
       <view class="nt-nav-back nt-press" @click="$emit('back')">
         <view class="nt-icon nt-i-back"></view>
@@ -57,7 +57,10 @@ export default {
       return {}
       // #endif
     },
-    // 小程序端 WXSS 不支持 env() → 手势条避让由 safe-area.js 行内注入
+    // 手势条避让：H5/APP 走 CSS env(safe-area-inset-bottom)（theme.css H5 样式块已升为
+    // 「设计带 与 设备安全区取大者」）；小程序端 WXSS 不支持 env()，由 safe-area.js 算出行内注入。
+    // ⚠️ 不要再给页面根挂 .nt-page-safe：那个类的 34px 会与这里的行内值叠加成双重避让
+    //    （v3.1.35 起因：小程序侧避让已改由 .nt-layer 每层承担，页面根留底正是「手势条白边」病灶）。
     pageStyle() {
       // #ifdef MP-WEIXIN
       return { paddingBottom: this.nav.bottom + 'px' }

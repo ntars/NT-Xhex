@@ -3,7 +3,7 @@
  * 全部来自 theme.wxss（单一真源 modules/UIModule/theme.css，由 tools/sync-mp.js 生成）。
  * 本文件只写「本页布局结构 + 各视图槽位」，不重复定义 token / 组件，确保三端视觉一致。
  *
- * 设计稿依据（《玄玖灵犀 NT-Xhex.sketch》11 个画板，画布 402×874pt）：
+ * 设计稿依据（《玄玖灵犀 NT-Xhex.sketch》12 个画板，画布 402×874pt）：
  *   · 导航栏内容 62–106（标题中心 y84）；后退 chevron 字形**中心线盒** 24.42,77 7.5825×16
  *     → **墨迹盒 8.8628×17.0606**（= viewBox = CSS 盒子；臂 45°、开合 90°、端头平头）
  *   · 关于页：品牌区 24,130 354×148 + 4 卡 302/402/502/602 各 354×84，卡距 16
@@ -14,7 +14,8 @@
  */
 
 /* 页面：纵向弹性布局（根节点满高由 theme.wxss 基规则保证，.nt-hero/.nt-pgbody 等才能撑满；
- * 顶部安全区由 JS 行内 margin-top 注入到 .nt-nav，底部由行内 padding-bottom 注入到 .page） */
+ * 顶部安全区由 JS 行内 margin-top 注入到 .nt-nav；底部由 theme.wxss 的 .nt-layer 每层
+ * padding-bottom 承担（v3.1.35：页面根不再留底，否则切页时手势条区露白边）） */
 .page {
   position: relative;
   height: 100%;

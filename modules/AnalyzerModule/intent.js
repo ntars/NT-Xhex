@@ -25,19 +25,21 @@
   // ==================== 关键词表（规范 §4.5）====================
   var KW = {
     bazi: ['排盘', '八字', '命盘', '四柱', '算命', '批命', '批八字', '占卜'],
+    // v3.2.0 起 nameology（姓名/五格/测名）已随姓名算法归档，不再纳入意图识别。
+    //   黄历、万年历与择日按用户要求保留：almanac=黄历宜忌、select=主动择日、event=事项词（多为问当日吉凶）。
     almanac: ['黄历', '宜忌', '老黄历', '通胜', '吉凶', '今日', '今天', '明天', '明日', '后天', '昨天', '前天'],
-    nameology: ['姓名', '名字', '取名', '改名', '起名', '名字分析', '打分', '测名'],
-    // 强择日触发词（明确要"选日子"）
-    select: ['择日', '选日子', '选个日子', '选日', '挑日', '吉日', '哪天适合', '何时适合'],
-    // 事项词（出现时多为问"吉凶"，归黄历）
+    // 强择日触发词（明确要「选日子」）
+    select: ['择日', '择吉', '选日子', '选个日子', '选日', '挑日', '吉日', '吉时', '哪天适合', '何时适合',
+      '哪天好', '哪天不错', '哪个日子好', '哪天合适', '什么时候好'],
+    // 事项词（出现时多为问「吉凶」，归黄历）
     event: ['搬家', '结婚', '嫁娶', '开业', '开张', '动土', '入宅', '出行', '安葬', '修坟', '婚期'],
     jieqi: ['节气', '立春', '雨水', '惊蛰', '春分', '清明', '谷雨', '立夏', '小满', '芒种', '夏至',
       '小暑', '大暑', '立秋', '处暑', '白露', '秋分', '寒露', '霜降', '立冬', '小雪', '大雪', '冬至', '小寒', '大寒'],
     ganzhi: ['干支', '生肖', '属相', '六十甲子', '什么日', '什么日子']
   };
-  // 强关键词：几乎不可能做人名（规范 §9.3）
+  // 强关键词：几乎不可能做人名（规范 §9.3）；v3.2.0 移除「取名/改名/打分」等姓名类强词，因姓名算法已归档。
   var KW_STRONG = ['排盘', '八字', '四柱', '算命', '批命', '黄历', '老黄历', '通胜', '宜忌', '吉凶', '择日',
-    '取名', '改名', '打分', '干支', '节气', '嫁娶', '搬家', '开业', '动土', '入宅', '批八字', '占卜'];
+    '干支', '节气', '嫁娶', '搬家', '开业', '动土', '入宅', '批八字', '占卜'];
   // 姓名提取排除词（规范 §4.4）
   var NAME_EXCLUDE = ['排盘', '黄历', '宜忌', '分析', '姓名', '八字', '五行', '今天', '明天', '昨天', '今年', '明年',
     '男', '女', '凌晨', '早上', '上午', '中午', '下午', '傍晚', '晚上', '深夜', '半夜', '子时', '丑时', '寅时', '卯时',
@@ -45,7 +47,7 @@
     '怎么样', '好不好', '适合', '可以', '查询', '看看', '算命', '批命', '占卜', '通胜', '吉凶', '择日', '选日',
     '农历', '阴历', '阳历', '公历', '旧历', '夏历', '今年', '几月', '哪天', '何时', '现在', '下个月', '下星期', '下周'];
   // 姓名中不应出现的虚词/功能字（出现即判定非姓名）
-  var BAD_NAME_CHARS = '我这你他她它的了吗呢吧在有做么查想看知请适哪几怎不个为跟和与及或帮选叫让被把给算排批测说想问';
+  var BAD_NAME_CHARS = '我这你他她它的了吗呢吧在有做么查想看知请适哪几怎不个为跟和与及或帮选叫让被把给算排批测说想问能宜忌搬见';
   // 姓名词首/词尾可能黏连的「功能字/动词」前缀后缀（分词时剥离，如「看白玖玖」「白玖玖这」）
   var NAME_FILLER = '帮我你他她看看查算排批测这那是个一下你他';
   function cleanName(w) {
@@ -385,8 +387,19 @@
     return false;
   }
 
+  // 候选姓名里是否内嵌了功能词（子串命中即可，避免把「八字运程」「六爻纳甲」这类功能名当人名）
+  var FUNC_WORDS = ['八字', '排盘', '四柱', '运程', '大运', '小运', '流年', '流月', '流日', '格局', '神煞', '合婚',
+    '紫微', '斗数', '四化', '六爻', '纳甲', '旺衰', '奇门', '遁甲', '六壬', '毕法', '梅花', '小成', '易经', '周易',
+    '起卦', '解梦', '灵签', '飞星', '九宫', '八宅', '风水', '阳宅', '命卦', '节气', '干支'];
+  function containsKeyword(w) {
+    var all = KW.bazi.concat(KW.jieqi, KW.ganzhi);
+    for (var i = 0; i < all.length; i++) { if (w.indexOf(all[i]) >= 0) return true; }
+    for (var j = 0; j < FUNC_WORDS.length; j++) { if (w.indexOf(FUNC_WORDS[j]) >= 0) return true; }
+    return false;
+  }
+
   function isKeywordish(w) {
-    var all = KW.bazi.concat(KW.almanac, KW.nameology, KW.select, KW.event, KW.jieqi, KW.ganzhi);
+    var all = KW.bazi.concat(KW.almanac, KW.select, KW.event, KW.jieqi, KW.ganzhi);
     return all.some(function (k) { return w.indexOf(k) >= 0; });
   }
 
@@ -414,9 +427,13 @@
     var own = findOwnershipName(cnText);
     if (own) return { name: own, conflict: null };
 
+    // v3.2.0：句中出现相对日期（今天/明天/后天/昨天/前天）时不做姓名提取 ——
+    //   这类句子里的连续汉字（「今天宜忌」「明天能搬」）是功能词黏连，不是人名。
+    if (/(大后天|今天|今日|明天|明日|后天|昨天|昨日|前天)/.test(cnText)) return { name: null, conflict: null };
+
     var words = cnText.match(/[\u4e00-\u9fa5]{2,4}/g) || [];
     var hasBaziKw = KW.bazi.some(function (k) { return cnText.indexOf(k) >= 0; });
-    var hasNameKw = KW.nameology.some(function (k) { return cnText.indexOf(k) >= 0; });
+    var hasNameKw = false; // v3.2.0：nameology 关键词表已移除，姓名类输入不再触发名称识别分支
 
     for (var i = 0; i < words.length; i++) {
       var w = words[i];
@@ -427,6 +444,7 @@
         w = cw;
       }
       if (isKeywordish(w)) continue;
+      if (containsKeyword(w)) continue;   // v3.2.0：候选里含功能关键词子串（如「八字运程」含「八字」）→ 不是人名
       var r = resolveConflict(w, entities, hasBaziKw);
       if (r === 'name') return { name: w, conflict: null };
       if (r === 'conflict') return { name: null, conflict: w };
@@ -460,7 +478,6 @@
     var hasName = !!ent.name;
     var kwBazi = keywords.some(function (k) { return KW.bazi.indexOf(k) >= 0; });
     var kwAlmanac = keywords.some(function (k) { return KW.almanac.indexOf(k) >= 0; });
-    var kwName = keywords.some(function (k) { return KW.nameology.indexOf(k) >= 0; });
     var kwSelect = keywords.some(function (k) { return KW.select.indexOf(k) >= 0; });
     var kwEvent = keywords.some(function (k) { return KW.event.indexOf(k) >= 0; });
     var kwJieqi = keywords.some(function (k) { return KW.jieqi.indexOf(k) >= 0; });
@@ -475,7 +492,7 @@
       return { intent: 'calendar', confidence: 'high', candidates: null, prompt: null };
     }
 
-    // 择日：需强触发词（"选个日子/哪天适合"），事项词归黄历（问吉凶）
+    // 择日：需强触发词（「选个日子/哪天适合」）；事项词归黄历（问当日吉凶）
     if (kwSelect) {
       return { intent: 'selection', confidence: hasDate ? 'medium' : 'low', candidates: null, prompt: hasDate ? null : '想为什么事择日？请告诉我事项与大致日期范围。' };
     }
@@ -488,13 +505,13 @@
     if (hasName && hasDate && !hasGender) return { intent: 'bazi', confidence: 'medium', candidates: null, prompt: '已记录姓名与日期，请补充性别（男/女）以完成排盘。' };
     if (hasName && (kwBazi || hasTime)) return { intent: 'bazi', confidence: 'low', candidates: null, prompt: '请补充出生日期与性别，例如「白玖玖，女，2005年6月9日子时」。' };
 
-    // 姓名分析（无日期、无性别时）；有姓名+性别 → 归八字追问日期
+    // v3.2.0：姓名分析分支已移除（姓名/五格/测名算法归档）。仅当姓名实体伴随出生日期/性别时，仍归八字追问；
+    //   纯姓名无日期则不再识别为 nameology，交由话题守卫未知意图拒答。
     if (hasName && hasGender && !hasDate && !hasPartialDate) {
       return { intent: 'bazi', confidence: 'low', candidates: null, prompt: '已记录姓名与性别，请补充出生日期与时间，例如「白玖玖，女，2005年6月9日子时」。' };
     }
-    if (hasName && !hasDate && !hasPartialDate) return { intent: 'nameology', confidence: 'high', candidates: null, prompt: null };
 
-    // 黄历宜忌：有完整日期、或有黄历/事项词
+    // 黄历宜忌：有完整日期、或有黄历/事项词（黄历与万年历按用户要求保留）
     if (hasDate && !hasTime) return { intent: 'almanac', confidence: 'high', candidates: null, prompt: null };
     if ((kwAlmanac || kwEvent) && !hasName) return { intent: 'almanac', confidence: 'high', candidates: null, prompt: null };
 
@@ -552,15 +569,12 @@
       return { intent: 'unknown', confidence: 'none', entities: entities, candidates: null, prompt: null, error: '时间格式错误，应为 0-23 时、0-59 分。' };
     }
 
-    // 第三级追问：消歧义冲突
+    // 第三级追问：消歧义冲突（v3.2.0：姓名分析算法已归档，冲突词只按八字排盘引导，不再提示姓名分析）
     if (nameRes.conflict && !entities.name) {
       return {
         intent: 'unknown', confidence: 'low', entities: entities,
-        candidates: [
-          { intent: 'nameology', reason: '把「' + nameRes.conflict + '」当姓名分析' },
-          { intent: 'almanac', reason: '查询黄历宜忌' }
-        ],
-        prompt: '检测到「' + nameRes.conflict + '」可能是您的姓名，也可能您想查询黄历。请确认：',
+        candidates: [{ intent: 'almanac', reason: '查询黄历宜忌' }],
+        prompt: '若想排八字，请补充完整出生信息，例如「' + nameRes.conflict + '，女，2005年6月9日子时」；也可直接说「今天宜忌」查黄历。',
         error: null
       };
     }

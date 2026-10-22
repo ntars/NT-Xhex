@@ -21,7 +21,7 @@ function ok(cond, label, extra) {
 
 // ============ ① 书目表结构 ============
 console.log('== ① 书目表结构 ==');
-ok(R.BOOKS.length >= 30, '书目不少于 30 种（实际 ' + R.BOOKS.length + '）');
+ok(R.BOOKS.length >= 20, '书目不少于 20 种（实际 ' + R.BOOKS.length + '）');
 var ids = {};
 var dup = [];
 R.BOOKS.forEach(function (b) {
@@ -36,8 +36,8 @@ console.log('== ② 版权边界 ==');
 // 有 quoter 的书必须公版；不公版的书必须没有 quoter（现代著作不载原文）
 var badQuoter = R.BOOKS.filter(function (b) { return b.quoter && !b.公版; });
 ok(badQuoter.length === 0, '有原文的书全部公版（版权作品不挂 quoter）', badQuoter.map(function (b) { return b.id; }).join('、'));
-// 抽查三本已知版权书：小成图（霍斐然现代著作）/ iztro+中州派 / astronomy+Meeus
-['xiaocheng', 'ziwei-iztro', 'astro', 'qimen-geju', 'qimen-rike'].forEach(function (id) {
+// 抽查三本已知版权书：小成图（霍斐然现代著作）/ iztro+中州派 / 奇门格局 / 奇门日家刻家
+['xiaocheng', 'ziwei-iztro', 'qimen-geju', 'qimen-rike'].forEach(function (id) {
   var b = R.BOOKS.filter(function (x) { return x.id === id; })[0];
   ok(!!b && b.公版 === false && !b.quoter, id + ' 为版权作品：仅列书目、无原文');
 });
@@ -53,7 +53,7 @@ ok(R.quotesOf('ziwei-benshu').length === 168, '紫微 168 格（14 主星 × 12 
 ok(R.quotesOf('yijing').length === 64, '周易 64 卦（实际 ' + R.quotesOf('yijing').length + '）');
 ok(R.quotesOf('guanyin').length === 100, '观音灵签 100 签（实际 ' + R.quotesOf('guanyin').length + '）');
 ok(R.quotesOf('bifa').length === 100, '毕法赋 100 法（实际 ' + R.quotesOf('bifa').length + '）');
-ok(R.quoteCount() === 442, '原文总计 442 条（实际 ' + R.quoteCount() + '）');
+ok(R.quoteCount() === 432, '原文总计 432 条（实际 ' + R.quoteCount() + '）');
 // 非公版/无 quoter 的书取原文必须为空（宁空不编）
 ok(R.quotesOf('xiaocheng').length === 0 && R.quotesOf('lunar-js').length === 0, '版权书/无 quoter 书取原文为空');
 ok(R.quotesOf('不存在的id').length === 0, '未知 id 取原文为空');
@@ -77,7 +77,7 @@ ok(bf[70].h === '毕法 · 第71法 病符克宅全家患' && bf[70].text.indexO
 // ============ ⑤ refsPage 面板结构 ============
 console.log('== ⑤ refsPage 面板结构 ==');
 var page = R.refsPage();
-ok(page.length === 477, '面板条目 477 = 凡例1 + 总览1 + 书目31 + 原文导语1 + 原文442 + 示例1（实际 ' + page.length + '）');
+ok(page.length === 459, '面板条目 459 = 凡例1 + 总览1 + 书目23 + 原文导语1 + 原文432 + 示例1（实际 ' + page.length + '）');
 var struct = page.every(function (x) { return x && typeof x.h === 'string' && x.h && typeof x.text === 'string' && x.text; });
 ok(struct, '每条均为 {h, text} 且非空');
 ok(page[0].h === '凡例 · 查证状态四档', '首条为凡例');

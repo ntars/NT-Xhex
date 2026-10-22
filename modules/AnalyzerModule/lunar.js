@@ -179,16 +179,6 @@
     return s ? s.段 : '';
   }
 
-  // ===== 建除十二神（值日）：节气月建 + 日支 =====
-  // 建日 = 日支 == 月建支；其后逐日 除满平定执破危成收开闭。
-  function jianchuOf(date) {
-    var mz = monthZhiOf(date);
-    var z = dayGanzhiOf(date).支;
-    var order = { 子: 0, 丑: 1, 寅: 2, 卯: 3, 辰: 4, 巳: 5, 午: 6, 未: 7, 申: 8, 酉: 9, 戌: 10, 亥: 11 };
-    var idx = posMod(order[z] - order[mz], 12);
-    return DB.JIANCHU[idx];
-  }
-
   // ===== 日主旺衰（得令/得地/得势）=====
   // 得令：日主五行与「月建五行」关系（同/被月建所生=得令，被克=失令）
   // 得地：日主五行在四柱地支藏干中的同类个数
@@ -209,6 +199,16 @@
     return { 得令: diLing, 得地: deDi, 得势: deShi, 分: score, 判: lvl, 月建: monthZhi };
   }
 
+  // ===== 建除十二神（值日）：节气月建 + 日支 =====
+  // 建日 = 日支 == 月建支；其后逐日 除满平定执破危成收开闭。
+  function jianchuOf(date) {
+    var mz = monthZhiOf(date);
+    var z = dayGanzhiOf(date).支;
+    var order = { 子: 0, 丑: 1, 寅: 2, 卯: 3, 辰: 4, 巳: 5, 午: 6, 未: 7, 申: 8, 酉: 9, 戌: 10, 亥: 11 };
+    var idx = posMod(order[z] - order[mz], 12);
+    return DB.JIANCHU[idx];
+  }
+
   // ===== 对外接口（保持与旧 ganzhi.js 同名同形，供 bazi / ganzhi-analysis 复用）=====
   return {
     solarLongitude: solarLongitude,
@@ -219,9 +219,9 @@
     JIEQI_ORDER: JIEQI_ORDER,
     yearGanzhiOf: yearGanzhiOf,
     dayGanzhiOf: dayGanzhiOf,
+    jianchuOf: jianchuOf,
     monthGanzhiOf: monthGanzhiOf,
     hourGanzhiOf: hourGanzhiOf,
-    jianchuOf: jianchuOf,
     dayStrength: dayStrength,
     toBeijing: toBeijing
   };

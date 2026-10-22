@@ -2,11 +2,11 @@
  * modules/CoreModule/__tests__/baziliuyun.test.js —— 八字「小运 / 流月 / 流日 / 十神」自测（v3.1.14）
  * 覆盖：小运起于时柱（不是月柱）、阳男阴女顺阴男阳女逆、一位一年；
  *       十神十天干逐一对表；流月按节气（五虎遁）、十二月连续、丑月落次年小寒；
- *       流日连续不断、跨月跨年不跳、与择日内核的日柱一致。
+ *       流日连续不断、跨月跨年不跳、与干支底座的日柱一致。
  * 跑法：node modules/CoreModule/__tests__/baziliuyun.test.js
  */
 var B = require('../bazi.js');
-var Z = require('../zeri.js');
+var G = require('../ganzhi.js');
 var L = require('../lunar.js');
 
 var pass = 0, fail = 0;
@@ -116,10 +116,9 @@ ok('跨年（12 月 31 → 次年 1 月 1）不跳日', (function () {
 })());
 var 日柱错 = lr.日.filter(function (x) {
   var m = x.日期.split('-');
-  var z = Z.dayInfo(+m[0], +m[1], +m[2]);
-  return z.日干 + z.日支 !== x.干支;
+  return G.dayGanzhi(+m[0], +m[1], +m[2]).干支 !== x.干支;
 });
-ok('与择日内核（zeri.dayInfo）的日柱完全一致', 日柱错.length === 0, 日柱错.slice(0, 3).map(function (x) { return x.日期 + x.干支; }).join(' '));
+ok('与干支底座（ganzhi.dayGanzhi）的日柱完全一致', 日柱错.length === 0, 日柱错.slice(0, 3).map(function (x) { return x.日期 + x.干支; }).join(' '));
 ok('流日带农历与十神', lr.日.every(function (x) { return !!x.农历 && !!x.十神; }));
 
 console.log('\n=== 八字小运·流月·流日 自测：' + pass + ' 通过 / ' + fail + ' 失败 ===');

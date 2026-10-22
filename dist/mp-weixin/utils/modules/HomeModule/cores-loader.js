@@ -7,7 +7,10 @@
  *     · CoreModule/*        全部内核（含 solarlunar 历法底座 427KB）
  *     · features/registry.js 功能注册表（190KB，触发词路由单一真源）
  *     · AnalyzerModule/*     分析装配层（把内核结果组织成给用户看的正文）
- *     · ExportModule/*       导出图片（结果页「导出图片」才用）
+ *
+ *   v3.2.0 起 **ExportModule/*（导出图片）已移进主包**：分包体积 2.059MB 超了微信
+ *   「单分包 ≤ 2MB」硬限，而导出图片不依赖任何内核、只在结果页点按钮时才用，
+ *   挪进主包后主包 0.494MB、分包 1.96MB，两边都在限内。
  *
  *   为什么是「整体一包」而不是按板块细拆（这一点很关键）：
  *     内核之间是**同步 require**（如 bazi → lunar → solarlunar），且几乎全部内核都依赖
@@ -79,7 +82,14 @@
       global: 'analyzer'
     },
     export: {
-      mp: function () { return require.async('../../../occupy-cores/utils/modules/ExportModule/export-image.js'); },
+      // v3.2.0：导出图片模块**移进主包**。原因：分包 occupy-cores 体积 2.059MB 超了微信
+      // 「单分包 ≤ 2MB」硬限（整包 30MB 无虞）；导出图片版式（export-image.js 46KB + qrcode.js 57KB）
+      // 不依赖任何内核、只在结果页点「导出图片」时才用，挪进主包最划算：
+      // 主包 0.396MB → 0.494MB（仍远在 2MB 红线内），分包 2.059MB → 1.96MB（回到限内）。
+      // 它在主包里，故可用**静态 require**（微信的禁令只针对「主包引用分包文件」，
+      // 同在主包互引是合法的）——不需要再走 require.async，也**不必下载分包**（main: true）。
+      main: true,
+      mp: function () { return require('../ExportModule/export-image.js'); },
       sync: '../ExportModule/export-image.js',
       global: 'exportImage'
     }
@@ -101,12 +111,13 @@
   //   一旦模块加载出问题就零回调，没有超时就会「无报错但页面永远进不去」（v3.1.43 真机实测）。
   var LOAD_TIMEOUT_MS = 6000;
 
-  // 小程序路径：先确保分包下载完成，再 require.async 取模块。
+  // 小程序路径：主包内模块直接取；分包内模块先确保分包下载完成，再 require.async 取模块。
   //   返回的 Promise **保证在 LOAD_TIMEOUT_MS 内 settle**（要么拿到模块/ null，要么超时 null），
   //   绝不永久 pending —— 上层的「正在加载引擎」提示与兜底文案才有机会出现。
   function loadMP(key) {
     var def = MODS[key];
-    if (!def || typeof require.async !== 'function') return Promise.resolve(null);
+    // 主包内模块（main: true）不需要 require.async；其余走分包异步化，必须有 require.async。
+    if (!def || (!def.main && typeof require.async !== 'function')) return Promise.resolve(null);
     return new Promise(function (resolve) {
       // resolve 幂等：超时后回调又来了，也不会重复 settle（Promise 本身只认第一次，这里显式标记便于早退）
       var done = false;
@@ -124,7 +135,11 @@
           }
         } catch (e) { finish(null); }
       };
-      if (typeof wx !== 'undefined' && typeof wx.loadSubpackage === 'function') {
+      if (def.main) {
+        // 主包内模块（v3.2.0 的导出图片）：**不必下载分包**，直接取。
+        // 走 require.async 也行，但主包内同步 require 最直接、也最省一次分包下载。
+        take();
+      } else if (typeof wx !== 'undefined' && typeof wx.loadSubpackage === 'function') {
         // 首次会走网络下载分包；已下载则立即回调。
         try {
           wx.loadSubpackage({ name: PKG, success: take, fail: function () { finish(null); } });

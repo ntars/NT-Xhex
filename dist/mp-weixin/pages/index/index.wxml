@@ -78,19 +78,13 @@
           <view class="nt-halo"></view>
           <input class="nt-pill-input" value="{{input}}" confirm-type="send"
                  bindinput="onInput" bindconfirm="send" bindfocus="onFocus" bindblur="onBlur" />
-          <!-- 滚动搜索建议（真实词条，内容来自 settings.js 的 searchHints 单一真源）。
-               结构：.nt-ph（裁切窗，48pt 高）> .nt-ph-track（整列）> N 个 .nt-ph-item + 1 个首词条副本。
-               轮换节奏（停留 5s → 上滑一行 0.5s，同百度首页）与分档 keyframe `nt-ph-step`
-               全在 theme.css，本壳不写任何动画值；该 keyframe 与词条条数绑定（当前 8 条）。
-               末尾副本是无缝衔接的关键（滑到 -N×48 时窗口里那行与第一行逐像素相同）。
+          <!-- 搜索框占位（固定一句话，来自 settings.js 的 searchPlaceholder 单一真源）。
+               占据与滚动词条相同的 .nt-ph 裁切窗（48pt 高），样式复用 .nt-ph-item。
                输入非空或已聚焦 → 根节点带 .nt-ph-off，整体隐去（HIG：占位提示不与真实输入重叠；
                聚焦时也让位，因为微信官方文档写明「input 仅在 focus 时表现为原生组件」，
                此时它层级高于 WebView 里的一切元素，词条会被直接盖住）。 -->
-          <view class="nt-ph" wx:if="{{about.searchHints && about.searchHints.length}}">
-            <view class="nt-ph-track">
-              <text class="nt-ph-item" wx:for="{{about.searchHints}}" wx:key="index">{{item}}</text>
-              <text class="nt-ph-item">{{about.searchHints[0]}}</text>
-            </view>
+          <view class="nt-ph" wx:if="{{about.searchPlaceholder}}">
+            <text class="nt-ph-item">{{ about.searchPlaceholder }}</text>
           </view>
           <view class="nt-pill-search nt-press" bindtap="send">
             <view class="nt-icon nt-i-search"></view>
@@ -118,11 +112,26 @@
         <view class="nt-dl-card">
           <text class="nt-dl-h1">{{about.questionLabel}}</text>
           <text class="nt-dl-text nt-dl-text-light">{{result.question}}</text>
-          <text class="nt-dl-h1 res-lead-h" wx:if="{{result.lead}}">{{result.lead}}</text>
-          <view class="res-block" wx:for="{{result.blocks}}" wx:key="index">
-            <text class="res-block-label" wx:if="{{item.label}}">{{item.label}}</text>
-            <text class="nt-dl-text nt-dl-text-light">{{item.text}}</text>
-          </view>
+          <!-- 多算法并列：一次提问命中多个功能块时，每个【标题】一小节
+               （设计稿「结果页文本范围内可显示多个算法」）。节间距与节标题样式见 theme.css。 -->
+          <block wx:if="{{result.multi}}">
+            <view class="res-section" wx:for="{{result.sections}}" wx:key="index">
+              <text class="res-section-title nt-dl-h1" wx:if="{{item.title}}">{{item.title}}</text>
+              <text class="nt-dl-text nt-dl-text-light" wx:if="{{item.lead}}">{{item.lead}}</text>
+              <view class="res-block" wx:for="{{item.blocks}}" wx:for-item="b" wx:key="index">
+                <text class="res-block-label" wx:if="{{b.label}}">{{b.label}}</text>
+                <text class="nt-dl-text nt-dl-text-light">{{b.text}}</text>
+              </view>
+            </view>
+          </block>
+          <!-- 单算法：原有结构不变 -->
+          <block wx:else>
+            <text class="nt-dl-h1 res-lead-h" wx:if="{{result.lead}}">{{result.lead}}</text>
+            <view class="res-block" wx:for="{{result.blocks}}" wx:key="index">
+              <text class="res-block-label" wx:if="{{item.label}}">{{item.label}}</text>
+              <text class="nt-dl-text nt-dl-text-light">{{item.text}}</text>
+            </view>
+          </block>
         </view>
       </scroll-view>
       <view class="nt-dual">

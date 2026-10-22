@@ -15,14 +15,82 @@
 })(typeof self !== 'undefined' ? self : this, function () {
 
   /**
-   * 把引擎文本加工成结构化结果
+   * 把引擎文本按「【标题】」切成若干算法小节
+   *
+   * 为什么需要它：一次提问命中多个功能块时（如「… 奇门 六爻」），analyzer 的输出是
+   * 各算法文本用换行直接拼接，每段自带一个【标题】。原 format() 只认第一个标题，
+   * 第二个会被当普通段落吞进第一个算法的正文里。设计稿要求「结果页文本范围内
+   * 可显示多个算法」，因此在渲染前先按标题边界切段，每段各自 format。
+   *
+   * ⚠️ 单算法输出的内核自身也可能带多个【】行（如 huangli 有 16 个【】行、
+   *    name-shuzi 有 13 个）。那些行**不是**小节标题，若按此函数切会把一个算法
+   *    剁碎。因此本函数只在 analyzer 的**多命中**场景启用（见 format 的 multi 分支），
+   *    由调用方决定是否使用，单算法输出一律走原路径。
+   *
    * @param {string} text 引擎输出的纯文本
-   * @returns {{title:string, lead:string, blocks:Array<{label:string,text:string}>}}
-   *   title  首行【…】里的标题（无则为空串）
-   *   lead   标题后的首句导语（无则为空串）
-   *   blocks 段落数组；label 为段内「标签：」前缀（无则为空串）
+   * @returns {Array<{title:string, body:string}>} 按【标题】切出的小节（至少 1 段）
    */
-  function format(text) {
+  function splitSections(text) {
+    var raw = (text || '').replace(/\r/g, '');
+    var lines = raw.split('\n');
+    var sections = [];
+    var cur = null;
+    lines.forEach(function (line) {
+      var hm = line.match(/^\s*【([^】]+)】\s*(.*)$/);
+      if (hm) {
+        // 新标题 → 开新段（标题行自身的内容也并入 body）
+        cur = { title: hm[1], body: hm[2] ? [hm[2]] : [] };
+        sections.push(cur);
+      } else if (cur) {
+        cur.body.push(line);
+      } else {
+        // 第一个标题出现之前的散行（如追问提示、引导语）：归入无标题段
+        cur = { title: '', body: [line] };
+        sections.push(cur);
+      }
+    });
+    if (!sections.length) sections.push({ title: '', body: [''] });
+    // 段内空行由各段自己的 format 负责过滤，这里只把行拼回去
+    return sections.map(function (s) {
+      return { title: s.title, body: s.body.join('\n') };
+    });
+  }
+
+  /**
+   * 把引擎文本加工成结构化结果
+   *
+   * 两种返回形态：
+   *   · 单算法（默认）：{title, lead, blocks} —— 与原行为完全一致
+   *   · 多算法并列：{multi:true, sections:[{title, lead, blocks}], title, lead, blocks}
+   *     每个【标题】一小节，各节内部仍按「首句 lead + 段落 blocks」排版，由壳层循环渲染；
+   *     末尾三个字段是 sections 的**摊平视图**，专供 export-image.js 的 build() 使用
+   *     （它只吃单流 {title, lead, blocks}），渲染层只读 multi/sections。
+   *
+   * @param {string} text 引擎输出的纯文本
+   * @param {boolean} [multi] 是否按【标题】切小节（多命中场景由调用方置 true）
+   * @returns {object} 结构化结果
+   */
+  function format(text, multi) {
+    if (multi) {
+      var secs = splitSections(text).map(function (s) {
+        var inner = format(s.body);
+        inner.title = s.title || inner.title;
+        return inner;
+      });
+      // 全部小节都既无标题又无内容 → 退回单算法形态，避免壳层渲染出空壳
+      var hasAny = secs.some(function (s) { return s.title || s.lead || (s.blocks && s.blocks.length); });
+      if (secs.length > 1 && hasAny) {
+        // 摊平视图：节标题以独立段落插入，保持「先小节标题、后该节正文」的阅读顺序
+        var flat = [];
+        secs.forEach(function (s, i) {
+          if (i > 0 && s.title) flat.push({ label: '', text: '【' + s.title + '】' });
+          if (i > 0 && s.lead) flat.push({ label: '', text: s.lead });
+          (s.blocks || []).forEach(function (b) { flat.push(b); });
+        });
+        var head = secs[0];
+        return { multi: true, sections: secs, title: head.title, lead: head.lead, blocks: flat };
+      }
+    }
     var raw = (text || '').replace(/\r/g, '').trim();
     var title = '', lead = '';
 
@@ -66,5 +134,5 @@
     return { title: title, lead: lead, blocks: blocks };
   }
 
-  return { format: format };
+  return { format: format, splitSections: splitSections };
 });

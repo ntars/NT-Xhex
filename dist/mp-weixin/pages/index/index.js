@@ -76,7 +76,7 @@ Page({
     if (last) {
       this.setData({
         view: 'result', layerFront: 'result', layerBack: 'result',
-        result: this.shape(last.question, last.answer)
+        result: this.shape(last.question, last.answer, last.hits)
       })
     }
   },
@@ -96,8 +96,9 @@ Page({
     wx.setBackgroundColor({ backgroundColor: c, backgroundColorTop: c, backgroundColorBottom: c })
   },
 
-  shape: function (question, answer) {
-    var f = ResultFormat.format(answer)
+  shape: function (question, answer, hits) {
+    // hits > 1（一次提问命中多个功能块）时按【标题】切小节，结果页多算法并列展示
+    var f = ResultFormat.format(answer, (hits || 1) > 1)
     f.question = question
     return f
   },
@@ -207,7 +208,7 @@ Page({
     }
     var r = this.conv.ask(text)
     if (!r.ok) return
-    this.go('result', { input: '', result: this.shape(r.question, r.answer) })
+    this.go('result', { input: '', result: this.shape(r.question, r.answer, r.hits) })
   },
 
   // 返回输入页（清空当前结果）
@@ -231,7 +232,8 @@ Page({
   exportImage: function () {
     var self = this
     var r = this.data.result
-    var has = r && (r.question || (r.blocks && r.blocks.length))
+    // 多算法并列时 blocks 在 sections 里，导出判定要一并看
+    var has = r && (r.question || (r.blocks && r.blocks.length) || (r.sections && r.sections.length))
     if (!has) { this.setData({ toastText: '暂无可导出的内容' }); this.showToast(); return }
     // v3.1.38：导出模块在分包里 —— 首次导出先取回来，再**重走一次本函数**（这次 ExportImage 已就位）
     if (!ExportImage) {

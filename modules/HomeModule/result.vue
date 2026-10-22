@@ -3,7 +3,7 @@
        顶栏标题「玄玖灵犀」+ 页名「搜索结果」（140,130 122×44）+ 单张正文范围卡
        （24,174 354×528，卡高 = 剩余空间，非魔数）+ 底部双按钮「导出图片 / 再问一个」
        （24/225,726 各 153×48，间距 48）+ 页脚两行。 -->
-  <view class="res nt-page-safe" :style="pageStyle">
+  <view class="res" :style="pageStyle">
     <view class="nt-nav" :style="navStyle">
       <view class="nt-nav-back nt-press" @click="$emit('back')">
         <view class="nt-icon nt-i-back"></view>
@@ -17,11 +17,27 @@
       <view class="nt-dl-card">
         <text class="nt-dl-h1">{{ about.questionLabel }}</text>
         <text class="nt-dl-text nt-dl-text-light">{{ result.question }}</text>
-        <text class="nt-dl-h1 res-lead-h" v-if="result.lead">{{ result.lead }}</text>
-        <view class="res-block" v-for="(b, i) in result.blocks" :key="i">
-          <text class="res-block-label" v-if="b.label">{{ b.label }}</text>
-          <text class="nt-dl-text nt-dl-text-light">{{ b.text }}</text>
-        </view>
+        <!-- 多算法并列：一次提问命中多个功能块时，每个【标题】一小节（设计稿「结果页
+             文本范围内可显示多个算法」）。小节之间用 12pt 间距 + 细分隔感区分，
+             不加额外描边/底色（v3.0.4 起全站不画描边，层级靠间距与字色）。 -->
+        <template v-if="result.multi">
+          <view class="res-section" v-for="(s, si) in result.sections" :key="si">
+            <text class="res-section-title nt-dl-h1" v-if="s.title">{{ s.title }}</text>
+            <text class="nt-dl-text nt-dl-text-light" v-if="s.lead">{{ s.lead }}</text>
+            <view class="res-block" v-for="(b, bi) in s.blocks" :key="bi">
+              <text class="res-block-label" v-if="b.label">{{ b.label }}</text>
+              <text class="nt-dl-text nt-dl-text-light">{{ b.text }}</text>
+            </view>
+          </view>
+        </template>
+        <!-- 单算法：原有结构不变 -->
+        <template v-else>
+          <text class="nt-dl-h1 res-lead-h" v-if="result.lead">{{ result.lead }}</text>
+          <view class="res-block" v-for="(b, i) in result.blocks" :key="i">
+            <text class="res-block-label" v-if="b.label">{{ b.label }}</text>
+            <text class="nt-dl-text nt-dl-text-light">{{ b.text }}</text>
+          </view>
+        </template>
       </view>
     </scroll-view>
 
@@ -72,7 +88,10 @@ export default {
       return {}
       // #endif
     },
-    // 小程序端 WXSS 不支持 env() → 手势条避让由 safe-area.js 行内注入
+    // 手势条避让：H5/APP 走 CSS env(safe-area-inset-bottom)（theme.css H5 样式块已升为
+    // 「设计带 与 设备安全区取大者」）；小程序端 WXSS 不支持 env()，由 safe-area.js 算出行内注入。
+    // ⚠️ 不要再给页面根挂 .nt-page-safe：那个类的 34px 会与这里的行内值叠加成双重避让
+    //    （v3.1.35 起因：小程序侧避让已改由 .nt-layer 每层承担，页面根留底正是「手势条白边」病灶）。
     pageStyle() {
       // #ifdef MP-WEIXIN
       return { paddingBottom: this.nav.bottom + 'px' }
@@ -186,6 +205,10 @@ export default {
 .res {
   background: var(--nt-bg); color: var(--nt-ink);
 }
+
+/* 多算法并列的小节（一次提问命中多个功能块）：节间距与节标题样式已集中在
+   theme.css 的 .res-section / .res-section-title（三端共用，见 v3.2.1），
+   本壳不再重复定义，只留平台专属规则（离屏画布、响应式限宽）。 */
 
 /* 导出图片离屏画布（移出可视区，不参与布局；实际尺寸由 JS 按版式计划设定） */
 .nt-export-canvas { position: fixed; left: -9999px; top: 0; width: 402px; height: 640px; }

@@ -2,7 +2,7 @@
   <!-- 内容详情页（一稿两用 5 个子页：参考文献 / 功能介绍 / 星玖工作室 / 协议条款 / 开源声明）
        设计稿：顶栏标题「玄玖灵犀」+ 页名（140,130 122×44）+ 正文范围卡（24,174 354×600）
        + 页脚两行。文案全部取自 settings.js 单一真源（navTitle / resTitle / aboutNotes / aboutFoot）。 -->
-  <view class="dl nt-page-safe" :style="pageStyle">
+  <view class="dl" :style="pageStyle">
     <view class="nt-nav" :style="navStyle">
       <view class="nt-nav-back nt-press" @click="$emit('back')">
         <view class="nt-icon nt-i-back"></view>
@@ -59,7 +59,10 @@ export default {
       return {}
       // #endif
     },
-    // 小程序端 WXSS 不支持 env() → 手势条避让由 safe-area.js 行内注入
+    // 手势条避让：H5/APP 走 CSS env(safe-area-inset-bottom)（theme.css H5 样式块已升为
+    // 「设计带 与 设备安全区取大者」）；小程序端 WXSS 不支持 env()，由 safe-area.js 算出行内注入。
+    // ⚠️ 不要再给页面根挂 .nt-page-safe：那个类的 34px 会与这里的行内值叠加成双重避让
+    //    （v3.1.35 起因：小程序侧避让已改由 .nt-layer 每层承担，页面根留底正是「手势条白边」病灶）。
     pageStyle() {
       // #ifdef MP-WEIXIN
       return { paddingBottom: this.nav.bottom + 'px' }

@@ -3,7 +3,7 @@
  * ------------------------------------------------------------------
  * 口径与来源（传统命理通用表，多源核对一致；口诀按古籍原文记录）：
  *  · 天乙贵人：「甲戊兼牛羊，乙己鼠猴乡，丙丁猪鸡位，壬癸兔蛇藏，庚辛逢马虎。」（《金函玉镜》；
- *    本项目已在 zeri.js 的 GUI_REN 锁定，本文件**直接复用**，不复制表）
+ *    v3.2.0 择日内核归档后，本文件**自持** GUI_REN 表，作为天乙贵人的唯一真源）
  *  · 太极贵人、文昌贵人、天德/月德、驿马、桃花、华盖、将星、劫煞、灾煞、亡神、孤辰寡宿、
  *    禄神、羊刃、金舆、天医、红鸾天喜：皆为子平通用神煞表（口诀见各行「查法」）。
  *  · 空亡取日柱旬空（bazi.js 已算，不重写）。
@@ -18,17 +18,25 @@
  */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) {
-    module.exports = factory(require('./bazi.js'), require('./zeri.js'), require('./bazi-pattern.js'));
+    module.exports = factory(require('./bazi.js'), require('./bazi-pattern.js'));
   } else {
     root.NT = root.NT || {}; root.NT.core = root.NT.core || {};
-    root.NT.core.baziShensha = factory(root.NT.core.bazi, root.NT.core.zeri, root.NT.core.baziPattern);
+    root.NT.core.baziShensha = factory(root.NT.core.bazi, root.NT.core.baziPattern);
   }
-})(typeof self !== 'undefined' ? self : this, function (BAZI, ZR, BP) {
+})(typeof self !== 'undefined' ? self : this, function (BAZI, BP) {
 
   var GAN = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'];
   var ZHI = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
   var PILLARS = ['年', '月', '日', '时'];
   var SX = { 子: '鼠', 丑: '牛', 寅: '虎', 卯: '兔', 辰: '龙', 巳: '蛇', 午: '马', 未: '羊', 申: '猴', 酉: '鸡', 戌: '狗', 亥: '猪' };
+
+  // 天乙贵人表（日干 → 二支）：口诀「甲戊兼牛羊，乙己鼠猴乡，丙丁猪鸡位，壬癸兔蛇藏，庚辛逢马虎」（《金函玉镜》）
+  // v3.2.0：原复用 zeri.js 的 GUI_REN，择日内核归档后由本文件自持（唯一真源）
+  var GUI_REN = {
+    甲: ['丑', '未'], 戊: ['丑', '未'], 乙: ['子', '申'], 己: ['子', '申'],
+    丙: ['亥', '酉'], 丁: ['亥', '酉'], 庚: ['午', '寅'], 辛: ['午', '寅'],
+    壬: ['卯', '巳'], 癸: ['卯', '巳']
+  };
 
   // 三合局归属：返回该支所属三合局的「首支」（用于查驿马/桃花等以三合局起的表）
   var SANHE_HEAD = {
@@ -96,8 +104,8 @@
       return res;
     }
 
-    // 1 天乙贵人（日干/年干查四支；复用 zeri.GUI_REN 单一真源）
-    var gui = (ZR && ZR.GUI_REN) ? (ZR.GUI_REN[日干] || ZR.GUI_REN[gans[0]] || []) : [];
+    // 1 天乙贵人（日干/年干查四支；本文件自持 GUI_REN 单一真源）
+    var gui = GUI_REN[日干] || GUI_REN[gans[0]] || [];
     push('天乙贵人', hitZhi(gui), '日干（兼年干）查四支：甲戊丑未、乙己子申、丙丁亥酉、庚辛午寅、壬癸卯巳（《金函玉镜》）', '命中第一吉神，主逢难有救、遇贵得助');
     // 2 太极贵人
     push('太极贵人', hitZhi(TAIJI[日干] || []), '日干查支：甲乙子午、丙丁卯酉、戊己辰戌丑未、庚辛寅亥、壬癸巳申', '主好玄学、有始有终，喜文史哲与术数');
@@ -335,6 +343,7 @@
 
   return {
     analyze: analyze, hehun: hehun,
+    GUI_REN: GUI_REN,
     TAIJI: TAIJI, WENCHANG: WENCHANG, TIANDE: TIANDE, YUEDE: YUEDE,
     YIMA: YIMA, TAOHUA: TAOHUA, HUAGAI: HUAGAI, JIANGXING: JIANGXING,
     JIESHA: JIESHA, ZAISHA: ZAISHA, WANGSHEN: WANGSHEN,

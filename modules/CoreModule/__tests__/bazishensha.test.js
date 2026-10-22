@@ -20,9 +20,8 @@ ok('日主 = 壬（水）', r.日主 === '壬（水）', r.日主);
 
 // B. 神煞表逐条查（表值本身是权威口诀，此处锁死防手滑）
 console.log('B. 神煞表值');
-ok('天乙贵人 壬 → 卯巳（复用 zeri.GUI_REN）', (function () {
-  var ZR = require('../zeri.js');
-  return ZR.GUI_REN['壬'].join('') === '卯巳';
+ok('天乙贵人 壬 → 卯巳（bazi-shensha 自持 GUI_REN，v3.2.0 起为唯一真源）', (function () {
+  return S.GUI_REN['壬'].join('') === '卯巳';
 })(), 'ok');
 ok('太极贵人 壬 → 巳申', S.TAIJI['壬'].join('') === '巳申', S.TAIJI['壬'].join(''));
 ok('文昌 甲巳 乙午 丙申 丁酉 戊申 己酉 庚亥 辛子 壬寅 癸卯',

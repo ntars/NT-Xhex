@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#000000" />
-  <meta name="description" content="算法演乾坤，一问知天命，以数据重现千年术数。无后端、无网络。© 星玖工作室 Ntarstudio" />
+  <meta name="description" content="中国传统术数文献整理、校勘与数字化演算的学术研究辅助工具，仅供传统文化学习与学术研究参考。无后端、无网络。© 星玖工作室 Ntarstudio" />
   <title>玄玖灵犀 NT-Xhex</title>
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" type="image/png" href="../../static/icons/icon-192-squircle.png" />
@@ -121,12 +121,9 @@
             <!-- 常驻强调光环：独立子节点（第一个孩子），只管呼吸，不参与点击与布局 -->
             <span class="nt-halo"></span>
             <input class="nt-pill-input" id="heroinput" />
-            <!-- 滚动搜索建议（真实示例词条，内容来自 settings.js 的 searchHints 单一真源，由 app.js 渲染）。
-                 结构：.nt-ph（裁切窗，48pt 高）> .nt-ph-track（整列）> N 个 .nt-ph-item。
-                 轮换节奏（停留 5s → 上滑一行 0.5s，同百度首页）与分档 keyframe 全在 theme.css；
-                 词条由 JS 填，末尾再补一份首词条实现无缝衔接；
-                 输入非空或已聚焦时给 .nt-pill 加 .nt-ph-off 整体隐去。 -->
-            <div class="nt-ph" id="heroPh"><div class="nt-ph-track" id="heroPhTrack"></div></div>
+            <!-- 搜索框占位（固定一句话，来自 settings.js 的 searchPlaceholder，由 app.js 渲染）。
+                 占据与旧滚动词条相同的 .nt-ph 裁切窗（48pt 高）；输入非空或已聚焦时给 .nt-pill 加 .nt-ph-off 整体隐去。 -->
+            <div class="nt-ph" id="heroPh"></div>
             <span class="nt-pill-search" id="heroSend"><span class="nt-icon nt-i-search"></span></span>
           </div>
           <div class="nt-hero-note" id="heroDisclaimer"></div>
@@ -152,8 +149,12 @@
           <div class="nt-dl-card">
             <span class="nt-dl-h1" id="resqlabel">你的提问</span>
             <span class="nt-dl-text nt-dl-text-light" id="resquestion"></span>
+            <!-- 单算法结构（lead + blocks），由 app.js 填充 -->
             <span class="nt-dl-h1 res-lead-h" id="reslead"></span>
             <div id="resblocks"></div>
+            <!-- 多算法并列结构（一次提问命中多个功能块时），由 app.js 生成；
+                 节间距/节标题样式见 theme.css 的 .res-section / .res-section-title -->
+            <div id="ressections" hidden></div>
           </div>
         </div>
         <div class="nt-dual">
@@ -242,29 +243,23 @@
   <script src="../../modules/CoreModule/solarlunar.js"></script>
   <script src="../../modules/CoreModule/lunar.js"></script>
   <script src="../../modules/CoreModule/bazi.js"></script>
-  <script src="../../modules/CoreModule/kangxi-strokes.js"></script>
-  <script src="../../modules/CoreModule/name81.js"></script>
-  <script src="../../modules/CoreModule/zodiac-rel.js"></script>
   <script src="../../modules/CoreModule/ganzhi.js"></script>
-  <script src="../../modules/CoreModule/wuxing.js"></script>
-  <script src="../../modules/CoreModule/suntime.js"></script>
+  <!-- 黄历神煞（建除/黄道黑道/二十八宿/彭祖/胎神/冲煞/宜忌）：黄历与万年历按用户要求保留 -->
   <script src="../../modules/CoreModule/shensha.js"></script>
+  <script src="../../modules/CoreModule/huangli-duanyu.js"></script>
   <script src="../../modules/CoreModule/feixing.js"></script>
-  <script src="../../modules/CoreModule/numeral.js"></script>
-  <script src="../../modules/CoreModule/numberstars.js"></script>
   <script src="../../modules/CoreModule/iching-text.js"></script>
   <script src="../../modules/CoreModule/iching.js"></script>
   <script src="../../modules/CoreModule/bazhai.js"></script>
-  <script src="../../modules/CoreModule/xiaoshu.js"></script>
+  <!-- v3.2.0 已归档备份并删除内核，移除引入：xiaoshu.js（小术：一掌经/小六壬/马前课）-->
   <!-- 紫微斗数：内嵌 iztro（构建期资产，运行时不联网，UMD 挂 window.iztro）+ ziwei 适配层 -->
   <script src="../../modules/CoreModule/vendor/iztro.min.js"></script>
   <script src="../../modules/CoreModule/ziwei.js"></script>
   <script src="../../modules/CoreModule/ziwei-stars.js"></script>
   <script src="../../modules/CoreModule/ziwei-horoscope.js"></script>
-  <!-- 占星/七政四余：内嵌 astronomy-engine（MIT，JPL 级，UMD 挂 window.Astronomy）+ astro 适配层 -->
-  <script src="../../modules/CoreModule/vendor/astronomy.js"></script>
-  <script src="../../modules/CoreModule/astro.js"></script>
-  <script src="../../modules/CoreModule/astro-house.js"></script>
+  <!-- 紫微断语层（紫微全书要点 + 白话，registry 的 ziwei 功能块用；v3.1.61 前 PWA 端漏载 → 断语静默降级，v3.2.0 补上）-->
+  <script src="../../modules/CoreModule/ziwei-duanyu.js"></script>
+  <!-- 占星/七政四余（v3.2.0 已归档备份，内核删除，故移除 astronomy.js/astro.js/astro-house.js 三引入）-->
   <!-- 奇门遁甲 C14（时家转盘·拆补定局，纯自研权威规则，依赖 NT.core.lunar + NT.core.ganzhi，二者已在前引入）-->
   <script src="../../modules/CoreModule/qimen.js"></script>
   <!-- 日家奇门 C26（六十日一局·值符随日干·值使按日干位次，复用 qimen.js 的转盘环序与地盘序，二者不是同一张盘）-->
@@ -276,29 +271,36 @@
   <!-- 大六壬 C16（时家·月将加占时·四课三传·十二天将，纯自研权威规则，依赖 NT.core.lunar + NT.core.ganzhi）-->
   <script src="../../modules/CoreModule/liuren.js"></script>
   <!-- 金口诀 C25（四位课式·用爻·五动三动，依赖 NT.core.lunar + NT.core.liuren 的天乙贵人与十二天将，二者已在前引入）-->
-  <script src="../../modules/CoreModule/jinkou.js"></script>
+  <!-- v3.2.0 已归档备份并删除内核，移除引入：jinkou.js -->
   <!-- 三式补全 + 新增内核（C17–C21，UMD 挂 NT.core.*，registry 单一入口路由）：
        太乙神数 C17 / 六爻纳甲 C18 / 阳宅风水 C20 / 相术 C21a / 签文解梦塔罗 C21b -->
   <script src="../../modules/CoreModule/liuyao.js"></script>
-  <script src="../../modules/CoreModule/taiyi.js"></script>
+  <!-- v3.2.0 已归档备份并删除内核，移除引入：taiyi.js -->
   <script src="../../modules/CoreModule/yangzhai.js"></script>
-  <script src="../../modules/CoreModule/xiangshu.js"></script>
+  <!-- v3.2.0 已归档备份并删除内核，移除引入：xiangshu.js -->
   <script src="../../modules/CoreModule/guanyin-data.js"></script>
   <script src="../../modules/CoreModule/qianwen.js"></script>
+  <!-- 数字八字（C20–24：四柱数字→上下卦→三宫十神→八绝六冲三九，registry name-shuzi 块用）-->
+  <script src="../../modules/CoreModule/name-shuzi.js"></script>
   <script src="../../modules/AnalyzerModule/db.js"></script>
   <script src="../../modules/AnalyzerModule/lunar.js"></script>
   <script src="../../modules/AnalyzerModule/ganzhi.js"></script>
-  <script src="../../modules/AnalyzerModule/name-study.js"></script>
+  <!-- v3.2.0 已归档备份并删除内核，移除引入：name-study.js -->
   <script src="../../modules/AnalyzerModule/bazi.js"></script>
   <script src="../../modules/AnalyzerModule/ganzhi-analysis.js"></script>
   <script src="../../modules/AnalyzerModule/intent.js"></script>
-  <script src="../../modules/CoreModule/cezi.js"></script>
+  <!-- v3.2.0 已归档备份并删除内核，移除引入：cezi.js -->
   <script src="../../modules/CoreModule/qimen-fei.js"></script>
   <script src="../../modules/CoreModule/bazi-pattern.js"></script>
+  <!-- 择日学（日课评分/黄黑道/吉时/专项凶日）；天乙贵人口诀仍以 bazi-shensha.js 为单一真源 -->
   <script src="../../modules/CoreModule/zeri.js"></script>
   <script src="../../modules/CoreModule/bazi-shensha.js"></script>
+  <!-- 梅花断语层（体用/互卦/变卦/象意，registry 的 meihua 功能块用；v3.1.61 前 PWA 端漏载 → 断语静默降级，v3.2.0 补上）-->
+  <script src="../../modules/CoreModule/meihua-duanyu.js"></script>
   <script src="../../modules/CoreModule/qimen-ge.js"></script>
   <script src="../../modules/CoreModule/liuren-bifa.js"></script>
+  <!-- 大六壬断语层（发用/天马/连茹/孤虚/应期，registry 的 liuren 功能块用；v3.1.61 前 PWA 端漏载 → 断语静默降级，v3.2.0 补上）-->
+  <script src="../../modules/CoreModule/liuren-duanyu.js"></script>
   <script src="../../modules/CoreModule/liuyao-wangshuai.js"></script>
   <!-- 小成图 C29（霍斐然《周易小成图简述》：报 4 数→天地数起卦→洛书九宫地盘装图+归藏中宫，只做象数结构定位，依赖 NT.core.iching 的八卦三爻/互卦）-->
   <script src="../../modules/CoreModule/xiaocheng.js"></script>

@@ -1,9 +1,9 @@
 {
   "name": "玄玖灵犀",
   "appid": "",
-  "description": "算法演乾坤，一问知天命，以数据重现千年术数。无后端 / 无网络，一套代码多端。© 星玖工作室 Ntarstudio",
-  "versionName": "3.1.61",
-  "versionCode": "3161",
+  "description": "中国传统术数文献整理、校勘与数字化演算的学术研究辅助工具，仅供传统文化学习与学术研究参考。无后端 / 无网络，一套代码多端。© 星玖工作室 Ntarstudio",
+  "versionName": "3.2.1",
+  "versionCode": "321",
   "transformPx": false,
   "locale": "zh-Hans",
   "app-plus": {
@@ -28,7 +28,7 @@
     "manifest": {
       "name": "玄玖灵犀",
       "short_name": "NT-Xhex",
-      "description": "算法演乾坤，一问知天命，以数据重现千年术数。",
+      "description": "中国传统术数文献整理、校勘与数字化演算的学术研究辅助工具，仅供传统文化学习与学术研究参考。",
       "background_color": "#ffffff",
       "theme_color": "#000000",
       "icons": [

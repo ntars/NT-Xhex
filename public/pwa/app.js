@@ -105,23 +105,17 @@
   }
 
 
-  // ---- 滚动搜索建议（真实词条；内容来自 settings.js 的 searchHints 单一真源）----
-  // 结构：.nt-ph（裁切窗，48pt 高）> .nt-ph-track（整列）> N 个 .nt-ph-item + 1 个首词条副本。
-  //   轮换节奏（停留 5s → 上滑一行 0.5s，同百度首页）与分档 keyframe `nt-ph-step`
-  //   全在 theme.css，本壳不写任何动画值；注意该 keyframe 与词条条数绑定（当前 8 条）。
-  //   末尾那份副本是无缝衔接的关键：整列高 (N+1)×48，滑到 -N×48 时窗口里那一行与第一行
-  //   逐像素相同，动画从 100% 回到 0% 看不出接缝。
-  var pill = $('heroPill'), phTrack = $('heroPhTrack');
-  var hints = about.searchHints || [];
-  if (phTrack && hints.length) {
-    hints.concat([hints[0]]).forEach(function (t) {
-      var el = document.createElement('span');
-      el.className = 'nt-ph-item';
-      el.textContent = t;
-      phTrack.appendChild(el);
-    });
+  // ---- 搜索框占位（固定一句话；内容来自 settings.js 的 searchPlaceholder 单一真源）----
+  // 占据与滚动词条相同的 .nt-ph 裁切窗（48pt 高），样式复用 .nt-ph-item。
+  var pill = $('heroPill');
+  var phBox = $('heroPh');
+  if (phBox && about.searchPlaceholder) {
+    var phEl = document.createElement('span');
+    phEl.className = 'nt-ph-item';
+    phEl.textContent = about.searchPlaceholder;
+    phBox.appendChild(phEl);
   }
-  // 让位规则：**输入非空 或 已聚焦** → 给胶囊加 .nt-ph-off，把滚动词条整体隐去
+  // 让位规则：**输入非空 或 已聚焦** → 给胶囊加 .nt-ph-off，把固定占位整体隐去
   //   （HIG：占位提示不与真实输入重叠；聚焦时也让位，因为微信官方文档写明「input 仅在 focus 时
   //    表现为原生组件」，聚焦态它的层级高于 WebView 里的一切元素，词条会被直接盖住）。
   // 统一走 setInput / syncPhOff，避免"用 JS 清空 value 却没同步类名"导致清空后词条不回来。
@@ -139,18 +133,15 @@
   heroInput.addEventListener('blur', function () { heroFocused = false; syncPhOff(); });
 
   // ================= 结果页渲染 =================
-  function renderResult(f) {
-    curResult = f;
-    $('restitle').textContent = about.navTitle || '玄玖灵犀';
-    $('respageh').textContent = f.title || about.resultPageTitle || '搜索结果';
-    $('resqlabel').textContent = about.questionLabel || '你的提问';
-    $('resquestion').textContent = f.question || '';
-    var lead = $('reslead');
-    lead.textContent = f.lead || '';
-    lead.style.display = f.lead ? '' : 'none';
-    var box = $('resblocks');
-    box.innerHTML = '';
-    (f.blocks || []).forEach(function (b) {
+  // 渲染一个算法小节（单算法的正文 / 多算法的其中一节共用）
+  function renderSection(box, sec) {
+    if (sec.lead) {
+      var ld = document.createElement('span');
+      ld.className = 'nt-dl-text nt-dl-text-light';
+      ld.textContent = sec.lead;
+      box.appendChild(ld);
+    }
+    (sec.blocks || []).forEach(function (b) {
       var wrap = document.createElement('div');
       wrap.className = 'res-block';
       if (b.label) {
@@ -166,6 +157,45 @@
       box.appendChild(wrap);
     });
   }
+  function renderResult(f) {
+    curResult = f;
+    $('restitle').textContent = about.navTitle || '玄玖灵犀';
+    // 多算法并列：页名沿用「搜索结果」（各节标题已在卡内自分节，页名不抢任何一个算法的名）
+    $('respageh').textContent = (f.multi ? '' : f.title) || about.resultPageTitle || '搜索结果';
+    $('resqlabel').textContent = about.questionLabel || '你的提问';
+    $('resquestion').textContent = f.question || '';
+    var secs = $('ressections');
+    var lead = $('reslead');
+    var box = $('resblocks');
+    secs.innerHTML = '';
+    box.innerHTML = '';
+    if (f.multi) {
+      // 多算法：单算法那套 lead/blocks 整体隐藏，改渲染 N 个 .res-section
+      lead.style.display = 'none';
+      box.style.display = 'none';
+      secs.hidden = false;
+      (f.sections || []).forEach(function (s) {
+        var wrap = document.createElement('div');
+        wrap.className = 'res-section';
+        if (s.title) {
+          var h = document.createElement('span');
+          h.className = 'res-section-title nt-dl-h1';
+          h.textContent = s.title;
+          wrap.appendChild(h);
+        }
+        renderSection(wrap, s);
+        secs.appendChild(wrap);
+      });
+      return;
+    }
+    // 单算法：原有结构不变
+    secs.hidden = true;
+    lead.style.display = '';
+    box.style.display = '';
+    lead.textContent = f.lead || '';
+    lead.style.display = f.lead ? '' : 'none';
+    renderSection(box, f);
+  }
 
   // ================= 提问 =================
   function send() {
@@ -180,7 +210,8 @@
     }
     var r = conversation.ask(raw);
     if (!r.ok) return;
-    var f = N.resultFormat.format(r.answer);
+    // 多算法并列：r.hits > 1 时 result-format 按【标题】切小节
+    var f = N.resultFormat.format(r.answer, (r.hits || 1) > 1);
     f.question = r.question;
     renderResult(f);
     setInput('');
@@ -399,9 +430,10 @@
   }
 
   // 恢复上次这一问（刷新不丢）。这是冷启动首屏 → 传 boot=true，让恢复出来的结果页也播一次内容错落入场。
+  // hits 已随 conversation 持久化（v3.2.1），恢复路径与提问路径走同一判定，不靠文本猜。
   var last = conversation.restore();
   if (last) {
-    var f = N.resultFormat.format(last.answer);
+    var f = N.resultFormat.format(last.answer, (last.hits || 1) > 1);
     f.question = last.question;
     renderResult(f);
     show('result', true);

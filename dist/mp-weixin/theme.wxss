@@ -7,7 +7,8 @@
  *       状态栏（0–62，含灵动岛与时间/信号/电量）        → 视觉不渲染，高度必须保留
  *       手势条（852–874，条本体 131.5,861 139×5 r100） → 视觉不渲染，高度必须保留
  *     保留方式：H5/uni-app 走 env(safe-area-inset-*)；微信小程序 WXSS 不支持 env，
- *     由 modules/UIModule/safe-area.js 算出后以行内 style 注入（各壳 .nt-nav / .nt-page-safe）。
+ *     由 modules/UIModule/safe-area.js 算出后以行内 style 注入（各壳 .nt-nav 的 margin-top、
+ *     各视图根的 padding-bottom；PWA 最外层 #app 挂 .nt-page-safe）。
  *   · 设计稿里另有若干「排版标注辅助图形」，是说明而非 UI，一律不渲染：
  *       正文范围框（卡内 306×552 / 306×480 的直角描边矩形）、搜索框左右两个 48pt 辅助圆。
  *     真值以「看得见的东西 + 设计稿标注尺寸」为准。
@@ -50,7 +51,7 @@ page {
   /* —— 文字层（色值全部来自设计稿 attributedString 的 color 分量）—— */
   --nt-ink: #000000;                     /* 主文字 / 导航标题 / 卡标题 */
   --nt-text-2: #666666;                  /* 段落小标签 */
-  --nt-placeholder: #8E8E93;             /* 搜索框滚动建议词条的字色（.nt-ph-item；设计稿占位色） */
+  --nt-placeholder: #8E8E93;             /* 搜索框占位提示的字色（.nt-ph-item；设计稿占位色） */
   --nt-text-50: rgba(0, 0, 0, 0.5);      /* 卡内描述 / 内容页正文（设计稿 #000000/50%） */
   --nt-text-20: rgba(0, 0, 0, 0.2);      /* 结果页正文（设计稿 #000000/20%，刻意比内容页更浅） */
   --nt-foot: rgba(0, 0, 0, 0.3);         /* 页脚两行 / 品牌副标 / 免责（设计稿 #000000/30%） */
@@ -118,9 +119,11 @@ page {
   --fs-body: 16px;                              /* 业务正文兜底 */
   --fs-note: 12px;       --lh-note: 14px;       /* 页脚两行 / 品牌副标 / 免责 */
   --fs-sub: 13px;        --fs-cap: 11px;        /* PWA 安装条（非设计稿元素，自用） */
-  /* 长正文行高：设计稿占位正文标注 18pt，但那是三行示意；真实长文按 HIG（行高 ≥1.4×）取 22px。
-     如需 100% 复刻设计稿占位稿，把本值改成 18px 即可（唯一开关，别处不用动）。 */
-  --lh-long: 22px;
+  /* 长正文行高：**与设计稿逐画板实测一致** —— 15px 正文一律 lh18（搜索结果页正文区、
+     5 张内容详情页正文区、关于页/关于我们卡描述、弹窗描述，共 14 个 15px 节点全部 min=max=18）。
+     历史上此处曾是 22px（按 HIG 1.4× 取的阅读舒适值），但任务清单要求「必须完全吻合设计稿、
+     不擅自改数值」，故改回设计稿口径 18px。 */
+  --lh-long: 18px;
   /* —— 字重阶梯（按 Apple HIG 的 Dynamic Type 字重规范，**只留三档**，不再自造中间档）——
    *   Bold(700)     → 22pt 档：品牌名 / 弹窗标题（HIG Title 2 是 Bold）
    *   Semibold(600) → 17pt 档的「标题类」：导航标题 / 页名 / 卡标题 / 主按钮（HIG Headline）
@@ -142,17 +145,9 @@ page {
   --d-theme: 320ms;    /* 主题切换：界面色板（底/面/字/图标）的交叉过渡 */
   --d-splash: 400ms;   /* 启动页淡出 */
   --d-modal-out: 200ms; /* 弹窗出场：比进场(--d-drawer 280ms)快一档，退场干脆 */
-  /* 滚动搜索建议：**轮换一整圈**的总时长（不是单条停留）—— 节奏对齐百度首页搜索框。
-   * 当前 searchHints 9 条 → 9 × 5.5s = 49.5s；每条约 5.5s =「停留 5.0s + 上滑 0.5s」。
-   * 为什么停留拉长到 5s：词条是**真实可答的长问句**（最长 9 个汉字），2.5s 读不完就滑走了；
-   *   百度首页那条也偏"多停少动"，于是整体节奏放慢到 5s 一站。
-   * ⚠️ 这是本文件与 settings.js 之间唯一的耦合点：增减 searchHints 条数时，
-   *    既要按「条数 × 5.5s」改本值，也要同步改下面 @keyframes nt-ph-step 的档位（两处注释互相指向）。
-   * 为什么不按条数自动算：CSS 数不出子元素个数（keyframe 的百分比选择器里不能写变量），
-   *    若交给三个壳各写一行 JS 去算百分比，反倒是把同一件事在三端各复制一遍 —— 违背「单一真源」。 */
-  --d-ph-rotate: 49500ms;
   /* 搜索胶囊「常驻强调光环」一圈呼吸的时长（涨 2.2s + 收 2.2s）。
-   * 与 --d-ph-rotate 无耦合：光环是氛围，词条是内容，两者各走各的节拍，互不同步反而更自然。 */
+   * ⚠️ 原来的 --d-ph-rotate（滚动搜索建议轮换时长，与 searchHints 条数耦合）已随
+   *    「滚动词条 → 固定一句话占位」的改版删除，见下方 .nt-ph 注释。 */
   --d-halo: 4400ms;
   /* 光环几何（v3.1.0：只留柔晕一层，范围收小）。
    * --halo-gap = 柔晕最外沿距胶囊的缝隙（2px → 1px，收小范围）；
@@ -385,6 +380,14 @@ page { scrollbar-width: none; -ms-overflow-style: none; }
   color: var(--nt-text-2);
   margin-bottom: var(--sp-1);
 }
+/* 结果页 · 多算法并列小节（一次提问命中多个功能块时，每个【标题】一小节）
+ * 设计稿依据：搜索结果页正文区原文「推演信息：/ 最多两行内容 / 玄玖灵犀推演结果：
+ * 黄历、生辰、八字、星座、MBTI、易经、择吉日…」—— 即「同一张卡内可容纳多个算法」。
+ * 版式取舍：不加描边/底色/大间距（v3.0.4 起全站不画描边，层级靠间距与字色），
+ *   节标题复用「你的提问」同级字规格但降一档字色（--nt-text-2），节间距取 --sp-3（12pt），
+ *   比段间距（同 12pt）视觉上多一层「标题」锚点，仍属同一张卡内的分节。 */
+.res-section + .res-section { margin-top: var(--sp-3); }
+.res-section-title { color: var(--nt-text-2); }
 
 /* 结构化条目：左侧 2px 纯黑竖线标记（业务排版，非设计稿元素）
  * ⚠️ 已删除：全项目无任何元素使用 `.nt-mark`（僵尸钩子类），且竖线本身也属"常驻装饰"。 */
@@ -509,24 +512,22 @@ page { scrollbar-width: none; -ms-overflow-style: none; }
   min-width: 0;
 }
 /* ⚠️ 不再写 input::placeholder：三端都不再给搜索框设原生 placeholder
- *   （占位由下面的 .nt-ph 滚动词条承担，见 .nt-ph-item 自己的字色）。
+ *   （占位由下面的 .nt-ph 固定一句话承担，见 .nt-ph-item 自己的字色）。
  *   留着就是「有用到、其实用不到」的僵尸规则，按项目规范删掉。 */
 
-/* —— 滚动搜索建议（真实示例词条，**轮换**节奏对齐百度首页搜索框）——
- * 输入框为空时的"占位"不是写死的 placeholder，而是一列真实词条在 48pt 高的胶囊里逐条轮换，
- * 让人一眼看出"这里可以搜什么、能怎么问"。词条内容 = settings.js 的 searchHints（单一真源）。
- *   · 结构：.nt-pill > .nt-ph(裁切窗) > .nt-ph-track(整列) > N 个 .nt-ph-item
- *   · 节奏（与百度同款）：一条**停留 5.0s** 让人从容读完 → 再用 0.5s **整体上滑一行**换下一条。
- *     刻意不做「匀速滚动条」：连续慢滚的词条永远读不完整，分档切换才抓得住注意力；
- *     停留拉长到 5s 也是同一个理由 —— 词条是真实长问句（最长 9 个汉字），2.5s 读不完就滑走了。
- *   · 无缝循环：track 末尾必须再放一份首词条。整列高 (N+1)×48，滑到 -N×48 时窗口里
- *     那一行与第一行逐像素相同，动画从 100% 回到 0% 看不出接缝。
+/* —— 搜索框占位（固定一句话，来自 settings.js 的 searchPlaceholder 单一真源）——
+ * 输入框为空时的"占位"是**一句固定提示**，让用户一眼看出「这里能问什么」。
+ *   · 结构：.nt-pill > .nt-ph(裁切窗) > .nt-ph-item（单行，不再有整列 track）
  *   · pointer-events:none → 点击穿透到 input，不挡输入
- *   · 让位规则：**输入非空 或 已聚焦** → 挂 .nt-ph-off，整块隐去 */
+ *   · 让位规则：**输入非空 或 已聚焦** → 挂 .nt-ph-off，整块隐去
+ * ⚠️ 历史：v3.0.4 起这里曾是「滚动搜索建议」（settings.js 的 searchHints + 末条副本
+ *    实现无缝轮换，靠 @keyframes nt-ph-step 与 --d-ph-rotate）。用户定稿改为固定
+ *    一句话后，track / keyframe / 时长变量全部删除，只保留 .nt-ph 裁切窗与
+ *    .nt-ph-item 字色 —— 三个壳（小程序 / uni-app / PWA）都复用这一套类。 */
 /* ⚠️ 为什么「聚焦」也要让位（不只是"有内容"）：
- *    ① 这就是百度首页的行为：一点进搜索框，提示词立刻让位给光标（输入时当然更不显示）；
+ *    ① 聚焦即开始输入，占位提示不该与光标/真实输入重叠；
  *    ② 技术：微信官方文档《原生组件说明》明确写「input 仅在 focus 时表现为原生组件」——
- *      聚焦态下它的层级高于 WebView 里的一切元素（z-index 无效），词条会被直接盖住。
+ *      聚焦态下它的层级高于 WebView 里的一切元素（z-index 无效），占位会被直接盖住。
  *      干脆在聚焦瞬间就隐掉，不依赖层级谁压谁。
  * ⚠️ 只写「让位时隐藏」这一条，不写 :not() —— WXSS 对 :not 支持不稳，三端容易不一致。
  *    默认（壳不加 .nt-ph-off）即显示。 */
@@ -544,13 +545,6 @@ page { scrollbar-width: none; -ms-overflow-style: none; }
   transition: opacity var(--d-press) var(--ease-standard);
 }
 .nt-pill.nt-ph-off .nt-ph { opacity: 0; }
-/* 缓冲曲线对每个 keyframe 区间**分别生效**：停留区间的首尾值相同 → 不动；上滑区间 → 缓入缓出。
- * 所以整条动画的观感是「停 5s → 顺滑地滑一行上去了」，而不是匀速爬行。 */
-.nt-ph-track {
-  display: flex;
-  flex-direction: column;
-  animation: nt-ph-step var(--d-ph-rotate) var(--ease-standard) infinite;
-}
 .nt-ph-item {
   height: var(--pill-h);
   line-height: var(--pill-h);
@@ -560,25 +554,12 @@ page { scrollbar-width: none; -ms-overflow-style: none; }
   overflow: hidden;          /* 万一将来加了超长词条：裁掉… */
   text-overflow: ellipsis;   /* …并给省略号，而不是钻到放大镜底下 */
 }
-/* ⚠️ 本 keyframe 与 searchHints 的**条数绑定**（当前 9 条 → 9 个档位，每档 11.111%）。
- *    每档 = 停留 10.101%（5.0s）+ 上滑 1.010%（0.5s）= 11.111%（5.5s），一圈共 49.5s。
- *    （10.101 = 5.0 / 49.5 × 100，是"停留占整圈"的比例，不是"停留占本档"的比例 —— 别算串了。）
- *    改条数时要同步改：① 档位个数与百分比（9 条→11.111%/档）；
- *    ② --d-ph-rotate（条数 × 5.5s）。settings.js 里 searchHints 的注释与本处互相指向。
- * 位移刻意写成 --pill-h 的整数倍（-1×48 … -9×48），一眼能看出"滑了几条"；
- * 末档 -9×48 = -432px 正好等于「整列 480 − 窗口 48」→ 末尾那条副本顶进窗口，回到 0% 无缝衔接。 */
-@keyframes nt-ph-step {
-  0%,     10.101% { transform: translateY(0); }
-  11.111%, 21.212% { transform: translateY(calc(var(--pill-h) * -1)); }
-  22.222%, 32.323% { transform: translateY(calc(var(--pill-h) * -2)); }
-  33.333%, 43.434% { transform: translateY(calc(var(--pill-h) * -3)); }
-  44.444%, 54.545% { transform: translateY(calc(var(--pill-h) * -4)); }
-  55.556%, 65.657% { transform: translateY(calc(var(--pill-h) * -5)); }
-  66.667%, 76.768% { transform: translateY(calc(var(--pill-h) * -6)); }
-  77.778%, 87.879% { transform: translateY(calc(var(--pill-h) * -7)); }
-  88.889%, 98.990% { transform: translateY(calc(var(--pill-h) * -8)); }
-  100%            { transform: translateY(calc(var(--pill-h) * -9)); }
-}
+/* ⚠️ 历史耦合点（v3.0.4–v3.2.0 的滚动搜索建议）：这里原有一份
+ *    @keyframes nt-ph-step，档位个数/百分比必须与 settings.js 的 searchHints 条数
+ *    一致，且 --d-ph-rotate = 条数 × 5.5s。改版为固定一句话占位后，
+ *    轮换动画、时长变量、track 结构一并删除，两处注释的互相指向也随之解除。
+ *    若将来要恢复滚动词条：先在 settings.js 重建 searchHints 单一真源，
+ *    再按上面的公式补 keyframe 与变量，三个壳补回 track + 末条副本结构。 */
 .nt-pill-search {
   flex: 0 0 var(--pill-h);
   width: var(--pill-h); height: var(--pill-h);
@@ -641,7 +622,7 @@ page { scrollbar-width: none; -ms-overflow-style: none; }
    两行 12pt/行高 14 居中；页脚底 828 → 距画布底 46pt = 12 + 手势条安全区 34）============ */
 .nt-foot {
   flex-shrink: 0;
-  padding: 0 var(--gutter) var(--sp-3);   /* 底部 12 + .nt-page-safe 的 safe-bottom = 46（设计稿） */
+  padding: 0 var(--gutter) var(--sp-3);   /* 底部 12 + 页面根 safe-bottom(34) = 46（设计稿） */
   text-align: center;
 }
 /* 页脚两行 12pt = HIG Caption 1 → Regular（原用 600，偏重） */
@@ -783,7 +764,12 @@ page { scrollbar-width: none; -ms-overflow-style: none; }
 /* ============ 安全区 ============
  * H5/PWA/uni-H5：由各壳 H5 样式块把 --safe-top / --safe-bottom 升为 max(设计带, env())。
  * 小程序：WXSS 不支持 env()，由 modules/UIModule/safe-area.js 计算后以行内 style 覆盖。
- * ⚠️ 必须 border-box —— 边界带是「在整屏高度内占位」，不能把盒子撑高出去（否则底部 34 被裁到视口外）。 */
+ * ⚠️ 必须 border-box —— 边界带是「在整屏高度内占位」，不能把盒子撑高出去（否则底部 34 被裁到视口外）。
+ * ⚠️ 适用范围（v3.2.1 收口）：本类只给「最外层唯一根容器」用 —— 现仅 PWA 的 #app 一处。
+ *    各 .vue 页面根一律不挂：小程序端页面根留底正是 v3.1.35「切页手势条白边」的病灶
+ *    （stage 在内侧，手势条区不属于任何 .nt-layer → 露白）；且它会与 pageStyle 的行内
+ *    nav.bottom 叠加成双重避让。uni-app 侧的底部避让现由各视图根 pageStyle 的
+ *    paddingBottom 承担（MP-WEIXIN 行内 / 其余端 env()）。 */
 .nt-page-safe { box-sizing: border-box; padding-bottom: var(--safe-bottom); }
 /* 曾有一个 .nt-foot-safe（页脚自带手势条内边距），三端实际都用 .nt-page-safe 承担，
    全项目从未有元素使用，已按「零冗余」删除。 */
@@ -811,7 +797,9 @@ page { scrollbar-width: none; -ms-overflow-style: none; }
    起因：页面根原来挂 .nt-page-safe（padding-bottom = safe-bottom），而转场舞台 .nt-stage 在它**内侧**，
    于是切页时舞台只覆盖「屏幕高 − 手势条」那块，**手势条那一带不属于任何层 → 露出底色白边**，
    看起来像「只切了一部分页面」。现页面根不再留底，stage 满屏（含手势条区）整页一起滑动；
-   底部避让改由本层承担 —— 内容不会被手势条压住，白边也没有。 */
+   底部避让改由本层承担 —— 内容不会被手势条压住，白边也没有。
+   v3.2.1 收口：uni-app 各 .vue 页面根同样摘掉 .nt-page-safe（曾与 pageStyle 行内 nav.bottom
+   叠加成双重避让），改由各视图根 pageStyle 的 paddingBottom 单独承担。 */
 .nt-layer { padding-bottom: var(--safe-bottom); box-sizing: border-box; }
 .nt-layer.back  { z-index: 1; }
 .nt-layer.front { z-index: 3; }

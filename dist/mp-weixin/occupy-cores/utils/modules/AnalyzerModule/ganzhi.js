@@ -1,7 +1,8 @@
 /**
  * modules/AnalyzerModule/ganzhi.js —— 干支 / 节气 / 生肖 工具（委托精确历法 lunar.js）
  * 把「公历日期 / 年份 / 时间」换算成干支、节气区间、生肖等中间结果。
- * 内核为精确历法（NOAA 太阳黄经节气 + 节气定四柱 + 五虎遁/五鼠遁 + 建除十二神），离线纯 JS。
+ * 内核为精确历法（NOAA 太阳黄经节气 + 节气定四柱 + 五虎遁/五鼠遁），离线纯 JS。
+ * 建除十二神（黄历宜忌）由 lunar 底座算出，本文件按同名转出，供黄历/择日与 ganzhi-analysis 复用。
  * 依赖：db.js、lunar.js
  * 加载：UMD —— 小程序被 require；浏览器挂到全局 NT.ganzhi。
  */
@@ -30,6 +31,9 @@
   }
 
   // 某日 -> 时柱干支（五鼠遁：日干 + 时辰）
+  // 建除十二神（黄历/万年历口径）
+  function jianchuOf(date) { return LUN.jianchuOf(date); }
+
   function hourGanzhi(date, hour) {
     var dayGan = LUN.dayGanzhiOf(date).干;
     var r = LUN.hourGanzhiOf(dayGan, hour);
@@ -38,9 +42,6 @@
 
   // 兼容旧接口 hourOfTime(h)（无日期时按当日日干）
   function hourOfTime(h) { return hourGanzhi(new Date(), h); }
-
-  // 某日 -> 十二建除（节气月建 + 日支 推值日）
-  function jianchuOf(date) { return LUN.jianchuOf(date); }
 
   // 节气区间（精确到交节日，东八区）
   function jieqiRange(now) {
@@ -72,8 +73,8 @@
     dayGanzhi: dayGanzhi,
     monthGanzhi: monthGanzhi,
     hourGanzhi: hourGanzhi,
-    hourOfTime: hourOfTime,
     jianchuOf: jianchuOf,
+    hourOfTime: hourOfTime,
     jieqiRange: jieqiRange,
     zodiacOf: zodiacOf,
     solarCN: solarCN,
