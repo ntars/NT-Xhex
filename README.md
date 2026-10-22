@@ -23,7 +23,7 @@
 | **结果页**   | 搜索结果页                           | 顶栏标题「玄玖灵犀」+ 页名「搜索结果」+ 单张正文范围卡 + 底部双按钮「导出图片 / 再问一个」+ 页脚                     |
 | **关于页**   | 关于页                             | 品牌区（Logo / 玄玖灵犀 / 演乾坤·知天命）+ 4 张设置卡（第 4 张全红态）+ 页脚                           |
 | **关于我们页** | 关于我们                            | **无品牌区**，3 张卡（星玖工作室 / 协议条款 / 开源声明）+ 页脚                                     |
-| **内容详情页** | 协议条款 / 开源声明 / 功能介绍 / 参考文献（一稿两用） | 顶栏标题「玄玖灵犀」+ 页名（板块名）+ 正文范围卡 + 页脚；**功能介绍页 = 5 大板块 31 项总览**（v3.2.1 起：由 `features/registry.js` 的 `catalog()` 派生，三端同一份数据，加功能不用改文案）；**参考文献页 = 权威书目 + 对应内核 + 查证状态四档**（✅已锁/✅已核/⚠单源待验/◆本项目独有，逐条与内核头注释、缺口字段对应，不臆造不美化）；**原书全文**另见仓库根 `refs-texts/`（4 份公版古籍，脚本从内核导出） |
+| **内容详情页** | 协议条款 / 开源声明 / 功能介绍 / 参考文献（一稿两用） | 顶栏标题「玄玖灵犀」+ 页名（板块名）+ 正文范围卡 + 页脚；**功能介绍页 = 5 大板块 31 项总览**（每项一句话写清算法如何实现，由 `features/registry.js` 的 `catalog()` 派生，三端同一份数据，加功能不用改文案）；**参考文献页 = 只列书名与作者、按板块分组**（v3.2.2 起精简：24 种与现存功能一一对应，不臆造书名/作者；数字八字为本项目独有体系、无外部文献故不列）；**原书全文**另见仓库根 `refs-texts/`（4 份公版古籍，脚本从内核导出） |
 
 - **单轮问答**：每次提问只产出当前这一条结果，**不累积历史、不做对话气泡**；刷新可恢复本轮，返回即清空
 - **开屏页**：冷启动整屏居中品牌 Logo +「玄玖灵犀」28pt +「演乾坤 · 知天命」副标，停留 1.2s 后 400ms 淡出（`.nt-splash`，z-index 200 压在一切之上；退场「先播后摘」与弹窗同手法；文案 `about().splash`、视觉 `theme.css`，三端一致）
@@ -371,7 +371,7 @@ NT-Xhex/
    │  ├─ __tests__/         # cores-loader.test.js · mp-startup.test.js · result-format.test.js（三分支/块边界只认「空格·空格」/尾巴不占类/恢复路径一致）
    │  └─ result-format.js   # 共享结果排版（引擎文本 → 结构化段落；`format(text, multi, sections)` 三分支：单算法 → `{title,lead,blocks}`；多命中 → `{multi, sections}`；全套排盘 → `{multi, grouped, groups}`（类→块→段落三级，块边界靠 `full-chart.retitle()` 生成的「类名 · 短名」判定，见文件内注释）；另附摊平视图供 export-image.js 的 build() 消费）
    ├─ RefsModule/
-   │  └─ refs.js             # 参考文献页的书目与可查原文【单一真源】（BOOKS 书目 + QUOTERS 从内核汇整公版古籍原文 432 条；refsPage() 派生详情页条目；小程序端经主包快照 HomeModule/refs-snapshot.js 同步取，不加载分包）。**原书全文**另放仓库根 `refs-texts/`（4 份公版古籍，由 `tools/gen-refs-texts.js` 从本内核导出，`--check` 校验逐字一致；不进小程序包）
+   │  └─ refs.js             # 参考文献页的书目清单【单一真源】（v3.2.2 起只列书名与作者：BOOKS 书目 + GROUPS 板块分组，纯数据模块不依赖内核；refsPage() 派生详情页条目；小程序端经主包快照 HomeModule/refs-snapshot.js 同步取，不加载分包）。**原书全文**另放仓库根 `refs-texts/`（4 份公版古籍，由 `tools/gen-refs-texts.js` 从内核导出，`--check` 校验逐字一致；不进小程序包）
    ├─ SettingsModule/
    │  ├─ settings.js        # 关于数据 about()（版权/简介/版本/备案/搜索建议词条/四卡/三卡/内容正文，单一真源）
    │  ├─ settings.vue       # 关于页（Vue 壳，含清除缓存弹窗）
@@ -472,7 +472,8 @@ node modules/CoreModule/__tests__/qimen.test.js    # 奇门 C14（时家转盘�
 node modules/CoreModule/__tests__/qimenfei.test.js # 奇门·飞盘(飞宫法) C23（黄金范例逐宫锁死 + 随机结构自洽，16 项）
 node modules/CoreModule/__tests__/liuren.test.js   # 大六壬 C16（月将加占时；天地盘/四课/九宗门黄金范例/三传/天将/旬空/驿马/遁干，97 项）
 node modules/features/__tests__/features.test.js    # 31 功能块触发词路由 + 有料/缺料 验收
-node modules/features/__tests__/catalog.test.js     # 板块分类 / 短名可检索 / 功能介绍页数据 验收
+node modules/features/__tests__/catalog.test.js     # 板块分类 / 短名可检索 / 功能介绍页数据 / 参考文献书目清单 验收
+node modules/RefsModule/__tests__/refs.test.js      # 参考文献书目清单（书名/作者/分组自洽）验收
 node modules/AnalyzerModule/__tests__/full-chart.test.js   # 全套排盘：八大类顺序 / 覆盖 31 块 / 七块拒绝自编输入 / 不该触发的情形 / 状态不串味 / 单块崩不拖垮
 node modules/HomeModule/__tests__/result-format.test.js    # 结果页三分支排版：单算法 / 多命中 / 全套分组 / 块边界只认「空格·空格」/ 尾巴不占类 / 恢复路径一致
 node tools/audit-features.js       # 全功能巡检（31 块逐个可跑 / 触发词不冲突 / 缺料守门）
@@ -498,6 +499,7 @@ node tools/sync-version.js --check # 版本号 7 处与 version.json 一致
   ⑤ **修掉两处路由被抢** —— ⓐ `查农历 2026年8月15日` 原先被当农历日期又换算一次（出「2026年9月25日」），现「动词 + 农历词」一律判为换算请求、不打 `isLunar` 标记；ⓑ 生辰句天然含「农历/公历/阴历/阳历」，原先会被 `date-convert` 的触发词抢走只出日期换算，现 `analyzer.js` 加 `onlyGenericDateHits()` —— 命中的每个触发词都只是日期单位泛词时不算「点名算法」，完整生辰照常铺全套。`查农历 / 日期换算 / 换算 / 儒略日` 这些**明确点名**的词不入泛词表。
   ⑥ **验证** —— 新增 `modules/AnalyzerModule/__tests__/birth-forms.test.js`（七组断言：国历四写法 / 农历九写法 / 换换算锚点对底座 / 四柱三写法与反查 / 「查农历」不重复换算 / 生辰句走全套 / 五种 reject 码与文案），全量测试 **41/41 全绿**；`audit-features` 31 块全过；`sync-mp --check` 8 护栏全过；包体主包 **0.92MB（46%）** / 分包 **1.65MB（82.5%）** 双红线达标。
   ⑦ **网页端 PWA 上移仓库根（EdgeOne 自动部署适配）** —— `public/pwa/` 四件套（`index.html` / `app.js` / `manifest.json` / `sw.js`）整体上移仓库根：EdgeOne Pages 静态服务仓库根时根 URL 直接就是入口，原来根目录那个 302 跳 `/public/pwa/` 的重定向壳一去掉；`manifest` 与 `sw` 因根目录已被 uni-app 的 `manifest.json` / `sw.js`（`h5.sw.path`）占用，分别改名 `pwa-manifest.json` / `pwa-sw.js` 避让（`env.js` 的 `registerServiceWorker(swPath)` 随之增加壳级参数：PWA 传 `pwa-sw.js`，uni-app H5 不传走默认 `sw.js`，小程序不注册——三端仍共用同一份函数）；PWA 内相对路径 `../../modules`、`../../static` 全量改为 `./modules`、`./static`（三者同级相对位置不变，「换层级即 404」的约束依旧）；`sync-version.js` / `check-load-order.js` / `platform-modules.json` / `.github/workflows/pages.yml`（`_site` 组装改为平铺根级壳文件，verify 检查项同步）/ README 路径说明同步修订；`sync-mp` 重生成 dist。
+  ⑧ **参考文献与功能介绍精简（用户要求：只留书名和作者名、功能介绍直接写算法如何实现、更新日志只写大条目）** —— ① 「参考文献」页只列**书名与作者**、按功能板块分组（24 种，与现存功能一一对应；旧版「公版古籍可查原文」区（QUOTERS / 432 条）与 4 个内核注入整体移除，`refs.js` 变为纯数据模块；公版古籍原文仍存仓库 `refs-texts/` 资料库，`gen-refs-texts.js --check` 不受影响）；② 「功能介绍」31 项说明全部重写为**算法如何实现**的一句话（≤28 字、无括号无逗号，`briefOf` 原样呈现不截断）；③ 应用内更新日志收敛为**大条目**（v1.x → v3.2.2 共 7 条，融合 8 个历史版本备份总结的重大更新；已归档 / 已删内容的修改记录按用户要求当作没发生、不再列出）；④ 验证：41 个测试文件全绿（refs.test / catalog.test 按新结构重写）、`sync-mp --check` 8 护栏全过、主包瘦身到 **0.782MB（39.1%）**、分包 1.639MB（82%）。
 - **v3.2.1**（🧭 手势条白边收口 + 择日块中文天数修复 + 白话覆盖盘点）：
   ① **uni-app 五页面根摘掉 `nt-page-safe`**（任务清单第 3/15 条收尾）—— `modules/HomeModule/index.vue` / `result.vue`、`modules/SettingsModule/settings.vue` / `us.vue` / `detail.vue` 的页面根原来同时挂 `nt-page-safe`（`padding-bottom: 34px`）与 `pageStyle()` 的 `paddingBottom: nav.bottom`（`MP-WEIXIN` 分支行内注入），小程序端是**双重底部避让**；且页面根留底正是 v3.1.35 定位的「切页时 `.nt-stage` 只覆盖屏高减手势条、手势条区不属于任何 `.nt-layer` → 露白边」病灶。现五页统一只由各视图根 `pageStyle` 单独承担（`MP-WEIXIN` 行内 / 其余端 `env(safe-area-inset-bottom)`），`theme.css` 的 `.nt-page-safe` 适用范围收窄为「最外层唯一根容器」（现仅 PWA `#app` 一处）并在注释里写明；`pages/index/index.vue` 与 `dist/mp-weixin/pages/index/index.wxss` 的旧口径注释同步订正（含「11 个画板」→「12 个画板」）。
   ② **修 `zeri` 择日块中文天数必崩** —— `modules/features/registry.js` 的 `zeri.run()` 调用未定义的 `cnNum(md[1])`，任何含「N 天」的择日请求（如「结婚择日 三十天」）都抛 `ReferenceError: cnNum is not defined`；改用同文件已有的 `numOf()`（支持汉字数字与「三十」这类整十），并加 `|| days` 兜底。实测「三十天 / 15天 / 一周」三条分别得 30 / 15 / 7 天。

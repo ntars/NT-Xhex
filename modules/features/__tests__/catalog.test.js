@@ -86,46 +86,25 @@ ok(ph.length <= 9, '常驻文案不超过 9 字（实际 ' + ph.length + ' 字�
 // 滚动词条的旧字段必须已清干净：两种源并存会让三端壳各显示一套、互相打架。
 ok(!about.searchHints, '滚动词条字段 searchHints 已移除（不再与固定文案并存）');
 
-console.log('== ⑤ 参考文献页（v3.1.31 方案 B：书目+对应内核+查证状态；v3.1.57 增公版古籍可查原文）==');
+console.log('== ⑤ 参考文献页（v3.2.2 精简：只列书名与作者、按板块分组）==');
 var refs = about.aboutNotes.refs;
-ok(refs.length >= 25, '参考文献条目 ≥25 条（实际 ' + refs.length + '）');
-ok(refs[0].h.indexOf('凡例') >= 0, '第一条是凡例（查证状态四档说明）');
-// v3.1.57 起页面分两区：
-//   ① 「一、书目与查证状态」——书目条目，每条必须带四档状态标记之一
-//      （凡例条自身讲四档定义、示例条讲排盘例，豁免）；
-//   ② 「二、可查原文 · 公版古籍」——古籍原文条目，原文本身不带状态标记，
-//      查证状态在其所属书目条目与导语中说明（版权书只列书目、不进此区）。
-// 故状态标记要求只覆盖书目区；原文区改查「导语存在 + 442 条公版原文 + 无版权书混入」。
-var cutIdx = refs.map(function (r) { return r.h; }).indexOf('二、可查原文 · 公版古籍');
-var bookZone = cutIdx >= 0 ? refs.slice(1, cutIdx) : refs.slice(1);
-var noStatus = [];
-bookZone.forEach(function (r) {
-  // 结构性条目（凡例/总览/示例）不承载单书状态，豁免；其余书目条目必须带四档之一
-  if (r.h.indexOf('凡例') >= 0 || r.h.indexOf('一、书目与查证状态') >= 0 || r.h.indexOf('算法示例') >= 0) return;
-  if (!/✅已锁|✅已核|⚠单源待验|◆/.test(r.text)) noStatus.push(r.h);
-});
-ok(noStatus.length === 0, '书目区每条都标注查证状态档（缺：' + noStatus.join('，') + '）');
-ok(cutIdx >= 0, '含「二、可查原文」导语（公版古籍原文区）');
-var quoteZone = cutIdx >= 0 ? refs.slice(cutIdx) : [];
-var QUOTE_PREFIX = /^紫微 · |^周易 · |^灵签 · |^毕法 · |^测字十法 · /;
-ok(quoteZone.filter(function (r) { return QUOTE_PREFIX.test(r.h); }).length === 432,
-  '原文区 432 条公版古籍原文（紫微168+周易64+灵签100+毕法100，实际 '
-  + quoteZone.filter(function (r) { return QUOTE_PREFIX.test(r.h); }).length + '）');
-// 版权边界（法律红线）：原文区只允许这些公版书系的前缀，现代著作/网站整理件不得混入
-var quoteOnly = quoteZone.filter(function (r) {
-  return r.h.indexOf('二、可查原文') < 0 && r.h.indexOf('算法示例') < 0
-    && !QUOTE_PREFIX.test(r.h);
-});
-ok(quoteOnly.length === 0, '原文区无其他内容混入（版权书只列书目）', quoteOnly.map(function (r) { return r.h; }).join('、'));
-// 关键古籍必须出现在页面上（与内核头注释一一对应；v3.2.0 起随归档剔除相应条目）
+ok(refs.length >= 30, '参考文献条目 ≥30 条（凡例 + 组标题 + 书目 + 查原文，实际 ' + refs.length + '）');
+ok(refs[0].h.indexOf('凡例') >= 0, '第一条是凡例（口径说明）');
+// 组标题行（一、历法底座 …）与书目行（书名带《》）都在
+var headRows = refs.filter(function (r) { return /^[一二三四五六]、/.test(String(r.h || '')); });
+ok(headRows.length >= 5, '按板块分组的组标题 ≥5 组（实际 ' + headRows.length + '）');
+var bookRows = refs.filter(function (r) { return String(r.h || '').indexOf('《') === 0; });
+ok(bookRows.length >= 20, '书目行 ≥20 本（实际 ' + bookRows.length + '）');
+// 关键古籍必须出现在页面上（与内核头注释一一对应）
 var refsAll = refs.map(function (r) { return r.h + r.text; }).join('');
-var mustBook = ['金函玉镜', '子平真诠', '穷通宝鉴', '滴天髓', '奇门遁甲统宗', '大六壬指南', '心印赋', '毕法赋', '六壬大全', '增删卜易', '卜筮正宗', '黄金策', 'iztro', '沈氏玄空学', '周易小成图简述', 'lunar-javascript'];
+var mustBook = ['子平真诠', '穷通宝鉴', '奇门遁甲统宗', '大六壬指南', '毕法赋', '增删卜易', '卜筮正宗', 'iztro', '沈氏玄空学', '周易小成图简述', '紫微斗数全书', 'lunar-javascript'];
 var missBook = mustBook.filter(function (b) { return refsAll.indexOf(b) < 0; });
 ok(missBook.length === 0, '关键古籍/库全部在列（缺：' + missBook.join('，') + '）');
-// 「本项目独有」必须如实存在（不许假装有权威）
-ok(refsAll.indexOf('本项目独有') >= 0 || refsAll.indexOf('自研') >= 0, '自研项如实标「本项目独有 / 自研」');
-// 单源待验项必须如实存在（不许全员✅美化）
-ok(/⚠单源待验/.test(refsAll), '单源待验项如实标注（刻家奇门等）');
+// 精简口径：页面只留书名与作者，不出现旧版「查证状态四档」长文与可查原文区
+ok(refsAll.indexOf('查证状态四档') < 0, '已无查证状态长文（只列书名与作者）');
+ok(refs.filter(function (r) { return String(r.h || '').indexOf('二、可查原文') >= 0; }).length === 0, '已无「可查原文」区（原文另见仓库 refs-texts/）');
+// 「本项目独有」的数字八字如实不列书目、凡例说清
+ok(refsAll.indexOf('数字八字为本项目独有') >= 0, '凡例如实说明数字八字无外部文献');
 
 console.log(fails === 0 ? '\n全部通过' : '\n' + fails + ' 处失败');
 process.exit(fails === 0 ? 0 : 1);
