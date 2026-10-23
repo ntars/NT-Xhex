@@ -65,14 +65,22 @@
     var solar = Solar.fromYmdHms(y, m, d, h || 0, i || 0, s || 0);
     var lu = solar.getLunar();
     return {
-      solar: { y: y, m: m, d: d, h: h || 0, i: i || 0, s: s || 0, text: y + '年' + m + '月' + d + '日', cn: solar.toFullString() },
+      solar: {
+        y: y, m: m, d: d, h: h || 0, i: i || 0, s: s || 0, text: y + '年' + m + '月' + d + '日', cn: solar.toFullString(),
+        // v3.4.0：公历节日（元旦节/劳动节/国庆节/妇女节/儿童节/教师节/圣诞节）在上游的
+        //   Solar 对象上，不在 Lunar 上 —— 原先只取了农历侧，导致黄历「节日」缺公历节日。
+        festivals: (function () { try { var v = solar.getFestivals(); return Array.isArray(v) ? v : []; } catch (e) { return []; } })()
+      },
       lunar: {
         text: lu.toString(),
         year: lu.getYear(), month: lu.getMonth(), day: lu.getDay(),
         monthCN: lu.getMonthInChinese(), dayCN: lu.getDayInChinese(),
         isLeap: lu.getMonth() < 0,               // 上游闰月用负数月份表示
         jieqi: lu.getJieQi(),
-        festivals: lu.getFestivals().concat(lu.getOtherFestivals ? lu.getOtherFestivals() : [])
+        // 农历节日 + 其他民俗节日 + 公历节日（顺序：农历在前，公历在后）
+        festivals: lu.getFestivals()
+          .concat(lu.getOtherFestivals ? lu.getOtherFestivals() : [])
+          .concat((function () { try { var v = solar.getFestivals(); return Array.isArray(v) ? v : []; } catch (e) { return []; } })())
       },
       ganzhi: {
         年: yearPillar(lu), 月: monthPillar(lu), 日: dayPillar(lu), 时: hourPillar(lu)

@@ -1,0 +1,53 @@
+chinese-days —— 法定节假日编排参照
+================================================================================
+
+本文件说明《玄玖灵犀 NT-Xhex》的法定节假日内核（modules/CoreModule/festival.js）
+与其参照项目 chinese-days 的关系，并附该项目的许可全文。
+
+一、本项目实际使用了什么
+--------------------------------------------------------------------------------
+· 数据来源：**国务院办公厅历年「部分节假日安排的通知」**（gov.cn 政府公开信息）。
+  放假区间、调休补班日、调休补休日逐条抄录自公告原文。国务院公告属《中华人民共和国
+  著作权法》第五条列明的「国家机关的决议、决定、命令和其他具有立法、行政、司法性质
+  的文件」，不适用该法，故其内容本身不产生著作权。
+· 参照内容：**年份 → 节日 → 假期区间 / 补班日 / 补休日** 的编排组织方式。
+· 未使用：chinese-days 的源代码（本项目未复制、未改编其任何源文件），
+  亦未使用其 npm 包或运行时依赖。
+
+二、声明依据
+--------------------------------------------------------------------------------
+按 MIT License「上述版权声明与许可声明应包含在本软件的所有副本或实质性部分中」的要求，
+本项目虽未复制其代码，仍在 NOTICE 与本文件中保留其版权声明与许可全文，以明确来源与致谢。
+
+三、上游项目
+--------------------------------------------------------------------------------
+项目名称：chinese-days
+仓库地址：https://github.com/Shonee/chinese-days
+版权人：  Copyright (c) 2024 Yawei sun
+许可证：  MIT License
+用途范围：仅作法定节假日的编排格式参照（见上第一节）
+
+四、许可全文（MIT License）
+--------------------------------------------------------------------------------
+MIT License
+
+Copyright (c) 2024 Yawei sun
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+================================================================================

@@ -3,15 +3,17 @@
  *
  * 算什么（每日黄历全套，圣经 2.1/2.2）：
  *   建除十二神（值星）、黄道/黑道六神（天神+吉凶）、二十八宿（含吉凶）、彭祖百忌（干+支）、
- *   胎神占方、喜神/福神/财神/阳贵/阴贵方位、冲煞（冲生肖+煞方）、宜/忌、纳音、九星、节日。
- * 算法来源：全部走 C01 底座（lunar-javascript 口径，权威）。
+ *   胎神占方、喜神/福神/财神/阳贵/阴贵方位、冲煞（冲生肖+煞方）、宜/忌、纳音、九星、节日、
+ *   法定节假日（放假日 / 调休上班日 / 调休补休）。
+ * 算法来源：历法全部走 C01 底座（lunar-javascript 口径，权威）；
+ *          法定节假日与公历固定节日走 C08b festival.js（数据源 = 国务院公告，见该文件头）。
  * 校验收：  modules/CoreModule/__tests__/shensha.test.js
  * 加载：UMD —— require() 得 { daily }; 浏览器挂全局 NT.core.shensha。
  */
 (function (root, factory) {
-  if (typeof module === 'object' && module.exports) module.exports = factory(require('./lunar.js'));
-  else { root.NT = root.NT || {}; root.NT.core = root.NT.core || {}; root.NT.core.shensha = factory(root.NT.core && root.NT.core.lunar); }
-})(typeof self !== 'undefined' ? self : this, function (CORE) {
+  if (typeof module === 'object' && module.exports) module.exports = factory(require('./lunar.js'), require('./festival.js'));
+  else { root.NT = root.NT || {}; root.NT.core = root.NT.core || {}; root.NT.core.shensha = factory(root.NT.core && root.NT.core.lunar, root.NT.core && root.NT.core.festival); }
+})(typeof self !== 'undefined' ? self : this, function (CORE, FEST) {
 
   function safe(fn, lu) { try { return fn(); } catch (e) { return ''; } }
 
@@ -63,7 +65,10 @@
       忌: safe(function () { return lu.getDayJi(); }, lu),
       吉神宜趋: safe(function () { return lu.getDayJiShen ? lu.getDayJiShen() : []; }, lu),
       凶煞宜忌: safe(function () { return lu.getDayXiongSha ? lu.getDayXiongSha() : []; }, lu),
-      节日: r.lunar.festivals
+      // 节日 = 农历节日（含民俗）+ 公历固定节日（去重保序），由 festival.js 合成
+      节日: (FEST && FEST.all) ? FEST.all(y, m, d, r.lunar.festivals).名 : r.lunar.festivals,
+      // 法定节假日安排（放假日 / 调休上班日 / 调休补休）；数据未覆盖的年份如实返回 null
+      法定假期: (FEST && FEST.statutory) ? FEST.statutory(y, m, d) : null
     };
   }
 

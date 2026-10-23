@@ -7,7 +7,7 @@
    CACHE 内嵌版本号（改静态资源后由 tools/sync-version.js 统一更新，见 version.json）。 */
 importScripts('./modules/UIModule/sw-core.js');
 self.__SWCore.run({
-  cache: 'nt-xhex-pwa-v3.3.0',
+  cache: 'nt-xhex-pwa-v3.4.0',
   core: ['./', './index.html', './pwa-manifest.json'],
   fallback: './index.html'
 });

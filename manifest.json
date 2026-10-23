@@ -2,8 +2,8 @@
   "name": "玄玖灵犀",
   "appid": "",
   "description": "中国传统术数文献整理、校勘与数字化演算的学术研究辅助工具，仅供传统文化学习与学术研究参考。无后端 / 无网络，一套代码多端。© 星玖工作室 Ntarstudio",
-  "versionName": "3.3.0",
-  "versionCode": "330",
+  "versionName": "3.4.0",
+  "versionCode": "340",
   "transformPx": false,
   "locale": "zh-Hans",
   "app-plus": {

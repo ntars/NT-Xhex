@@ -1,7 +1,7 @@
 {
   "singleSource": "modules/",
   "_说明": "modules/ 是全部引擎/数据/存储/设置的唯一真源。各运行方式/平台「只加载自己用到的模块，忽略其余目录」（睁一只眼闭一只眼），目录结构保持不变、不搬动文件。本清单是各平台加载选择的单一事实源。",
-  "_版本": "3.3.0 —— 按用户白名单裁剪：只保留 八字命理/紫微斗数/六爻纳甲/奇门遁甲/大六壬/梅花易数/风水堪舆/解梦灵签 八大类（共 27 个功能块、31 个内核 + vendor/iztro）；其余 23 个内核与 29 个功能块已移除，本项目不再保留。",
+  "_版本": "3.4.0 —— 按用户白名单裁剪：只保留 八字命理/紫微斗数/六爻纳甲/奇门遁甲/大六壬/梅花易数/风水堪舆/解梦灵签 八大类（共 27 个功能块、31 个内核 + vendor/iztro）；其余 23 个内核与 29 个功能块已移除，本项目不再保留。",
   "platforms": {
     "mp-weixin": {
       "sharedMain": [
@@ -58,6 +58,7 @@
             "CoreModule/liuyao.js",
             "CoreModule/liuyao-wangshuai.js",
             "CoreModule/meihua-duanyu.js",
+            "CoreModule/festival.js",
             "CoreModule/shensha.js",
             "CoreModule/huangli-duanyu.js",
             "CoreModule/yangzhai.js",
@@ -117,6 +118,7 @@
         "CoreModule/liuyao.js",
         "CoreModule/liuyao-wangshuai.js",
         "CoreModule/meihua-duanyu.js",
+        "CoreModule/festival.js",
         "CoreModule/shensha.js",
         "CoreModule/huangli-duanyu.js",
         "CoreModule/yangzhai.js",

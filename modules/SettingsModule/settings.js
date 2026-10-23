@@ -78,6 +78,11 @@
       name: 'QR Code Generator for JavaScript', ver: '—', lic: 'MIT', holder: 'Copyright (c) 2009 Kazuhiko Arase',
       why: '导出图片右下角离线二维码的矢量绘制（内嵌于 ExportModule/qrcode.js，未修改，不联网；QR Code 为 DENSO WAVE 注册商标）',
       url: 'http://www.d-project.com/'
+    },
+    {
+      name: 'chinese-days', ver: '—', lic: 'MIT', holder: 'Copyright (c) 2024 Yawei sun',
+      why: '法定节假日的编排格式参照（放假日 / 调休补班 / 调休补休）；数据本身抄自国务院办公厅历年放假公告，未复制其源代码、未引入其 npm 包',
+      url: 'https://github.com/Shonee/chinese-days'
     }
   ];
 
@@ -153,7 +158,7 @@
   return {
     // 关于我们：版权/简介/版本/备案（统一品牌信息，单一真源）
     about: function () {
-      var version = 'v3.3.0'; // 唯一版本真值；由 tools/sync-version.js 从 version.json 同步，勿手改第二份
+      var version = 'v3.4.0'; // 唯一版本真值；由 tools/sync-version.js 从 version.json 同步，勿手改第二份
       return {
         name: '玄玖灵犀', en: 'NT-Xhex', version: version,
         desc: '中国传统术数文献整理、校勘与数字化演算的学术研究辅助工具。',
