@@ -3,6 +3,8 @@
   "short_name": "NT-Xhex",
   "description": "中国传统术数文献整理、校勘与数字化演算的学术研究辅助工具，仅供传统文化学习与学术研究参考。无后端、无网络、无登录，全部计算在设备本地完成。© 星玖工作室 Ntarstudio",
   "lang": "zh-CN",
+  "dir": "ltr",
+  "id": "./",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
