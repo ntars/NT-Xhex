@@ -18,6 +18,22 @@ Copyright (C) 2026 星玖工作室 (Ntarstudio)  https://www.ntars.cn/
 · 依 AGPL-3.0 第 13 条，通过网络与本应用交互的使用者有权获得对应完整源码：
   https://github.com/ntars/NT-Xhex
 
+1.1 技术栈与平台能力（非第三方代码，列出以便核对完整性）
+--------------------------------------------------------------------------------
+本项目的全部技术构成如下；**未列入者即项目未使用**：
+· 编程语言：JavaScript（ES5 语法子集），不使用 TypeScript，不做 Babel 转译
+· 模块规范：UMD 三端分支（Node require / 浏览器全局 NT.* / AMD），属本项目自研编码约定
+· 微信小程序：WXML / WXSS / JS，分包 subPackages + 按需注入 lazyCodeLoading（微信开放平台能力）
+· PWA：Service Worker + Web App Manifest（W3C 标准，浏览器原生能力）
+· 构建与校验：Node.js 内置模块 fs / path / child_process / assert / crypto（Node.js 为 MIT）
+  驱动自研 tools/*.js；未引入任何第三方构建工具、打包器或代码质量工具
+· 设计稿：《玄玖灵犀 NT-Xhex.sketch》与图标 SVG / PNG，均为 Ntarstudio 自有资产，无外部图标库
+· 字体：样式表首选 Inter，但**未内嵌、未外链任何字体文件**（系统已安装时生效，
+  否则回落 -apple-system / PingFang SC），故不涉及第三方字体文件的再分发
+· 明确未使用：前端框架运行时（React / Vue 运行时在 PWA 与小程序形态均不加载）、
+  CDN 外链、外部字体文件、外部图标库、地图 / 统计 / 埋点 / 崩溃上报 SDK、
+  任何大模型 API、后端服务与服务端数据库
+
 二、运行时代码依赖（内嵌，随发布产物一起分发）
 --------------------------------------------------------------------------------
 以下库以整文件形式内嵌在本仓库内，运行时不联网、不发起任何远程请求。均为 MIT 许可，
