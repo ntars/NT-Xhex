@@ -25,10 +25,9 @@ function t(input, expectIntent, expectConf) {
 // ---- 黄历宜忌（v3.2.0 保留：黄历与万年历按用户要求不归档）----
 ['今天适合做什么', '明天能搬家吗', '后天结婚好不好', '帮我查一下今天宜忌', '今天黄历', '6月9']
   .forEach(function (s) { t(s, 'almanac'); });
-
-// ---- 择日（保留：主动择吉，属黄历择日范畴）----
+// ---- v3.3.0 起「主动择日」功能已移除：这几句不再归 selection，而是落回黄历（almanac）----
 ['哪天适合搬家', '帮我选个日子结婚', '下个月哪个吉日开业', '下周结婚哪天好']
-  .forEach(function (s) { t(s, 'selection'); });
+.forEach(function (s) { t(s, 'almanac'); });
 
 // ---- 节气/干支 ----
 ['明天什么干支', '下一个立春是哪天', '冬至是几号'].forEach(function (s) { t(s, 'calendar', 'high'); });

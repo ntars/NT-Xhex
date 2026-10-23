@@ -97,14 +97,16 @@ var bookRows = refs.filter(function (r) { return String(r.h || '').indexOf('《'
 ok(bookRows.length >= 20, '书目行 ≥20 本（实际 ' + bookRows.length + '）');
 // 关键古籍必须出现在页面上（与内核头注释一一对应）
 var refsAll = refs.map(function (r) { return r.h + r.text; }).join('');
-var mustBook = ['子平真诠', '穷通宝鉴', '奇门遁甲统宗', '大六壬指南', '毕法赋', '增删卜易', '卜筮正宗', 'iztro', '沈氏玄空学', '周易小成图简述', '紫微斗数全书', 'lunar-javascript'];
+var mustBook = ['子平真诠', '穷通宝鉴', '奇门遁甲统宗', '大六壬指南', '毕法赋', '增删卜易', '卜筮正宗', 'iztro', '沈氏玄空学', '紫微斗数全书', 'lunar-javascript'];
 var missBook = mustBook.filter(function (b) { return refsAll.indexOf(b) < 0; });
 ok(missBook.length === 0, '关键古籍/库全部在列（缺：' + missBook.join('，') + '）');
 // 精简口径：页面只留书名与作者，不出现旧版「查证状态四档」长文与可查原文区
 ok(refsAll.indexOf('查证状态四档') < 0, '已无查证状态长文（只列书名与作者）');
-ok(refs.filter(function (r) { return String(r.h || '').indexOf('二、可查原文') >= 0; }).length === 0, '已无「可查原文」区（原文另见仓库 refs-texts/）');
-// 「本项目独有」的数字八字如实不列书目、凡例说清
-ok(refsAll.indexOf('数字八字为本项目独有') >= 0, '凡例如实说明数字八字无外部文献');
+ok(refs.filter(function (r) { return String(r.h || '').indexOf('二、可查原文') >= 0; }).length === 0, '已无「可查原文」区（经文内嵌在内核里）');
+// v3.3.0：已移除功能（周易经文 / 小成图 / 择日）的书目必须同步消失
+//   注意只看**书目行**（以《 开头），板块名「黄历择日」本身含「择日」二字，不能误判
+var bookOnly = refs.filter(function (r) { return String(r.h || '').charAt(0) === '《'; }).map(function (r) { return r.h; }).join('|');
+ok(!/六十四卦经文|小成图|择日|吉日/.test(bookOnly), '已移除功能的书目不再列出');
 
 console.log(fails === 0 ? '\n全部通过' : '\n' + fails + ' 处失败');
 process.exit(fails === 0 ? 0 : 1);

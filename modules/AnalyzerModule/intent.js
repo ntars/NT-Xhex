@@ -26,11 +26,9 @@
   var KW = {
     bazi: ['排盘', '八字', '命盘', '四柱', '算命', '批命', '批八字', '占卜'],
     // v3.2.0 起 nameology（姓名/五格/测名）已随姓名算法归档，不再纳入意图识别。
-    //   黄历、万年历与择日按用户要求保留：almanac=黄历宜忌、select=主动择日、event=事项词（多为问当日吉凶）。
+    //   黄历与万年历按用户要求保留：almanac=黄历宜忌、event=事项词（多为问当日吉凶）。
+    //   v3.3.0：select（主动择日）随「查吉日」功能移除，择日类问法不再识别为意图。
     almanac: ['黄历', '宜忌', '老黄历', '通胜', '吉凶', '今日', '今天', '明天', '明日', '后天', '昨天', '前天'],
-    // 强择日触发词（明确要「选日子」）
-    select: ['择日', '择吉', '选日子', '选个日子', '选日', '挑日', '吉日', '吉时', '哪天适合', '何时适合',
-      '哪天好', '哪天不错', '哪个日子好', '哪天合适', '什么时候好'],
     // 事项词（出现时多为问「吉凶」，归黄历）
     event: ['搬家', '结婚', '嫁娶', '开业', '开张', '动土', '入宅', '出行', '安葬', '修坟', '婚期'],
     jieqi: ['节气', '立春', '雨水', '惊蛰', '春分', '清明', '谷雨', '立夏', '小满', '芒种', '夏至',
@@ -487,7 +485,7 @@
   }
 
   function isKeywordish(w) {
-    var all = KW.bazi.concat(KW.almanac, KW.select, KW.event, KW.jieqi, KW.ganzhi);
+    var all = KW.bazi.concat(KW.almanac, KW.event, KW.jieqi, KW.ganzhi);
     return all.some(function (k) { return w.indexOf(k) >= 0; });
   }
 
@@ -578,7 +576,6 @@
     var hasPillars = !!(ent._pillars && ent._pillars.length >= 3);
     var kwBazi = keywords.some(function (k) { return KW.bazi.indexOf(k) >= 0; });
     var kwAlmanac = keywords.some(function (k) { return KW.almanac.indexOf(k) >= 0; });
-    var kwSelect = keywords.some(function (k) { return KW.select.indexOf(k) >= 0; });
     var kwEvent = keywords.some(function (k) { return KW.event.indexOf(k) >= 0; });
     var kwJieqi = keywords.some(function (k) { return KW.jieqi.indexOf(k) >= 0; });
     var kwGanzhi = keywords.some(function (k) { return KW.ganzhi.indexOf(k) >= 0; });
@@ -598,11 +595,6 @@
     // 节气/干支查询（优先于黄历：「明天什么干支」应走 calendar）
     if ((kwJieqi || kwGanzhi) && !hasName) {
       return { intent: 'calendar', confidence: 'high', candidates: null, prompt: null };
-    }
-
-    // 择日：需强触发词（「选个日子/哪天适合」）；事项词归黄历（问当日吉凶）
-    if (kwSelect) {
-      return { intent: 'selection', confidence: hasDate ? 'medium' : 'low', candidates: null, prompt: hasDate ? null : '想为什么事择日？请告诉我事项与大致日期范围。' };
     }
 
     // 八字排盘

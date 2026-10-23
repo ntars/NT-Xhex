@@ -33,12 +33,12 @@
     {
       名: '万年历黄历',
       简称: '黄历',
-      keys: ['huangli', 'date-convert', 'zeri']
+      keys: ['huangli', 'date-convert']
     },
     {
       名: '八字命理',
       简称: '八字',
-      keys: ['bazi-chart', 'dayun', 'bazi-pattern', 'bazi-shensha', 'bazi-hehun', 'name-shuzi']
+      keys: ['bazi-chart', 'dayun', 'bazi-pattern', 'bazi-shensha', 'bazi-hehun']
     },
     {
       名: '紫微斗数',
@@ -58,7 +58,7 @@
     {
       名: '梅花易数',
       简称: '梅花',
-      keys: ['meihua', 'iching', 'zhouyi', 'xiaocheng']
+      keys: ['meihua']
     },
     {
       名: '风水堪舆',
@@ -77,10 +77,7 @@
    *
    * 为什么必须要有这张表（不能一律全跑）：
    *   有几个块在缺输入时会**自己编输入**，得出看着像真的、实际不存在的结论 ——
-   *     · zhouyi（查卦辞）：逐字扫文本找卦名单字，生辰里某个字撞上卦名就报「第 N 卦」
-   *     · xiaocheng（小成图）：从日期里抓 4 个数字当「报数」，如 2005/6/9 → 报数 2569
    *     · bazi-hehun（合婚）：把同一个人的生辰当成两个人，产出「某女 vs 某女，中配 50 分」
-   *     · zeri（择日）：没给事项时只吐一张事项菜单，不是排盘结果
    *     · fengshui（八等婚）、yangzhai（阳宅）、qianwen（解梦/灵签）：分别要坐向、户型、梦境原文
    *   这些若混进全套排盘，等于拿假数据冒充计算结果。故一律排除，改由
    *   `useOnlyWhenNamed` 规则处理：只有用户在原文里**明确点名**了该功能的触发词，才允许跑。
@@ -89,12 +86,12 @@
    */
   var SELF_SUFFICIENT = {
     'huangli': 1, 'date-convert': 1,                                    // 黄历/万年历：按出生日即可算
-    'bazi-chart': 1, 'dayun': 1, 'bazi-pattern': 1, 'bazi-shensha': 1, 'name-shuzi': 1,
+    'bazi-chart': 1, 'dayun': 1, 'bazi-pattern': 1, 'bazi-shensha': 1,
     'ziwei': 1, 'ziwei-sihua': 1,
     'liuyao': 1, 'liuyao-wangshuai': 1,                                  // 按生辰时刻起卦
     'qimen': 1, 'qimen-ri': 1, 'qimen-ke': 1, 'qimen-bj': 1, 'qimen-nianyue': 1, 'qimen-fei': 1, 'qimen-ge': 1,
     'liuren': 1, 'liuren-bifa': 1,
-    'meihua': 1, 'iching': 1,
+    'meihua': 1,
     'bazhai': 1, 'feixing': 1
   };
 
@@ -202,7 +199,7 @@
     if (notes.length) {
       parts.push('【需补充信息】' + notes.join('、')
         + ' 需额外条件才能排（解梦需梦境内容、阳宅需户型、八等婚需坐向或双方生年、'
-        + '卦辞需卦名、小成图需报数、择日需事项、合婚需两人），可直接追问。');
+        + '合婚需两人、风水需坐向、解梦需梦境原文），可直接追问。');
     }
 
     return {

@@ -39,7 +39,6 @@
             "CoreModule/bazi-pattern.js",
             "CoreModule/bazi-shensha.js",
             "CoreModule/feixing.js",
-            "CoreModule/iching-text.js",
             "CoreModule/iching.js",
             "CoreModule/bazhai.js",
             "CoreModule/vendor/iztro.min.js",
@@ -61,12 +60,9 @@
             "CoreModule/meihua-duanyu.js",
             "CoreModule/shensha.js",
             "CoreModule/huangli-duanyu.js",
-            "CoreModule/zeri.js",
-            "CoreModule/xiaocheng.js",
             "CoreModule/yangzhai.js",
             "CoreModule/guanyin-data.js",
             "CoreModule/qianwen.js",
-            "CoreModule/name-shuzi.js",
             "AnalyzerModule/db.js",
             "AnalyzerModule/lunar.js",
             "AnalyzerModule/ganzhi.js",
@@ -87,7 +83,8 @@
       "_生成产物": {
         "HomeModule/catalog.js": "「功能介绍」页的功能总览快照。由 tools/sync-mp.js 从 modules/features/registry.js 的 catalog() 提取（registry 顶层 require 了一堆内核、都在分包 occupy-cores 里；而介绍页只需纯数据）。放进主包让介绍页**瞬间打开**，不再为它加载整个分包（曾卡 3 秒）。单一真源仍是 registry。",
         "HomeModule/refs-snapshot.js": "「参考文献」页的书目与可查原文快照。同一机制，由 tools/sync-mp.js 从 modules/RefsModule/refs.js 的 refsPage() 提取。"
-      }
+      },
+      "_版本": "3.3.0 —— 按用户白名单裁剪：只保留 八字命理/紫微斗数/六爻纳甲/奇门遁甲/大六壬/梅花易数/风水堪舆/解梦灵签 八大类 + 黄历万年历（共 26 个功能块、27 个内核 + vendor/iztro）；v3.3.0 起再移除 易经起卦/查卦辞/小成图/择日/数字八字 5 个非白名单功能块与 4 个内核，本项目不再保留。"
     },
     "pwa": {
       "形态": "浏览器 PWA（仓库根 index.html，无需构建）",
@@ -101,7 +98,6 @@
         "CoreModule/bazi-pattern.js",
         "CoreModule/bazi-shensha.js",
         "CoreModule/feixing.js",
-        "CoreModule/iching-text.js",
         "CoreModule/iching.js",
         "CoreModule/bazhai.js",
         "CoreModule/vendor/iztro.min.js",
@@ -123,12 +119,9 @@
         "CoreModule/meihua-duanyu.js",
         "CoreModule/shensha.js",
         "CoreModule/huangli-duanyu.js",
-        "CoreModule/zeri.js",
-        "CoreModule/xiaocheng.js",
         "CoreModule/yangzhai.js",
         "CoreModule/guanyin-data.js",
         "CoreModule/qianwen.js",
-        "CoreModule/name-shuzi.js",
         "AnalyzerModule/db.js",
         "AnalyzerModule/lunar.js",
         "AnalyzerModule/ganzhi.js",

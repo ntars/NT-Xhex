@@ -54,7 +54,7 @@ var got = f3.groups.map(function (g) { return g.name; });
 ok(JSON.stringify(got) === JSON.stringify(want), '类顺序与用户规定一致（' + got.join('→') + '）');
 
 var sum = f3.groups.reduce(function (n, g) { return n + g.count; }, 0);
-ok(sum === 24, '块数合计 24（实际 ' + sum + '）');
+ok(sum === 22, '块数合计 22（v3.3.0 五个块移除后，实际 ' + sum + '）');
 ok(f3.groups.every(function (g) { return g.count === g.blocks.length; }), '每类项数与 blocks 长度一致');
 ok(f3.groups.every(function (g) { return typeof g.name === 'string' && g.name && typeof g.short === 'string'; }), '分组键全是 ASCII（name/short/count），模板可直接渲染');
 

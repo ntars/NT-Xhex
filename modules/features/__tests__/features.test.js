@@ -22,11 +22,8 @@ var expectKey = {
   // v3.1.8 路由修正：裸「紫微」归紫微斗数（ziwei），紫微飞星另走「紫微飞星 / 飞星」（feixing）
   '紫微 2026': 'ziwei',
   '紫微飞星 2026': 'feixing',
-  '易经 起卦 42': 'iching',
   '八宅 命卦 1990': 'bazhai',
   '梅花 1990年8月1日': 'meihua',
-  '雷天大壮': 'zhouyi',
-  '查卦 地天泰': 'zhouyi',
   '紫微斗数 1990年8月15日 男': 'ziwei',
   '斗数 1990年8月15日': 'ziwei',
   '坐北 坐向': 'fengshui',
@@ -45,8 +42,6 @@ var expectKey = {
   '今日黄历': 'huangli',
   '查农历': 'date-convert',
   '公历换农历 2026年8月15日': 'date-convert',
-  '吉日 嫁娶': 'zeri',
-  '择日 搬家': 'zeri',
   '飞盘奇门 2026年8月15日 14时': 'qimen-fei',
   '飞宫法 2026年8月15日': 'qimen-fei'
 };
@@ -63,11 +58,8 @@ var have = [
   ['fengshui', '1990男 1992女 八等婚', ent()],
   ['fengshui', '坐北 坐向', ent()],
   ['feixing', '九宫飞星 2026年8月15日 月飞星', ent(2026, 8, 15, 14)],
-  ['iching', '易经 起卦 42', ent()],
   ['bazhai', '八宅 1990 男', ent(1990, 1, 1, undefined, 'male')],
   ['meihua', '梅花 1990年8月1日', ent(1990, 8, 1, 14)],
-  ['zhouyi', '查卦 地天泰', ent()],
-  ['xiaocheng', '小成图 1136 财', {}],
   ['qimen', '奇门遁甲 1990年8月15日 14时', ent(1990, 8, 15, 14)],
   ['qimen-ri', '日家奇门 2004年8月6日', ent(2004, 8, 6, 0)],
   ['qimen-ke', '刻家奇门 2026年2月9日10时24分', ent(2026, 2, 9, 10)],
@@ -79,7 +71,6 @@ var have = [
   ['qianwen', '观音灵签 抽签', ent(2026, 8, 15)],
   ['huangli', '今日黄历', ent(2026, 10, 22)],
   ['date-convert', '查农历 2026年8月15日', ent(2026, 8, 15)],
-  ['zeri', '择日 嫁娶', ent(2026, 10, 22)],
   ['qimen-fei', '飞盘奇门 2026年8月15日 14时', ent(2026, 8, 15, 14)],
   ['bazi-pattern', '看格局 1990年8月15日 男', ent(1990, 8, 15, 14, 'male')],
   ['qimen-ge', '奇门格局 1990年8月15日', ent(1990, 8, 15, 14)],
@@ -87,8 +78,7 @@ var have = [
   ['liuyao-wangshuai', '旺衰 2026年10月17日', ent(2026, 10, 17, 14)],
   ['ziwei-sihua', '四化 1990年8月15日 男', ent(1990, 8, 15, 14, 'male')],
   ['bazi-shensha', '八字神煞 1990年8月15日', ent(1990, 8, 15, 14)],
-  ['bazi-hehun', '合婚 1990年8月15日 男', ent(1990, 8, 15, 14, 'male')],
-  ['name-shuzi', '数字八字 2005年6月9日', ent(2005, 6, 9, 0, 'male')]
+  ['bazi-hehun', '合婚 1990年8月15日 男', ent(1990, 8, 15, 14, 'male')]
 ];
 have.forEach(function (c) {
   var out = R.run(c[0], c[2], c[1]);
@@ -299,7 +289,6 @@ ok(ma.map(function (x) { return x.key; }).join(',') === 'bazi-chart,ziwei,bazi-s
 ok(R.matchAll('紫微飞星').map(function (x) { return x.key; }).join(',') === 'feixing', '「紫微飞星」只命中飞星，不被「紫微」抢');
 ok(R.matchAll('八字神煞').map(function (x) { return x.key; }).join(',') === 'bazi-shensha', '「八字神煞」只命中神煞，不被「八字」抢');
 // v3.2.0 数字八字：「数字八字」4 字触发词长于「八字」2 字，最长优先 → 路由 name-shuzi
-ok(R.match('数字八字 2005年6月9日子时').key === 'name-shuzi', '「数字八字」路由到数字八字（不被八字抢）');
 ok(R.matchAll('日家奇门').map(function (x) { return x.key; }).join(',') === 'qimen-ri', '「日家奇门」只命中日家，不被「奇门」抢');
 // 通用动作词保护：「奇门遁甲排盘」不该再带出八字排盘
 ok(R.matchAll('奇门遁甲排盘').map(function (x) { return x.key; }).join(',') === 'qimen', '通用动作词「排盘」不额外带出功能');
@@ -311,20 +300,5 @@ ok(multi.indexOf('；') < 0 && !/\n\s*\n/.test(multi), '多算法输出无中文
 // 单命中行为不变（与旧版一致）
 var single = A.analyze('奇门遁甲 1990年8月15日 14时');
 ok(single.indexOf('【奇门遁甲】') === 0, '单命中仍只出一个结果（行为不变）');
-
-// ===== v3.1.25 小成图（霍斐然《周易小成图简述》）输出锁定 =====
-console.log('== 小成图（报 4 数→天地数起卦→九宫装图+归藏，象数结构定位）==');
-var xOut = R.run('xiaocheng', {}, '小成图 1136 财');
-ok(xOut.text && xOut.text.indexOf('【小成图】') >= 0, '小成图有料出标题');
-ok(xOut.text.indexOf('乾为天') >= 0 && xOut.text.indexOf('山火贲') >= 0, '小成图给出本卦/之卦（1136 外部算例）');
-ok(xOut.text.indexOf('中宫归藏 震') >= 0, '小成图中宫归藏 = 震（异或自洽，非转载误写的巽）');
-ok(xOut.text.indexOf('四正') >= 0 && xOut.text.indexOf('四隅') >= 0, '小成图给出四正（本/之上下卦）与四隅（本/之互卦）');
-ok(xOut.text.indexOf('用神') >= 0 && xOut.text.indexOf('应期') >= 0, '小成图给出取用神宫与应期');
-// v3.1.56：四势吉凶已据霍老原文补入（纲要级）；五行仍守原论不涉
-ok(xOut.text.indexOf('阖辟往来四势') >= 0 && xOut.text.indexOf('纲要级') >= 0, '小成图补阖辟往来四势（霍老原文·纲要级）');
-ok(xOut.text.indexOf('不涉五行生克吉凶') >= 0, '小成图守霍老原论不涉五行（原文本就如此，非臆造缺口）');
-ok(R.match('小成图 1136').key === 'xiaocheng', '「小成图」路由到小成图');
-var xPrompt = R.run('xiaocheng', {}, '小成图 看看');
-ok(xPrompt.prompt, '小成图无 4 位数字 → 追问（守门）');
 
 if (fails === 0) { console.log('全部通过 ✓'); process.exit(0); } else { console.log(fails + ' 处失败'); process.exit(1); }

@@ -74,14 +74,15 @@ ok(secMatch, 'SECTIONS 结构完整');
 // ---------------------------------------------------------------------------
 console.log('== ③ 缺额外条件的块不许自编输入凑数 ==');
 
-var mustSkip = ['查合婚', '排小成图', '查卦辞', '查吉日', '解八等婚', '查阳宅', '解灵签'];
+// v3.3.0：小成图 / 查卦辞 / 查吉日 三个块已随功能裁掉，剩下四个「缺额外条件必自编」的块
+var mustSkip = ['查合婚', '解八等婚', '查阳宅', '解灵签'];
 var ranShort = full.blocks.map(function (b) { return b.短名; });
 var cheat = mustSkip.filter(function (n) { return ranShort.indexOf(n) >= 0; });
-ok(cheat.length === 0, '这七块没被强行跑（违规：' + cheat.join(',') + '）');
+ok(cheat.length === 0, '这四块没被强行跑（违规：' + cheat.join(',') + '）');
 
 var skippedHit = mustSkip.filter(function (n) { return full.skipped.indexOf(n) >= 0; });
 ok(skippedHit.length === mustSkip.length,
-  '七块都记进 skipped（实际 ' + skippedHit.length + '/' + mustSkip.length + '）');
+  '四块都记进 skipped（实际 ' + skippedHit.length + '/' + mustSkip.length + '）');
 
 var tail = String(full.text).split('\n').pop();
 ok(tail.indexOf('【需补充信息】') === 0, '末行是「【需补充信息】…」提示（实际：' + tail.slice(0, 22) + '）');

@@ -1,22 +1,23 @@
 /**
  * modules/CoreModule/iching.js —— 周易 · 六爻 · 梅花内核 C15+C16+C17【单一真源】
  *
- * 算什么：
- *   C17 周易：8 卦（先天数 1-8 + 五行 + 方位）、64 卦名表、本卦/互卦/变卦、大衍筮法起卦；
- *   C16 梅花：时间/物数/报数起卦、体用生克、卦气衰旺；
- *   C15 六爻：铜钱起卦（三枚记 6 次）、6 爻本卦、变卦、世应/六亲六神（骨架，断语库另配）。
- * 算法来源：起卦/互变/体用为通用规则（自研）；64 卦名表为公开数据（内置全 64 名）；
- *          经文（卦辞/爻辞/大象/白话）在同目录 iching-text.js 单一真源，本文件不复制。
+ * 算什么（v3.3.0 起只保留梅花与六爻仍需要的部分）：
+ *   · 八卦表：先天数 1-8 + 五行 + 方位 + 三爻（梅花体用、六爻装卦都用）；
+ *   · 64 卦名表（上卦×下卦 → 传统卦名，8×8 全量）；
+ *   · 起卦：铜钱 / 大衍 / 时间三法 + 本卦·互卦·变卦 + 体用生克（梅花用）。
+ * 算法来源：起卦/互变/体用为通用规则（自研）；64 卦名表为公开数据（内置全 64 名）。
+ * v3.3.0：周易六十四卦**经文**（卦辞/爻辞/大象/白话）与「查卦辞」功能一并移除，
+ *   故本文件不再挂 iching-text.js，也不再提供 textOf / 通行卦序表。
  * 校验收：  modules/CoreModule/__tests__/iching.test.js
  * 加载：UMD —— require() 得 { qigua, ... }；浏览器挂全局 NT.core.iching。
  */
 (function (root, factory) {
-  if (typeof module === 'object' && module.exports) module.exports = factory(require('./iching-text.js'));
+  if (typeof module === 'object' && module.exports) module.exports = factory();
   else {
     root.NT = root.NT || {}; root.NT.core = root.NT.core || {};
-    root.NT.core.iching = factory(root.NT.core.ichingText || null);
+    root.NT.core.iching = factory();
   }
-})(typeof self !== 'undefined' ? self : this, function (TEXT) {
+})(typeof self !== 'undefined' ? self : this, function () {
 
   // 八卦（先天数：乾1兑2离3震4巽5坎6艮7坤8；先天方位 + 五行）
   var BAGUA = {
@@ -110,47 +111,9 @@
     return { 爻: yao, 本卦: fromYao(yao), 动爻: dong };
   }
 
-  /**
-   * 通行卦序对照：卦全名 → 1–64（上经 30 + 下经 34，王弼本序）。
-   * ⚠️ 为什么必须单列这张表：本文件的 HEX64 是「上卦 × 下卦」的 8×8 排列，
-   *    它的**键序不是通行卦序**（第 11 个键是「泽火革」，而通行第 11 卦是「地天泰」）。
-   *    查「第 N 卦」必须走这张表，否则会答成别的卦（v3.1.10 修的就是这个 bug）。
-   */
-  var ORDER_BY_NAME = {
-    '乾为天': 1, '坤为地': 2, '水雷屯': 3, '山水蒙': 4, '水天需': 5, '天水讼': 6, '地水师': 7, '水地比': 8,
-    '风天小畜': 9, '天泽履': 10, '地天泰': 11, '天地否': 12, '天火同人': 13, '火天大有': 14, '地山谦': 15, '雷地豫': 16,
-    '泽雷随': 17, '山风蛊': 18, '地泽临': 19, '风地观': 20, '火雷噬嗑': 21, '山火贲': 22, '山地剥': 23, '地雷复': 24,
-    '天雷无妄': 25, '山天大畜': 26, '山雷颐': 27, '泽风大过': 28, '坎为水': 29, '离为火': 30,
-    '泽山咸': 31, '雷风恒': 32, '天山遯': 33, '雷天大壮': 34, '火地晋': 35, '地火明夷': 36, '风火家人': 37, '火泽睽': 38,
-    '水山蹇': 39, '雷水解': 40, '山泽损': 41, '风雷益': 42, '泽天夬': 43, '天风姤': 44, '泽地萃': 45, '地风升': 46,
-    '泽水困': 47, '水风井': 48, '泽火革': 49, '火风鼎': 50, '震为雷': 51, '艮为山': 52, '风山渐': 53, '雷泽归妹': 54,
-    '雷火丰': 55, '火山旅': 56, '巽为风': 57, '兑为泽': 58, '风水涣': 59, '水泽节': 60, '风泽中孚': 61, '雷山小过': 62,
-    '水火既济': 63, '火水未济': 64
-  };
-  // 序 → 全名（由上一张表反推，不另存一份，避免两处不同步）
-  var NAME_BY_ORDER = {};
-  for (var _nm in ORDER_BY_NAME) NAME_BY_ORDER[ORDER_BY_NAME[_nm]] = _nm;
-
-  /**
-   * 取某一卦的经文：接受 卦序（11 / '11'）、全名（'地天泰'）、单名（'泰'）。
-   * 经文本身在 iching-text.js（单一真源），这里只做「定位 + 补上全名」。
-   * 返回 null 表示没定位到（调用方自行给提示）。
-   */
-  function textOf(ref) {
-    if (!TEXT || !TEXT.GUA) return null;
-    var n = 0;
-    if (typeof ref === 'number') n = ref;
-    else if (/^\d+$/.test(String(ref || ''))) n = +ref;
-    else {
-      var s = String(ref || '').replace(/[《》\s]/g, '');
-      n = ORDER_BY_NAME[s] || (TEXT.orderOf ? TEXT.orderOf(s) : 0);
-    }
-    if (!(n >= 1 && n <= 64)) return null;
-    var g = TEXT.GUA[n];
-    if (!g) return null;
-    return { 序: n, 名: g.名, 全名: NAME_BY_ORDER[n] || g.名, 卦辞: g.辞, 象: g.象, 爻: g.爻, 白话: g.白 };
-  }
-
-  return { BAGUA: BAGUA, hexName: hexName, fromYao: fromYao, huGua: huGua, tiyong: tiyong, qigua: qigua, dayan: dayan, HEX64: HEX64,
-    ORDER_BY_NAME: ORDER_BY_NAME, textOf: textOf };
+  // v3.3.0：随「查卦辞」「易经起卦」两个功能块移除，本文件不再挂 iching-text.js，
+  //   也不再提供 textOf / 通行卦序对照表。留下的 BAGUA / HEX64 / qigua / dayan / huGua /
+  //   tiyong / fromYao / hexName 仍是**梅花与六爻在用**的部分：梅花用它成卦与体用（fromYao /
+  //   huGua / tiyong / hexName），六爻用 fromYao 把六爻爻象还原成上下卦。
+  return { BAGUA: BAGUA, hexName: hexName, fromYao: fromYao, huGua: huGua, tiyong: tiyong, qigua: qigua, dayan: dayan, HEX64: HEX64 };
 });

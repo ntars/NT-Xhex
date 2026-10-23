@@ -71,16 +71,16 @@ console.log('== ⑤ 关键书目在列 ==');
 var refsAll = page.map(function (r) { return r.h + ' ' + r.text; }).join('\n');
 var mustBook = ['子平真诠', '穷通宝鉴', '滴天髓', '金函玉镜', '奇门遁甲统宗', '奇门宝鉴',
   '大六壬指南', '心印赋', '毕法赋', '六壬大全', '增删卜易', '卜筮正宗', 'iztro', '沈氏玄空学',
-  '周易小成图简述', '紫微斗数全书', 'lunar-javascript', '灵觉经'];
+  '紫微斗数全书', 'lunar-javascript', '灵觉经'];
 var missBook = mustBook.filter(function (b) { return refsAll.indexOf(b) < 0; });
 ok(missBook.length === 0, '关键书目全部在列（缺：' + missBook.join('，') + '）');
 
 // ============ ⑥ 不臆造口径 ============
 console.log('== ⑥ 不臆造口径 ==');
-// 数字八字为本项目独有体系：书目里不许出现，凡例必须如实说明
-var szBook = R.BOOKS.filter(function (b) { return b.书名.indexOf('数字八字') >= 0; });
-ok(szBook.length === 0, '数字八字（本项目独有）不列书目');
-ok(page[0].text.indexOf('数字八字') >= 0 && page[0].text.indexOf('独有') >= 0, '凡例如实说明数字八字无外部文献');
+// v3.3.0 删减后的反向断言：已移除功能（周易经文 / 小成图 / 择日）的书目必须同步消失，
+// 否则就是「功能没了、书目还挂在页面上说自己在用」——比缺书更糟。
+var goneBook = R.BOOKS.filter(function (b) { return /六十四卦经文|小成图|择日|吉日/.test(b.书名); });
+ok(goneBook.length === 0, '已移除功能的书目不再列出（残留：' + goneBook.map(function (b) { return b.书名; }).join('、') + '）');
 // 只列书名与作者：页面不得出现旧版的「查证状态四档」长文
 ok(refsAll.indexOf('查证状态四档') < 0, '页面已无查证状态长文（只留书名与作者）');
 
