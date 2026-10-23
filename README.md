@@ -976,7 +976,7 @@ node tools/sync-version.js --check   # 版本号 7 处与 version.json 一致
   ① **分清两类文件再动手** —— `dist/mp-weixin/` 的 76 个文件其实是两类：**手写壳源码 9 个**（`app.js` / `app.json` / `app.wxss` / `sitemap.json` / `project.config.json` / `pages/index` 四件套）与**生成物 67 个**（`theme.wxss` 1 + `static/icons/` 3 + `utils/modules/` 13 + `occupy-cores/` 50）。第一版方案曾试图把整个 `dist/` 出库，被小样本验证拦下：`sync-mp.js` 对 `app.json`、`project.config.json` 是「读现有 → 改字段 → 写回」，读不到就静默跳过 —— 壳一丢，分包配置写不进去，实测包体 2.378MB 超线 118.9%、连 `app.wxss` 与 `pages/index` 都缺。所以只出库生成物，壳必须留在 git 里。
   ② **`.gitignore` 精确四条** —— `dist/mp-weixin/theme.wxss`、`dist/mp-weixin/static/`、`dist/mp-weixin/utils/modules/`、`dist/mp-weixin/occupy-cores/`；文件头写清「9 个手写壳 vs 67 个生成物」的划分与代价，避免以后有人顺手把 `dist/` 整个忽略掉重犯同一个错。
   ③ **`git rm -r --cached` 出库 67 个** —— 本地文件一个不动（76 个仍在），仓库文件数 **234 → 167**，git 里从此只剩 `modules/` 一份源码；`git check-ignore` 逐项验证 4 条规则命中、9 个壳零误伤。
-  ④ **一条命令补回来** —— `package.json` 新增 `build:mp`（= `sync-mp.js`）与 `check:mp`、`sync:version`；`pages.yml` 的 verify 先 `build:mp` 再 `--check`，发布不依赖仓库内旧产物。
+  ④ **一条命令补回来** —— `package.json` 新增 `build:mp`（= `sync-mp.js`）与 `check:mp`、`sync:version`；`pages.yml` 的 verify 先 `build:mp` 再 `--check`，发布不依赖仓库内旧产物。顺手补上「收空目录」：模块在主包 ↔ 分包之间搬过家（`AnalyzerModule` / `features` 进分包、`vendor` 进主包），而 `clearFiles` 只删文件不删目录，旧目录会留成空壳（实测 4 个、0 字节），看着像旧版本残留；现在生成末尾自底向上清一次空目录，有内容的一律不动。
   ⑤ **验证（这次先验后合，不合并未验证的分支）** —— `git clone --branch` 到临时目录模拟新机器：只跑 `npm run build:mp`，9 个手写壳齐全、`utils/modules/` 与 `occupy-cores/` 非空、`sync-mp --check` 全过、包体双红线达标、与主仓库 `dist` 做 `diff -rq` **逐字节零差异**；再跑 41 个测试文件全绿。
   ⑥ **文档同步** —— README §8.1 首段改为「先 build 再导入」（含「不 build 会怎样」的判断方法）、§6.3 补「生成物不进版本库」两类文件对账表、目录树标注、§9.4 命令表、速览新增「仓库」行。
 

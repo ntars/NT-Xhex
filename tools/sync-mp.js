@@ -671,6 +671,17 @@ function main() {
   genCatalog();
   genRefsSnapshot();
   ensureBabelSetting();
+  // 收掉历史空目录：模块在主包 ↔ 分包之间搬过家（如 analyzer/features 从主包进分包、
+  // vendor 从分包进主包），而 clearFiles 只删文件不删目录（rmdir 可能被运行环境的
+  // safe-delete 拦截），旧目录就会留成空壳 —— 0 个文件、不影响包体，但看着像「旧版本残留」。
+  // 这里自底向上补清理一次：只删**空**目录，有内容的一律不动；删不掉（被占用）就留着。
+  // 只遍历 MP_DIST 的子目录，避免把 dist/mp-weixin 本身删掉。
+  if (MODE === 'copy') {
+    fs.readdirSync(MP_DIST).forEach(function (f) {
+      var fp = path.join(MP_DIST, f);
+      if (fs.lstatSync(fp).isDirectory()) removeEmptyDirs(fp);
+    });
+  }
   // 壳体检（生成模式只告警不中断，便于边改边看；CI 用 --check 会硬失败）
   var problems = lintWxmlTemplates();
   if (problems.length) {
