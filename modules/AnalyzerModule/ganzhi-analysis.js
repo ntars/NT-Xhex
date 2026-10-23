@@ -1,6 +1,6 @@
 /**
- * modules/AnalyzerModule/ganzhi-analysis.js —— 黄历宜忌 / 择日 / 干支节气 分析（纯函数）
- * 把「今日 / 近期 / 某日」加工成可读的黄历、择日、节气文字（不返回原始字段）。
+ * modules/AnalyzerModule/ganzhi-analysis.js —— 黄历宜忌 / 干支节气 分析（纯函数）
+ * 把「今日 / 近期 / 某日」加工成可读的黄历、节气文字（不返回原始字段）。v3.3.0 起择日功能移除，zeiri() 一并删除。
  * 依赖：db.js、ganzhi.js
  * 加载：UMD —— 小程序被 require；浏览器挂到全局 NT.ganzhiAnalysis。
  */
@@ -30,16 +30,6 @@
     return text;
   }
 
-  // 择日（近期）
-  function zeiri() {
-    var now = new Date();
-    var g = GZ.dayGanzhi(now);
-    var jc = GZ.jianchuOf(now);
-    return '【择日】近七日择日建议：当前' + g.干支 + '为' + jc.name + '日，「宜」' + jc.yi.join('、') + '，「忌」' + jc.ji.join('、') +
-      '。若为嫁娶、开市、入宅等大事宜，宜待「成」「开」之日；安葬、修坟宜「破」「闭」之日。' +
-      '择日当避冲煞之日与自身属相相冲之日，方能趋吉避凶。';
-  }
-
   // 干支节气（精确到交节日，东八区）
   function jieqi() {
     var now = new Date();
@@ -62,5 +52,5 @@
     return text;
   }
 
-  return { huangliNow: huangliNow, zeiri: zeiri, jieqi: jieqi, ganzhiToday: ganzhiToday };
+  return { huangliNow: huangliNow, jieqi: jieqi, ganzhiToday: ganzhiToday };
 });

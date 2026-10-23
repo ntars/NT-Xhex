@@ -100,11 +100,6 @@
   // 十二地支序（大六壬天地盘/天将逐一列用）
   function ZHI2() { return ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥']; }
 
-  // 从文本里抽取连续数字串（号码八星用；字母 A–Z 由内核转 1–9）
-  function pullNumber(text) {
-    var m = String(text || '').match(/[\dA-Za-z]{4,}/);
-    return m ? m[0] : '';
-  }
   // 取文本里显式写的年份（流年/流月/流日的起点用）；没写就返回 0，由调用方决定默认值
   function pullYear(text) {
     var m = String(text || '').match(/(19|20)\d{2}/);
@@ -124,50 +119,6 @@
    * 为什么不直接用上面那张表：死表必然漏字（「一百」「二十三」「三十六」全会漏），
    * 漏了就变成「查不出」而不是「查错了」，用户看不出问题在哪 —— 所以用规则算。
    */
-  // 农历月中文（正二三四五六七八九十冬腊）
-  function lunarMonthCN(n) {
-    var M = ['正', '二', '三', '四', '五', '六', '七', '八', '九', '十', '冬', '腊'];
-    n = parseInt(n, 10);
-    return (n >= 1 && n <= 12) ? M[n - 1] : String(n);
-  }
-
-  // 农历日中文（择日凶日名单里列日子用）
-  function lunarDayCN(n) {
-    var H = '一二三四五六七八九十';
-    n = parseInt(n, 10);
-    if (!n || n < 1 || n > 30) return String(n);
-    if (n <= 10) return '初' + H.charAt(n - 1);
-    if (n < 20) return '十' + H.charAt(n - 11);
-    if (n === 20) return '二十';
-    if (n < 30) return '廿' + H.charAt(n - 21);
-    return '三十';
-  }
-
-  // 择日：把公历「2026年11月1日」压成「11月1日」（范围内凶日名单用，省字）
-  function mdOf(s) {
-    var m = String(s).match(/^(\d+)年(\d+)月(\d+)日$/);
-    return m ? (+m[2]) + '月' + (+m[3]) + '日' : String(s);
-  }
-
-  // 择日：单日命中的专项凶日名（口径与 zeri.js 的 score() 扣分一一对应）
-  function xzOf(day, key) {
-    var out = [];
-    if (day.杨公忌) out.push('杨公忌');
-    if (day.红沙) out.push('红沙');
-    if (key === '嫁娶') {
-      if (day.三娘煞) out.push('三娘煞');
-      if (day.周堂 && day.周堂.杀) out.push('周堂杀');
-    }
-    return out;
-  }
-
-  // 生肖（黄历择日按命主属相避冲）
-  function pullZodiac(text, def) {
-    if (def) return def;
-    var m = String(text || '').match(/属([鼠牛虎兔龙蛇马羊猴鸡狗猪])/) || String(text || '').match(/([鼠牛虎兔龙蛇马羊猴鸡狗猪])/);
-    return m ? m[1] : null;
-  }
-
   function numOf(s) {
     var d = { 零: 0, 一: 1, 二: 2, 两: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9 };
     var t = String(s || '').replace(/[第\s]/g, '').replace(/签|卦/g, '');
