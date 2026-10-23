@@ -802,6 +802,7 @@ npm run build:mp     # 等值于 node tools/sync-mp.js，从 modules/ + static/ 
 然后微信开发者工具「导入项目」，目录选 `dist/mp-weixin/`，即可预览 / 编译 / 上传。
 
 > ⚠️ **不跑 build 直接导入会缺模块、缺 `theme.wxss`、缺分包内容**，编译看似能过但运行到排盘就报模块找不到。判断方法：`dist/mp-weixin/utils/modules/` 与 `dist/mp-weixin/occupy-cores/` 两个目录存在且非空，就说明构建过了。
+> ⚠️ **切分支 / 拉更新 / 合并之后，git 会把生成物当「这些文件已删除」而清掉**（它们上一版曾被跟踪），表现是导入后突然报模块缺失 —— 重跑一次 `npm run build:mp` 即可，不需要改任何代码。
 > ⚠️ 必须选 `dist/mp-weixin/`（含 `app.json`），**不能选仓库根目录**（根目录无 `app.json`，会报「no found app.json」）。
 > ⚠️ 引擎与静态资源是 `modules/`、`static/` 的**生成产物**。改了源之后重跑 `npm run build:mp`（校验 `npm run check:mp`）。
 > ⚠️ 微信 IDE 会在 `dist/mp-weixin/` 自建 `app.miniapp.json`、`project.miniapp.json`、`project.private.config.json`、`i18n/`、`miniapp/`，并把 `project.config.json` 写成 `"projectArchitecture": "multiPlatform"`。这些是 **IDE 本地产物、不入库**（已在 `.gitignore`）；发现后清理并重新导入，否则会被当成「小应用」架构打开白屏。
