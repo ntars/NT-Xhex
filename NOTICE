@@ -1,22 +1,99 @@
+玄玖灵犀 NT-Xhex · 版权与第三方声明（NOTICE）
+================================================================================
+
+本文件是《玄玖灵犀 NT-Xhex》的版权与第三方依赖声明。使用、复制、修改、再分发本项目的
+任何一部分之前，请先阅读本文件与仓库根 LICENSE。
+
+一、本项目版权与许可
+--------------------------------------------------------------------------------
 玄玖灵犀 NT-Xhex
-Copyright (C) 2026 星玖工作室 (Ntarstudio)
+Copyright (C) 2026 星玖工作室 (Ntarstudio)  https://www.ntars.cn/
 
-本项目代码以 GNU Affero 通用公共许可证第 3 版（AGPL-3.0）开源，全文见 LICENSE；
-界面、品牌「玄玖灵犀 NT-Xhex」、版式与设计归 Ntarstudio 所有。
+· 代码：以 GNU Affero 通用公共许可证第 3 版（AGPL-3.0）开源，全文见仓库根 LICENSE。
+  你可以自由使用、复制、修改、再分发；分发修改版须同样以 AGPL-3.0 开放对应源码；
+  若将修改版作为网络服务提供给他人使用，须按第 13 条向使用者提供完整源码。
+· 品牌与界面：名称「玄玖灵犀」「NT-Xhex」、Logo、界面版式与《玄玖灵犀 NT-Xhex.sketch》
+  设计稿归 Ntarstudio 所有；AGPL-3.0 只授予代码权利，不授予品牌与视觉资产的商标/著作权
+  使用许可，第三方不得盗用品牌标识与设计稿。
+· 依 AGPL-3.0 第 13 条，通过网络与本应用交互的使用者有权获得对应完整源码：
+  https://github.com/ntars/NT-Xhex
 
-依 AGPL-3.0 第 13 条（远程网络交互），通过本应用提供的网络服务与其交互的使用者，
-有权获得对应的完整源码，源码仓库地址：https://github.com/ntars/NT-Xhex
+二、运行时代码依赖（内嵌，随发布产物一起分发）
+--------------------------------------------------------------------------------
+以下库以整文件形式内嵌在本仓库内，运行时不联网、不发起任何远程请求。均为 MIT 许可，
+与 AGPL-3.0 兼容，可一并再分发。**MIT 要求保留版权声明与许可声明，请勿删除。**
 
-本项目内嵌/引用以下第三方开源项目（均为 MIT 许可，其版权声明随源码保留在对应文件内；
-MIT 与 AGPL-3.0 兼容，可一并再分发）：
+1) lunar-javascript v1.6.x —— 历法内核（公历↔农历、节气、干支、纳音、神煞、八字）
+   Copyright (c) 6tail
+   https://github.com/6tail/lunar-javascript
+   内嵌位置：modules/CoreModule/solarlunar.js（MIT 原文，仅加项目署名头，内部算法未改）
+   许可全文：modules/CoreModule/vendor/lunar-javascript.LICENSE.txt
+   修改情况：未修改内部算法；本项目的口径封装（立春换年 / 节月 / 子时归属）在适配层
+             modules/CoreModule/lunar.js 完成。
 
-* lunar-javascript —— 历法内核参考（干支 / 节气 / 四柱 / 建除 的精确离线算法口径）
-  https://github.com/6tail/lunar-javascript
-* iztro@2.6.2 —— 紫微斗数权威引擎（构建期内嵌，运行时不联网）
-  https://github.com/SylarLong/iztro    内嵌于 modules/CoreModule/vendor/iztro.min.js
-* astronomy（cosinekitty）—— 天文历算库（MIT）
-  https://github.com/cosinekitty/astronomy   内嵌于 modules/CoreModule/vendor/astronomy.js
-* opencc-js（MIT + Apache-2.0）—— 简→繁字形映射（姓名学按繁体康熙计数，故先转繁再查）
+2) iztro v2.6.2 —— 紫微斗数安星引擎（十二宫 / 四化 / 大限）
+   Copyright (c) SylarLong（具体年份以上游 LICENSE 为准）
+   https://github.com/SylarLong/iztro
+   内嵌位置：modules/CoreModule/vendor/iztro.min.js（压缩后已无文件头 banner，故许可单列）
+   许可全文：modules/CoreModule/vendor/iztro.LICENSE.txt
+   修改情况：未修改；整文件内嵌，构建期资产。
+   备注：本项目的薄适配层为 modules/CoreModule/ziwei.js，四化表取中州派（陆斌兆）口径。
 
-使用或再分发本项目时，请连同本 NOTICE 与 AGPL-3.0 协议文本一并保留；
-内嵌的第三方文件的版权声明与许可不得删除。
+3) QR Code Generator for JavaScript —— 导出图片的离线二维码绘制
+   Copyright (c) 2009 Kazuhiko Arase
+   http://www.d-project.com/
+   内嵌位置：modules/ExportModule/qrcode.js（文件头保留原版权与许可声明）
+   许可全文：modules/ExportModule/qrcode.LICENSE.txt
+   修改情况：未修改。
+   商标提示：QR Code 是 DENSO WAVE INCORPORATED 的注册商标。
+
+三、构建期依赖（用于开发与打包，不随小程序/PWA 发布产物分发）
+--------------------------------------------------------------------------------
+以下依赖仅在构建/开发时使用。若构建 uni-app 的 H5 / Android / iOS / 鸿蒙产物，其运行时
+会包含其中部分代码，届时须同时遵守各自的许可（许可以各包 package.json 的 license 字段
+与随包 LICENSE 为准）：
+
+· uni-app 与 @dcloudio/uni-app、uni-components、uni-h5、uni-mp-weixin
+  —— Apache License 2.0 · https://github.com/dcloudio/uni-app
+· vue 3.x —— MIT License · https://github.com/vuejs/core
+· sass（dart-sass）—— MIT License · https://github.com/sass/dart-sass
+
+四、数据与古籍文献声明
+--------------------------------------------------------------------------------
+本项目的术数数据来自三类来源，处理方式不同，请分别注意：
+
+1) 公版古籍原文（明清及以前传本、作者不详民俗文本）—— 已进入公有领域，可在应用内引用。
+   已收 4 份全文于仓库 refs-texts/：《周易》64 卦经文、紫微斗数全书断语库 168 格、
+   观音灵签一百签、《毕法赋》一百法。经文以通行本（《十三经》本、四库《六壬大全》本、
+   明清传本）为底本，**维基文库等线上版本仅作异文校勘参照**，不作为底本复制来源；
+   如涉及第三方整理成果，其权利归整理者，须按该来源的许可（如 CC BY-SA）另行遵循。
+
+2) 现代著作与开源文档 —— 仅列书目与作者，**不载原文**。例如霍斐然《周易小成图简述》、
+   陆斌兆中州派四化（现代整理）、易德轩 / 玄霖易学等网站整理件：本应用只做「依据说明」，
+   请阅原书或原站点。
+
+3) 民间传本与网站整理件（如观音灵签的转录来源「天天灵签网 / 农历114 / 观音灵签解签」）
+   —— 本项目按「多源比对、取通行一致文本」的方式整理；此类整理件可能涉及汇编著作权与
+   站点使用条款。如需商用或大规模再分发，请自行复核来源许可，或改用公版刻本重新校勘。
+
+· 古籍原文的白话解释为本项目原创（不构成对原著的演绎许可主张，仅供参考）。
+· 术数结论不构成医学、法律、投资建议，仅供传统文化学习与学术研究参考。
+
+五、本仓库当前不包含的第三方库（避免误认，曾用于已移除的功能）
+--------------------------------------------------------------------------------
+以下库曾在早期版本中内嵌，对应的算法模块（占星/七政、姓名学等）已从本仓库移除，
+仓库中已无这些文件与引用；此处列出仅作历史说明，不代表本项目在使用或分发它们：
+
+· astronomy-engine（cosinekitty，MIT）—— 曾用于占星/七政，文件已不在本仓库
+· opencc-js（MIT / Apache-2.0）—— 曾用于简繁字形映射（康熙笔画），文件已不在本仓库
+
+六、再分发要求（请务必遵守）
+--------------------------------------------------------------------------------
+· 必须保留：本 NOTICE、LICENSE（AGPL-3.0 全文）、上述三份第三方许可全文（vendor/ 与
+  ExportModule/ 下的 *.LICENSE.txt）、以及各文件内部原有的版权头。
+· 必须保留：「玄玖灵犀 NT-Xhex」品牌标识与 © 星玖工作室 Ntarstudio 的版权声明；
+  修改版不得暗示原作者为你的修改背书。
+· 不得删除或篡改第三方文件的版权声明与许可声明（MIT 的强制要求）。
+· 建议保持本项目「无后端 / 无网络 / 无登录 / 全本地计算」的边界；若接入网络回传用户输入，
+  请自行评估合规风险并明确告知使用者。
+================================================================================

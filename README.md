@@ -893,11 +893,58 @@ node tools/sync-version.js --check   # 版本号 7 处与 version.json 一致
 
 ---
 
-## 十一、许可与开源
+## 十一、许可与开源声明
 
-- **代码许可**：GNU AGPL v3.0（全文见仓库根 `LICENSE`）。可自由使用、复制、修改、再分发；要求是保留开源声明与版权声明、修改版同样以 AGPL-3.0 开放源码、作为网络服务提供时按第 13 条向使用者提供完整源码。
-- **复刻边界**：请保持「无后端 / 无网络 / 无登录 / 全本地计算」的边界，不得接入网络回传用户输入。
-- **第三方**：lunar-javascript v1.6.x（MIT，历法口径参考）、iztro 2.6.2（MIT，紫微安星引擎）——均为构建期内嵌资产，运行时不联网。其余算法为本仓自研实现。
+> 完整的版权与第三方许可声明见仓库根 [`NOTICE`](./NOTICE)；AGPL-3.0 全文见 [`LICENSE`](./LICENSE)。
+
+### 11.1 本项目版权与许可
+
+| 项 | 内容 |
+| --- | --- |
+| 版权 | Copyright (C) 2026 星玖工作室 (Ntarstudio) · https://www.ntars.cn/ |
+| 代码许可 | **GNU AGPL-3.0**（全文见 `LICENSE`）：可自由使用、复制、修改、再分发；分发修改版须同样以 AGPL-3.0 开放源码；作为网络服务提供时按第 13 条向使用者提供完整源码 |
+| 品牌与界面 | 名称「玄玖灵犀」「NT-Xhex」、Logo、界面版式与设计稿归 Ntarstudio 所有；AGPL-3.0 只授予**代码**权利，不授予品牌与视觉资产的使用许可，第三方不得盗用品牌标识与设计稿 |
+| 源码获取 | https://github.com/ntars/NT-Xhex |
+
+### 11.2 第三方清单
+
+**运行时代码依赖（内嵌、随产物分发，均为 MIT）**
+
+| 组件 | 版本 | 版权人 | 许可 | 内嵌位置 | 修改情况 | 许可全文 |
+| --- | --- | --- | --- | --- | --- | --- |
+| lunar-javascript | v1.6.x | 6tail | MIT | `modules/CoreModule/solarlunar.js` | 未改内部算法，仅加项目署名头；口径封装在 `lunar.js` | `modules/CoreModule/vendor/lunar-javascript.LICENSE.txt` |
+| iztro | 2.6.2 | SylarLong | MIT | `modules/CoreModule/vendor/iztro.min.js` | 未修改（压缩后无 banner，许可单列） | `modules/CoreModule/vendor/iztro.LICENSE.txt` |
+| QR Code Generator for JavaScript | — | Kazuhiko Arase（2009） | MIT | `modules/ExportModule/qrcode.js` | 未修改（文件头保留原声明） | `modules/ExportModule/qrcode.LICENSE.txt` |
+
+> QR Code 是 DENSO WAVE INCORPORATED 的注册商标。
+
+**构建期依赖（开发/打包用，不随小程序与 PWA 产物分发；构建 H5 / App 产物时须同时遵守）**
+
+| 组件 | 许可 | 说明 |
+| --- | --- | --- |
+| uni-app（`@dcloudio/uni-app`、`uni-components`、`uni-h5`、`uni-mp-weixin`） | Apache-2.0 | 多端构建框架；许可以各包 `package.json` 的 `license` 字段与随包 LICENSE 为准 |
+| vue 3.x | MIT | uni-app 视图层 |
+| sass（dart-sass） | MIT | 样式预处理器（构建期） |
+
+**其余算法为本仓自研实现**（`modules/CoreModule/` 下的 35 个内核文件，除上述内嵌库外均为原创代码）；图标为按设计稿几何自绘 SVG，无外部图标库与外部字体。
+
+**本仓库当前不包含**（早期版本曾内嵌、对应功能已移除，列出仅供核对，不代表在用）：`astronomy-engine`（占星/七政）、`opencc-js`（简繁映射）。仓库中已无这些文件与任何引用。
+
+### 11.3 数据与古籍文献边界
+
+| 来源类型 | 处理方式 | 版权状态 |
+| --- | --- | --- |
+| **公版古籍原文**（明清及以前传本、作者不详民俗文本） | 收录 4 份全文于 `refs-texts/`（《周易》64 卦经文、紫微斗数全书 168 格、观音灵签一百签、《毕法赋》一百法），以通行本为底本；线上版本仅作异文校勘参照 | 已入公有领域；如涉第三方整理成果，其权利归整理者，须按该来源许可（如 CC BY-SA）另行遵循 |
+| **现代著作与开源文档** | 参考文献页**只列书名与作者，不载原文**（如霍斐然《周易小成图简述》、陆斌兆中州派四化、易德轩 / 玄霖易学整理件） | 受著作权保护，故不载原文 |
+| **民间传本与网站整理件**（如观音灵签的转录来源） | 多源比对、取通行一致文本，逐条在文件头注明来源 | 可能涉汇编著作权与站点使用条款；商用或大规模再分发前请复核来源许可 |
+| **白话解释** | 本项目原创撰写 | 归 Ntarstudio；不主张对原著的演绎许可 |
+
+### 11.4 再分发要求
+
+1. 必须保留：`NOTICE`、`LICENSE`（AGPL-3.0 全文）、三份第三方许可全文（`vendor/*.LICENSE.txt` 与 `ExportModule/qrcode.LICENSE.txt`）、以及各文件内部原有的版权头。
+2. 必须保留：「玄玖灵犀 NT-Xhex」品牌标识与 © 星玖工作室 Ntarstudio 的版权声明；修改版不得暗示原作者为其背书。
+3. 不得删除或篡改第三方文件的版权声明与许可声明（MIT 的强制要求）。
+4. 建议保持「无后端 / 无网络 / 无登录 / 全本地计算」的边界；若接入网络回传用户输入，须自行评估合规风险并明确告知使用者。
 
 ---
 

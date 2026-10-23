@@ -39,7 +39,7 @@ var MODE = process.argv.indexOf('--check') >= 0 ? 'check' : 'copy';
 // 从「各平台加载清单」取小程序要用的引擎文件（单一事实源，自动忽略不相关目录）
 // v3.1.32 起：分包冷加载。mp-weixin.subPackages 列出的文件**不进主包**，而是生成到各自分包目录
 //   （dist/mp-weixin/<pkg>/utils/modules/…），由主包用 require.async 按需拉取（官方文档口径：基础库 2.11.2+）。
-//   这样 iztro(779KB)+astronomy(114KB) 这类「只有某板块用得到」的大件不在启动时进主包，压住 2MB 红线。
+//   这样 iztro(798KB) 这类「只有紫微板块用得到」的大件不在启动时进主包，压住 2MB 红线。
 //   ⚠ 主包侧**不得**对这些文件写静态 require（微信编译期即判「主包引用分包」非法，运行也取不到）；
 //     主包代码里对应的功能改走 require.async 懒加载（见 modules/features/registry.js 的 warmZiwei/warmAstro）。
 function manifest() {
@@ -321,8 +321,8 @@ function main() {
 
     // 第六道：project.config.json 的 babelSetting 必须忽略 vendor（v3.1.42 新增）
     //   病因：微信开发者工具默认「增强编译」(setting.enhance) 会用 Babel 把 ES6+ 转 ES5，
-    //     并给转译结果注入 `require('@babel/runtime/helpers/...')`。分包里的 iztro.min.js /
-    //     astronomy.js 是 ES6+ 的 UMD 大包，一旦被转译，就会 require 一堆 runtime helper ——
+    //     并给转译结果注入 `require('@babel/runtime/helpers/...')`。分包里的 iztro.min.js
+    //     是 ES6+ 的 UMD 大包，一旦被转译，就会 require 一堆 runtime helper ——
     //     而小程序包里**永远不会**有 @babel/runtime（那是 npm 包，不是我们放的），
     //     于是真机/IDE 一用到紫微、占星就抛：
     //       module '@babel/runtime/helpers/arrayWithHoles.js' is not defined
@@ -393,7 +393,7 @@ function main() {
         if (badPath) console.log("  ✗ babelSetting.outputPath 应为空串，实际为 '" + bs.outputPath + "'");
         bad++;
       } else {
-        console.log('  ✓ babelSetting 已忽略 vendor（Babel 不转译 iztro/astronomy，避免 @babel/runtime 缺失）');
+        console.log('  ✓ babelSetting 已忽略 vendor（Babel 不转译 iztro，避免 @babel/runtime 缺失）');
       }
     })();
     console.log(bad === 0 ? '[sync-mp] 产物完整且与 modules/ 一致' : '[sync-mp] 发现 ' + bad + ' 处不一致，请重新生成');
@@ -635,7 +635,7 @@ function main() {
    *
    * 规则（官方口径）：
    *   · babelSetting.ignore —— 要跳过 Babel 转译的文件/目录；**目录必须带 `/*` 通配**，
-   *     只写到 'vendor/' 不匹配。这里列 vendor 整个目录（iztro.min.js / astronomy.js 都是 ES6+ 大包）。
+   *     只写到 'vendor/' 不匹配。这里列 vendor 整个目录（iztro.min.js 是 ES6+ 大包）。
    *   · babelSetting.outputPath —— Babel 辅助函数的输出目录，**必须为空串**（用官方默认 @babel/runtime）；
    *     曾错写成 './dist/.'（相对项目根 → dist/mp-weixin/dist/.，错乱）。
    */

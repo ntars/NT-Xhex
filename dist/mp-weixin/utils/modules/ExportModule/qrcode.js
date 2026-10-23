@@ -13,6 +13,10 @@
 // DENSO WAVE INCORPORATED
 //  http://www.denso-wave.com/qrcode/faqpatent-e.html
 //
+// 本项目用法（玄玖灵犀 NT-Xhex）：整文件内嵌、未修改，仅用于「导出图片」右下角的
+// 离线二维码绘制（modules/ExportModule/export-image.js 调用），运行时不联网。
+// 许可全文另见仓库根 NOTICE 与 modules/ExportModule/qrcode.LICENSE.txt。
+//
 //---------------------------------------------------------------------
 
 var qrcode = function() {

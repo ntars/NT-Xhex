@@ -6,6 +6,13 @@
  *        纳音、神煞（建除/黄道黑道/二十八宿/彭祖百忌/冲煞/胎神/吉神方位）、八字(EightChar 含藏干十神大运)。
  * 算法来源：内嵌 lunar-javascript（6tail，MIT，无第三方依赖）—— 圣经明确指定「对应开源：lunar-javascript」。
  *          本文档为 MIT 授权库原文，仅加本署名头；不修改其内部算法，保证可与上游口径对齐。
+ *
+ * ⚖️ 版权与许可（上游原文声明，依 MIT 要求必须保留，不得删除）：
+ *   lunar-javascript —— https://github.com/6tail/lunar-javascript
+ *   Copyright (c) 6tail
+ *   MIT License：保留本版权声明与许可声明即可自由使用、复制、修改、合并、发布、再许可与销售；
+ *   本软件按「原样」提供、不作任何担保。许可全文见 modules/CoreModule/vendor/lunar-javascript.LICENSE.txt
+ *   与本仓 NOTICE。分发本项目（含本文件）时请一并保留上述声明。
  * 参照物：  与《玄玖灵犀》现有示例「白玖玖 2005-6-9 子时 → 乙酉/壬午/甲子/甲子」一致（已验证）。
  * 校验收：  modules/CoreModule/__tests__/solarlunar.test.js
  * 加载：UMD —— require() 得 { Solar, Lunar, EightChar, HolidayUtil, ... }；浏览器挂全局同名。

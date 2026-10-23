@@ -59,8 +59,26 @@
   }
 
   // 本应用使用到的开源项目及其协议（供「开源声明」页正文引用，单一真源）
+  //   ⚖️ 合规要求：这里的清单必须与仓库根 NOTICE、README「十一、许可与开源声明」逐项一致；
+  //      内嵌库的版权与许可全文在 modules/CoreModule/vendor/*.LICENSE.txt 与
+  //      modules/ExportModule/qrcode.LICENSE.txt；MIT 要求保留版权声明，不得删除。
+  //      构建期依赖（uni-app / vue / sass）不随发布产物分发，故不在本页列示（见 NOTICE 第三节）。
   var DEPS = [
-    { name: 'lunar-javascript', ver: 'v1.6.x', lic: 'MIT', why: '历法内核参考：干支 / 节气 / 四柱 / 建除的精确离线算法口径（本仓内自实现、无运行时联网）' }
+    {
+      name: 'lunar-javascript', ver: 'v1.6.x', lic: 'MIT', holder: 'Copyright (c) 6tail',
+      why: '历法内核：公历↔农历、节气、干支纪年月日时、纳音、神煞、四柱的精确离线算法（内嵌于 solarlunar.js，内部算法未改，不联网）',
+      url: 'https://github.com/6tail/lunar-javascript'
+    },
+    {
+      name: 'iztro', ver: '2.6.2', lic: 'MIT', holder: 'Copyright (c) SylarLong',
+      why: '紫微斗数安星引擎：十二宫、四化、大限（内嵌于 vendor/iztro.min.js，未修改，不联网）',
+      url: 'https://github.com/SylarLong/iztro'
+    },
+    {
+      name: 'QR Code Generator for JavaScript', ver: '—', lic: 'MIT', holder: 'Copyright (c) 2009 Kazuhiko Arase',
+      why: '导出图片右下角离线二维码的矢量绘制（内嵌于 ExportModule/qrcode.js，未修改，不联网；QR Code 为 DENSO WAVE 注册商标）',
+      url: 'http://www.d-project.com/'
+    }
   ];
 
   // ===== 「功能介绍」页的功能总览（唯一来源 = features/registry.js 的 catalog()）=====
@@ -259,9 +277,11 @@
           ],
           // 开源声明（设计稿：开源方式与复刻要求 + AGPL-3.0 授权与源码获取 + 所用开源项目及协议）
           open: [
-            { h: '开源方式与复刻要求', text: '本应用全部代码以 GNU AGPL v3.0（GNU Affero 通用公共许可证第 3 版）开源。你可以自由使用、复制、修改、再分发，要求是：① 保留本开源声明与版权声明；② 分发修改版时同样以 AGPL-3.0 开放对应源码；③ 若把修改版作为网络服务提供给他人使用，须按第 13 条向使用者提供对应的完整源码。复刻时请保持「无后端 / 无网络 / 无登录 / 全本地计算」的边界，不得接入网络回传用户输入。' },
+            { h: '开源方式与复刻要求', text: '本应用全部代码以 GNU AGPL v3.0（GNU Affero 通用公共许可证第 3 版）开源。你可以自由使用、复制、修改、再分发，要求是：① 保留本开源声明与版权声明；② 分发修改版时同样以 AGPL-3.0 开放对应源码；③ 若把修改版作为网络服务提供给他人使用，须按第 13 条向使用者提供对应的完整源码；④ 名称「玄玖灵犀 / NT-Xhex」、Logo、界面版式与设计稿归星玖工作室 Ntarstudio 所有——AGPL-3.0 只授予代码权利，不授予品牌与视觉资产的使用许可，修改版不得盗用品牌标识，也不得暗示原作者为其背书。复刻时请保持「无后端 / 无网络 / 无登录 / 全本地计算」的边界，不得接入网络回传用户输入。' },
             { h: 'AGPL-3.0 协议（全文与源码获取）', text: 'Copyright (C) 2026 星玖工作室 (Ntarstudio)\n\n本应用为自由软件：你可以在自由软件基金会发布的 GNU Affero 通用公共许可证第 3 版（或你选择的任何更新版本）条款下再分发和/或修改它。\n\n本应用希望其有用，但不提供任何担保，甚至不提供适销性或特定用途适用性的默示担保。详见 GNU Affero 通用公共许可证。\n\n协议全文随源码提供（仓库根目录 LICENSE 文件）：https://github.com/ntars/NT-Xhex/blob/main/LICENSE\n\n依第 13 条，通过网络与本应用交互的使用者有权获得对应源码，源码仓库：https://github.com/ntars/NT-Xhex' },
-            { h: '本应用使用到的开源项目', text: '本应用为自研离线实现，仅以下历法口径参考了开源项目（无运行时联网依赖）：lunar-javascript v1.6.x（MIT）——干支 / 节气 / 四柱 / 建除的精确离线算法口径参考。' }
+            { h: '本应用使用到的开源项目', text: '本应用除下列内嵌库外均为自研离线实现（全部内嵌、运行时不联网、不发起任何远程请求）：\n'
+              + DEPS.map(function (d) { return '· ' + d.name + (d.ver && d.ver !== '—' ? ' ' + d.ver : '') + '（' + d.lic + '，' + d.holder + '）——' + d.why; }).join('\n')
+              + '\n以上均为 MIT 许可，版权声明与许可全文随源码保留在 modules/CoreModule/vendor/ 与 modules/ExportModule/ 下的 *.LICENSE.txt，与本仓 NOTICE 一致。构建期依赖（uni-app / vue / sass）不随发布产物分发，清单见仓库根 NOTICE。' }
           ]
         },
 

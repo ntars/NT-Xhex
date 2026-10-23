@@ -1,0 +1,34 @@
+iztro —— 紫微斗数排盘引擎（内嵌为 iztro.min.js）
+https://github.com/SylarLong/iztro
+
+版本：2.6.2
+内嵌文件：modules/CoreModule/vendor/iztro.min.js（压缩后已无文件头 banner，故许可单列于此）
+用途：紫微斗数安星法、十二宫、四化、大限（本项目薄适配层为 modules/CoreModule/ziwei.js）
+修改情况：未修改；仅作为构建期资产整文件内嵌，运行时不联网
+
+版权：Copyright (c) SylarLong（具体年份以上游仓库 LICENSE 为准）
+许可：MIT License（全文如下）
+
+────────────────────────────────────────────────────────────────────────
+MIT License
+
+Copyright (c) SylarLong
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+────────────────────────────────────────────────────────────────────────
