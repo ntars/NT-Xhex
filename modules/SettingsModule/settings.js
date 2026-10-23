@@ -153,7 +153,7 @@
   return {
     // 关于我们：版权/简介/版本/备案（统一品牌信息，单一真源）
     about: function () {
-      var version = 'v3.2.2'; // 唯一版本真值；由 tools/sync-version.js 从 version.json 同步，勿手改第二份
+      var version = 'v3.3.0'; // 唯一版本真值；由 tools/sync-version.js 从 version.json 同步，勿手改第二份
       return {
         name: '玄玖灵犀', en: 'NT-Xhex', version: version,
         desc: '中国传统术数文献整理、校勘与数字化演算的学术研究辅助工具。',

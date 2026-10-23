@@ -36,6 +36,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+      - name: 生成小程序产物（v3.3.0 起 dist 生成物不入库，由源码重建）
+        run: node tools/sync-mp.js
       - name: 校验小程序产物与模块源一致（含 <template is> 必须传 data）
         run: node tools/sync-mp.js --check
       - name: 校验 PWA 引用的模块与图标都在

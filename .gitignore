@@ -24,6 +24,26 @@ dist/mp-weixin/project.private.config.json
 dist/mp-weixin/i18n/
 dist/mp-weixin/miniapp/
 
+# —— 微信小程序包：只入库「手写壳」，生成物一律不入库（v3.3.0）——
+# dist/mp-weixin/ 里混着两类东西，必须分清楚：
+#   ① 手写壳源码 9 个（**要进仓库**，它们是源码不是产物）：
+#      app.js / app.json（基座，sync-mp 只往里写 subPackages 段）/ app.wxss /
+#      sitemap.json / project.config.json（sync-mp 只校正 babelSetting）/
+#      pages/index/{index.js,index.json,index.wxml,index.wxss}
+#      ⚠️ sync-mp 对 app.json、project.config.json 是「读现有 → 改字段 → 写回」，
+#         读不到就静默跳过 —— 所以这 9 个文件一旦不入库，clone 出来生成的包就是残的
+#         （实测：缺 app.json 会连带丢失分包配置，包体 2.378MB 超线 118.9%）。
+#   ② 生成物 67 个（**不入库**，`npm run build:mp` 随时可重建）：
+#      theme.wxss（theme.css 的 WXSS 版）/ static/icons/（3）/
+#      utils/modules/（13，含构建期快照 catalog.js、refs-snapshot.js）/
+#      occupy-cores/（50 = 46 个内核副本 + 4 个占位页）
+# 为什么不让生成物入库：同一份逻辑在 git 里存两份 → 必然漂移，还要靠 --check 反复确认。
+# 代价：clone 后需先跑一次 `npm run build:mp` 才能导入微信开发者工具（README §8.1 已写明）。
+dist/mp-weixin/theme.wxss
+dist/mp-weixin/static/
+dist/mp-weixin/utils/modules/
+dist/mp-weixin/occupy-cores/
+
 # —— uni-app 构建输出 ——
 unpackage/
 

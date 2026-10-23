@@ -1,4 +1,4 @@
-# 玄玖灵犀 NT-Xhex v3.2.2
+# 玄玖灵犀 NT-Xhex v3.3.0
 
 > **算法演乾坤，一问知天命，以数据重现千年术数。**  
 > 中国传统术数文献整理、校勘与数字化演算的学术研究辅助工具  
@@ -6,12 +6,13 @@
 
 | 速览 | 当前状态 |
 | --- | --- |
-| 版本 | v3.2.2 —— `version.json` 是唯一真值，`tools/sync-version.js` 同步 7 处 |
+| 版本 | v3.3.0 —— `version.json` 是唯一真值，`tools/sync-version.js` 同步 7 处 |
 | 形态 | 微信小程序（主形态）· 浏览器 PWA（可安装为 App）· uni-app（H5 / Android / iOS / 鸿蒙） |
 | 功能 | 8 类算法 → **5 大板块 31 项功能**，首页搜索框是唯一入口 |
 | 引擎 | `modules/CoreModule/` 35 个平台无关内核（UMD）+ 内嵌 iztro（紫微）与 lunar-javascript（历法），**运行时不联网** |
 | 界面 | 12 个画板的设计稿（402×874pt）逐层翻译成代码，全黑白灰、无描边无阴影 |
 | 质量 | 41 个测试文件 / 约 1700 条断言全绿；`sync-mp --check` 8 道护栏；小程序主包 0.78MB |
+| 仓库 | **只存一份源码**：小程序 67 个生成物不入库（v3.3.0），clone 后 `npm run build:mp` 一条命令重建 |
 | 部署 | GitHub Pages 自动发布 + EdgeOne Pages 服务仓库根 |
 | 许可 | 代码 AGPL-3.0；参考文献只列书名与作者，公版古籍原文存 `refs-texts/` |
 
@@ -65,7 +66,7 @@
 
 | 形态 | 入口 | 说明 |
 | --- | --- | --- |
-| **微信小程序（主形态）** | `dist/mp-weixin/` | 完整原生小程序，微信开发者工具「导入项目」直接选这个目录；算法在分包 `occupy-cores`，首次提问时懒加载 |
+| **微信小程序（主形态）** | `dist/mp-weixin/` | 原生小程序（非 uni 编译产物）：9 个手写壳 + 由 `npm run build:mp` 生成的引擎副本；算法在分包 `occupy-cores`，首次提问时懒加载。**clone 后先 build 再导入**，详见 §8.1 |
 | **浏览器 PWA** | 仓库根 `index.html` | 免构建，起静态服务即可运行；可安装到桌面/主屏，Service Worker 离线缓存 |
 | **uni-app** | `pages/index/index.vue` | 单页壳，`uni build` 出 H5 / Android / iOS / 鸿蒙；业务逻辑复用 `modules/`，不改代码 |
 
@@ -582,6 +583,17 @@ v3.0.6 曾做「1px 细环 + 极淡柔晕」；v3.1.0 按用户反馈「白边�
 - 生成物与源的一致性由 `sync-mp --check` 硬校验，不一致即红，不会带着旧产物发布；
 - PWA 与 uni-app 直接引用 `modules/` 源文件（同仓相对路径），不需要生成。
 
+**生成物不进版本库（v3.3.0 起）**：`dist/mp-weixin/` 里混着两类文件，必须分开看——
+
+| 类别 | 数量 | 是否入库 | 说明 |
+| --- | --- | --- | --- |
+| **手写壳源码** | **9** | ✅ 入库 | `app.js` / `app.json`（基座）/ `app.wxss` / `sitemap.json` / `project.config.json` / `pages/index/{index.js,index.json,index.wxml,index.wxss}`。它们是源码不是产物，必须在 git 里 |
+| **生成物** | **67** | ❌ 不入库 | `theme.wxss`（1）· `static/icons/`（3）· `utils/modules/`（13，含构建期快照 `catalog.js`、`refs-snapshot.js`）· `occupy-cores/`（50 = 46 个内核副本 + 4 个占位页）；`.gitignore` 精确忽略这四条路径 |
+
+为什么要这么切：同一份逻辑在 git 里存两份，早晚会漂移，还得靠 `--check` 反复确认；而壳源码一旦出库，`sync-mp` 就失去了「读现有 → 改字段 → 写回」的对象——`app.json` 的 `subPackages` 段与 `project.config.json` 的 `babelSetting` 都由它原地改写，壳丢了包就是残的（实测缺 `app.json` 会连带丢掉分包配置，包体 2.378MB 超线 118.9%）。
+
+代价只有一个：**clone 后先跑一次 `npm run build:mp`**（等值于 `node tools/sync-mp.js`），再导入微信开发者工具。
+
 ### 6.4 目录结构
 
 ### 目录结构
@@ -612,7 +624,8 @@ NT-Xhex/
 │  ├─ transition.test.js     # 转场方向回归（13 条真实导航边 + DEPTH 层级自洽断言）
 │  └─ gen-logo.py            # Logo / App 图标生成器（Pillow）
 ├─ refs-texts/               # 参考文献原书资料库（公版古籍全文，进仓库但不进小程序包；由 gen-refs-texts.js 从内核导出）
-├─ dist/mp-weixin/          # 原生微信小程序（IDE「导入项目」直接选这里）
+├─ dist/mp-weixin/          # 原生微信小程序（IDE「导入项目」选这里）——9 个手写壳入库，
+│                           #   其余 67 个文件是 build:mp 生成物、不入库（.gitignore 精确忽略）
 └─ modules/                 # 业务模块（唯一真源）
    ├─ CoreModule/          # 历法 / 命理内核（纯函数，平台无关；UMD，浏览器挂 NT.core.*）
    │  ├─ config.js          # 口径开关（立春换年 / 节 / 早子晚子 / 真太阳时 / 生肖边界）
@@ -780,10 +793,17 @@ NT-Xhex/
 
 ### 8.1 微信小程序（主形态）
 
-**方式 A（无需构建）**：`dist/mp-weixin/` 是一份完整原生小程序。微信开发者工具「导入项目」直接选这个目录即可预览 / 编译 / 上传。
+**第一次必须先构建一次**（v3.3.0 起 67 个生成物不入库，clone 下来的仓库里没有它们）：
 
+```bash
+npm run build:mp     # 等值于 node tools/sync-mp.js，从 modules/ + static/ 生成到 dist/mp-weixin/
+```
+
+然后微信开发者工具「导入项目」，目录选 `dist/mp-weixin/`，即可预览 / 编译 / 上传。
+
+> ⚠️ **不跑 build 直接导入会缺模块、缺 `theme.wxss`、缺分包内容**，编译看似能过但运行到排盘就报模块找不到。判断方法：`dist/mp-weixin/utils/modules/` 与 `dist/mp-weixin/occupy-cores/` 两个目录存在且非空，就说明构建过了。
 > ⚠️ 必须选 `dist/mp-weixin/`（含 `app.json`），**不能选仓库根目录**（根目录无 `app.json`，会报「no found app.json」）。
-> ⚠️ 引擎与静态资源是 `modules/`、`static/` 的**生成产物**。改了源之后跑 `node tools/sync-mp.js`（校验 `node tools/sync-mp.js --check`）。
+> ⚠️ 引擎与静态资源是 `modules/`、`static/` 的**生成产物**。改了源之后重跑 `npm run build:mp`（校验 `npm run check:mp`）。
 > ⚠️ 微信 IDE 会在 `dist/mp-weixin/` 自建 `app.miniapp.json`、`project.miniapp.json`、`project.private.config.json`、`i18n/`、`miniapp/`，并把 `project.config.json` 写成 `"projectArchitecture": "multiPlatform"`。这些是 **IDE 本地产物、不入库**（已在 `.gitignore`）；发现后清理并重新导入，否则会被当成「小应用」架构打开白屏。
 
 **方式 B（uni-app 构建）**：`npm install && npx uni build mp-weixin`。
@@ -872,10 +892,11 @@ node modules/AnalyzerModule/__tests__/full-chart.test.js   # 全套排盘：八�
 node modules/HomeModule/__tests__/result-format.test.js    # 结果页三分支排版 / 块边界 / 恢复路径
 
 # —— 产物与一致性 ——
+npm run build:mp                     # = node tools/sync-mp.js，重生成 dist/mp-weixin（clone 后第一步）
+npm run check:mp                     # = node tools/sync-mp.js --check
 node tools/audit-features.js         # 全功能巡检（31 块可跑 / 触发词不冲突 / 缺料守门）
 node tools/gen-refs-texts.js --check # refs-texts/ 与内核逐字一致（4 份）
 node tools/sync-mp.js --check        # dist 一致 + WXML 传参 + PWA 加载顺序 + 版本 7 处 + 包体双红线
-node tools/sync-mp.js                # 重生成 dist/mp-weixin
 node tools/check-bundle-size.js      # 包体体检（主包 + 逐分包 vs 2MB）
 node tools/sync-version.js --check   # 版本号 7 处与 version.json 一致
 ```
@@ -950,6 +971,14 @@ node tools/sync-version.js --check   # 版本号 7 处与 version.json 一致
 
 ## 十二、更新日志
 
+
+- **v3.3.0**（📦 工程架构：小程序生成物移出版本库，仓库只留一份源码 —— 用户要求「确保全项目无重复文件和重复引用」）：
+  ① **分清两类文件再动手** —— `dist/mp-weixin/` 的 76 个文件其实是两类：**手写壳源码 9 个**（`app.js` / `app.json` / `app.wxss` / `sitemap.json` / `project.config.json` / `pages/index` 四件套）与**生成物 67 个**（`theme.wxss` 1 + `static/icons/` 3 + `utils/modules/` 13 + `occupy-cores/` 50）。第一版方案曾试图把整个 `dist/` 出库，被小样本验证拦下：`sync-mp.js` 对 `app.json`、`project.config.json` 是「读现有 → 改字段 → 写回」，读不到就静默跳过 —— 壳一丢，分包配置写不进去，实测包体 2.378MB 超线 118.9%、连 `app.wxss` 与 `pages/index` 都缺。所以只出库生成物，壳必须留在 git 里。
+  ② **`.gitignore` 精确四条** —— `dist/mp-weixin/theme.wxss`、`dist/mp-weixin/static/`、`dist/mp-weixin/utils/modules/`、`dist/mp-weixin/occupy-cores/`；文件头写清「9 个手写壳 vs 67 个生成物」的划分与代价，避免以后有人顺手把 `dist/` 整个忽略掉重犯同一个错。
+  ③ **`git rm -r --cached` 出库 67 个** —— 本地文件一个不动（76 个仍在），仓库文件数 **234 → 167**，git 里从此只剩 `modules/` 一份源码；`git check-ignore` 逐项验证 4 条规则命中、9 个壳零误伤。
+  ④ **一条命令补回来** —— `package.json` 新增 `build:mp`（= `sync-mp.js`）与 `check:mp`、`sync:version`；`pages.yml` 的 verify 先 `build:mp` 再 `--check`，发布不依赖仓库内旧产物。顺手补上「收空目录」：模块在主包 ↔ 分包之间搬过家（`AnalyzerModule` / `features` 进分包、`vendor` 进主包），而 `clearFiles` 只删文件不删目录，旧目录会留成空壳（实测 4 个、0 字节），看着像旧版本残留；现在生成末尾自底向上清一次空目录，有内容的一律不动。
+  ⑤ **验证（这次先验后合，不合并未验证的分支）** —— `git clone --branch` 到临时目录模拟新机器：只跑 `npm run build:mp`，9 个手写壳齐全、`utils/modules/` 与 `occupy-cores/` 非空、`sync-mp --check` 全过、包体双红线达标、与主仓库 `dist` 做 `diff -rq` **逐字节零差异**；再跑 41 个测试文件全绿。
+  ⑥ **文档同步** —— README §8.1 首段改为「先 build 再导入」（含「不 build 会怎样」的判断方法）、§6.3 补「生成物不进版本库」两类文件对账表、目录树标注、§9.4 命令表、速览新增「仓库」行。
 
 - **v3.2.2**（🔐 搜索框只认四种生辰写法：国历 / 农历 / 四柱 / 八字 —— 用户要求「搜索框只支持输入各种形式的生辰，农历、国历、四柱、八字，其他形式信息提醒为请输入农历、国历、四柱、八字，不跳转到二级页面，弹窗提醒」）：
   ① **`intent.js` 补农历与四柱识别** —— 新增 `lunarDayToArabic()`（`初三→3 / 廿三→23 / 三十→30 / 初一→1`）、`LUNAR_MONTHS`（`正·冬·腊·十一·十二` 齐全）、`extractLunarDate()`（支持 `农历/阴历/旧历/夏历` 前缀、`二〇〇五` 这类中文年、`闰` 月标记）、`extractPillars()`（连续干支对取前四组，3 柱即命中）。**关键坑**：农历识别必须走 `preprocess` 的 `half`（只做全角转半角的中间态），不能走 `cn` —— 后者的 `chineseNumberToArabic` 已经把「五月初三」改成「5月初3」、「廿三」改成「33」，农历写法的月名与「初X」在那一步就散了。
