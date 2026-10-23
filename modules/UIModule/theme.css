@@ -659,6 +659,14 @@ page { scrollbar-width: none; -ms-overflow-style: none; }
   color: var(--nt-foot);
 }
 
+/* 备案号可点击：工信部要求备案号可跳转至 beian.miit.gov.cn。
+ * 视觉与其余页脚行完全一致（继承色、无下划线），避免破坏页脚的两行等重观感。 */
+.nt-foot a.nt-setfoot-line {
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.nt-foot a.nt-setfoot-line:active { opacity: .55; }
+
 /* ============ 线性图标 ============
  * 设计稿实测（逐点取自 sketch 原始锚点，**frame = 路径中心线外框，不含描边**）：
  *   · 后退「‹」/ 前进「›」：中心线 7.5825 × 16，描边 1.5；两臂 **45°（开合 90°）**，
